@@ -1,0 +1,315 @@
+# Backend API Contract: FastAPI Todo Endpoints
+
+**Version**: 1.0.0
+**Base URL**: `http://localhost:8000`
+**Authentication**: JWT Bearer Token
+
+---
+
+## Authentication
+
+All endpoints require JWT authentication via `Authorization` header:
+
+```
+Authorization: Bearer <jwt_token>
+```
+
+**Token Source**: JWT obtained from Better Auth session after login/signup.
+
+---
+
+## Endpoints
+
+### 1. List Tasks
+
+```http
+GET /api/{user_id}/tasks
+```
+
+**Description**: Retrieve all tasks for the authenticated user.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+
+**Query Parameters**:
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `status` | string | "all" | Filter: "all", "pending", "completed" |
+| `limit` | integer | 100 | Max results to return |
+| `offset` | integer | 0 | Pagination offset |
+
+**Response**: `200 OK`
+
+```json
+{
+  "tasks": [
+    {
+      "id": 1,
+      "user_id": "user-uuid-123",
+      "title": "Buy groceries",
+      "description": "Milk, eggs, bread",
+      "completed": false,
+      "created_at": "2026-01-06T10:30:00Z",
+      "updated_at": "2026-01-06T10:30:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token |
+| `500` | Server error |
+
+---
+
+### 2. Create Task
+
+```http
+POST /api/{user_id}/tasks
+```
+
+**Description**: Create a new task for the authenticated user.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+
+**Request Body**:
+
+```json
+{
+  "title": "Buy groceries",
+  "description": "Milk, eggs, bread"
+}
+```
+
+**Fields**:
+
+| Name | Type | Required | Constraints |
+|------|------|----------|-------------|
+| `title` | string | Yes | 1-200 characters |
+| `description` | string | No | Max 1000 characters |
+
+**Response**: `201 Created`
+
+```json
+{
+  "id": 1,
+  "user_id": "user-uuid-123",
+  "title": "Buy groceries",
+  "description": "Milk, eggs, bread",
+  "completed": false,
+  "created_at": "2026-01-06T10:30:00Z",
+  "updated_at": "2026-01-06T10:30:00Z"
+}
+```
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `400` | Validation error (title too long, etc.) |
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token |
+
+---
+
+### 3. Get Single Task
+
+```http
+GET /api/{user_id}/tasks/{id}
+```
+
+**Description**: Retrieve a specific task by ID.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+| `id` | integer | Task ID |
+
+**Response**: `200 OK`
+
+```json
+{
+  "id": 1,
+  "user_id": "user-uuid-123",
+  "title": "Buy groceries",
+  "description": "Milk, eggs, bread",
+  "completed": false,
+  "created_at": "2026-01-06T10:30:00Z",
+  "updated_at": "2026-01-06T10:30:00Z"
+}
+```
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token |
+| `404` | Task not found or user doesn't own it |
+
+---
+
+### 4. Update Task
+
+```http
+PUT /api/{user_id}/tasks/{id}
+```
+
+**Description**: Update an existing task.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+| `id` | integer | Task ID |
+
+**Request Body**:
+
+```json
+{
+  "title": "Buy groceries and fruits",
+  "description": "Updated list"
+}
+```
+
+**Fields** (all optional):
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `title` | string | 1-200 characters |
+| `description` | string | Max 1000 characters |
+
+**Response**: `200 OK`
+
+```json
+{
+  "id": 1,
+  "user_id": "user-uuid-123",
+  "title": "Buy groceries and fruits",
+  "description": "Updated list",
+  "completed": false,
+  "created_at": "2026-01-06T10:30:00Z",
+  "updated_at": "2026-01-06T11:00:00Z"
+}
+```
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `400` | Validation error |
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token |
+| `404` | Task not found |
+
+---
+
+### 5. Delete Task
+
+```http
+DELETE /api/{user_id}/tasks/{id}
+```
+
+**Description**: Permanently delete a task.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+| `id` | integer | Task ID |
+
+**Response**: `204 No Content` (empty body)
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token or task not owned |
+| `404` | Task not found |
+
+---
+
+### 6. Toggle Complete
+
+```http
+PATCH /api/{user_id}/tasks/{id}/complete
+```
+
+**Description**: Toggle a task's completion status.
+
+**Path Parameters**:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `user_id` | string | User ID (must match JWT userId) |
+| `id` | integer | Task ID |
+
+**Response**: `200 OK`
+
+```json
+{
+  "id": 1,
+  "user_id": "user-uuid-123",
+  "title": "Buy groceries",
+  "description": "Milk, eggs, bread",
+  "completed": true,
+  "created_at": "2026-01-06T10:30:00Z",
+  "updated_at": "2026-01-06T11:00:00Z"
+}
+```
+
+**Error Responses**:
+
+| Code | Description |
+|------|-------------|
+| `401` | Invalid or expired JWT token |
+| `403` | user_id doesn't match token |
+| `404` | Task not found |
+
+---
+
+## Common Error Response Format
+
+All error responses follow this structure:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Title must be between 1 and 200 characters",
+    "details": {
+      "field": "title",
+      "constraint": "min_length=1, max_length=200"
+    },
+    "request_id": "req_abc123"
+  }
+}
+```
+
+**Error Codes**:
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `VALIDATION_ERROR` | 400 | Request validation failed |
+| `UNAUTHORIZED` | 401 | Invalid or missing JWT |
+| `FORBIDDEN` | 403 | User doesn't own resource |
+| `NOT_FOUND` | 404 | Resource not found |
+| `INTERNAL_ERROR` | 500 | Server error |

@@ -1,0 +1,724 @@
+openapi: 3.0.3
+info:
+  title: Chronos API
+  description: REST API for Phase II "Chronos" Professional Web App
+  version: 2.0.0
+  contact:
+    name: Evolution of Todo Hackathon
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.chronos.example.com
+    description: Production
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth (7-day expiry)
+
+  schemas:
+    # Error Responses
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+        error:
+          type: string
+          description: Machine-readable error code
+      required:
+        - detail
+
+    # Authentication
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address (must be unique)
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User password (minimum 8 characters)
+          example: "securePassword123"
+        name:
+          type: string
+          description: User display name
+          example: "John Doe"
+
+    SignupResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID (UUID)
+        email:
+          type: string
+          description: User email
+        name:
+          type: string
+          description: User name
+        created_at:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securePassword123"
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID (UUID)
+        email:
+          type: string
+          description: User email
+        name:
+          type: string
+          description: User display name
+        created_at:
+          type: string
+          format: date-time
+
+    # Task Models
+    Tag:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 30
+          description: Tag name
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          description: Hex color code
+
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+          example: "Buy groceries"
+        description:
+          type: string
+          maxLength: 1000
+          description: Task description
+          example: "Milk, eggs, bread"
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          default: MEDIUM
+          description: Task priority
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          maxItems: 10
+          description: Task tags with colors
+        due_date:
+          type: string
+          format: date-time
+          description: Task due date (ISO 8601)
+        recurrence_pattern:
+          type: string
+          enum: [DAILY, WEEKLY, MONTHLY]
+          description: Recurring task pattern
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          maxItems: 10
+        due_date:
+          type: string
+          format: date-time
+        recurrence_pattern:
+          type: string
+          enum: [DAILY, WEEKLY, MONTHLY]
+        completed:
+          type: boolean
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Task ID
+        user_id:
+          type: string
+          description: User ID (owner)
+        title:
+          type: string
+          description: Task title
+        description:
+          type: string
+          nullable: true
+          description: Task description
+        priority:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: Task priority
+        completed:
+          type: boolean
+          description: Completion status
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tag'
+          description: Task tags
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Task due date
+        recurrence_pattern:
+          type: string
+          enum: [DAILY, WEEKLY, MONTHLY]
+          nullable: true
+          description: Recurring task pattern
+        transcription_text:
+          type: string
+          nullable: true
+          description: AI-ready: Voice command log
+        ai_summary:
+          type: string
+          nullable: true
+          description: AI-ready: LLM-generated summary
+        embedding_id:
+          type: string
+          nullable: true
+          description: AI-ready: Vector search ID
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    TaskList:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        total:
+          type: integer
+          description: Total count of tasks matching query
+        page:
+          type: integer
+          description: Current page number (1-indexed)
+        per_page:
+          type: integer
+          description: Items per page
+
+    TaskLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        task_id:
+          type: integer
+        user_id:
+          type: string
+        action:
+          type: string
+          enum: [created, updated, deleted, completed, uncompleted, recurred]
+        changed_fields:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+
+    CommandCenterRequest:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          description: Natural language command
+          example: "Add meeting with John tomorrow at 2pm high priority"
+
+    CommandCenterResponse:
+      type: object
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+        message:
+          type: string
+          description: Success or suggestion message
+
+paths:
+  # Authentication (Managed by Better Auth - documented for reference)
+  /api/auth/signup:
+    post:
+      summary: Register new user
+      description: Create a new user account
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/signin:
+    post:
+      summary: Login user
+      description: Authenticate and receive JWT token
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/signout:
+    post:
+      summary: Logout user
+      description: Invalidate current session
+      tags: [Authentication]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Task CRUD
+  /api/tasks:
+    get:
+      summary: List all tasks
+      description: Retrieve all tasks for authenticated user with optional filtering
+      tags: [Tasks]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, pending, completed]
+          description: Filter by completion status
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [HIGH, MEDIUM, LOW]
+          description: Filter by priority
+        - name: tag
+          in: query
+          schema:
+            type: string
+          description: Filter by tag name
+        - name: due_before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by due date before
+        - name: due_after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Filter by due date after
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created_at, due_date, priority, title]
+            default: created_at
+          description: Sort field
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Page number
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+          description: Items per page
+      responses:
+        '200':
+          description: Task list retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      summary: Create new task
+      description: Create a new task for authenticated user
+      tags: [Tasks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tasks/search:
+    get:
+      summary: Search tasks
+      description: Search tasks by keyword in title or description
+      tags: [Tasks]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tasks/{task_id}:
+    get:
+      summary: Get task by ID
+      description: Retrieve a single task
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update task
+      description: Update task fields
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid input
+        '401':
+          description: Not authenticated
+        '404':
+          description: Task not found
+
+    delete:
+      summary: Delete task
+      description: Permanently delete a task
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  message:
+                    type: string
+        '401':
+          description: Not authenticated
+        '404':
+          description: Task not found
+
+  /api/tasks/{task_id}/complete:
+    patch:
+      summary: Toggle task completion
+      description: Mark task as complete or incomplete
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                completed:
+                  type: boolean
+      responses:
+        '200':
+          description: Task completion toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Task not found
+
+  /api/tasks/{task_id}/logs:
+    get:
+      summary: Get task history
+      description: Retrieve audit log for a task
+      tags: [Tasks]
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task log retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskLog'
+        '401':
+          description: Not authenticated
+        '404':
+          description: Task not found
+
+  /api/command:
+    post:
+      summary: Process natural language command
+      description: Parse and execute command from Command Center
+      tags: [Command Center]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandCenterRequest'
+      responses:
+        '200':
+          description: Command processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandCenterResponse'
+        '400':
+          description: Invalid command
+        '401':
+          description: Not authenticated
+
+  # Health Check
+  /api/health:
+    get:
+      summary: Health check
+      description: Check API health status
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  version:
+                    type: string
+                    example: "2.0.0"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+tags:
+  - name: Authentication
+    description: User registration and login
+  - name: Tasks
+    description: Task CRUD operations
+  - name: Command Center
+    description: Natural language command processing
+  - name: Health
+    description: Health check endpoint
