@@ -32,7 +32,7 @@ from app.models import (
     TaskPublic,
     TaskUpdate,
 )
-from app.auth import get_current_user_id
+from app.simple_auth import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -436,24 +436,20 @@ async def delete_task(
 
     # Verify task exists and belongs to user
     task = await get_task_or_404(task_id, current_user_id, session)
-    task_title = task.title
 
-    # Expire the task from the session to release any locks
-    await session.expire(task)
+    # Delete audit logs first (foreign key constraint)
+    from sqlalchemy import delete as sql_delete
+    from app.models import TaskLog
 
-    # Use raw SQL DELETE for reliable persistence
-    from sqlalchemy import text
+    await session.execute(
+        sql_delete(TaskLog).where(TaskLog.task_id == task_id)
+    )
 
-    delete_sql = text("DELETE FROM tasks WHERE id = :task_id AND user_id = :user_id")
-    result = await session.execute(delete_sql, {"task_id": task_id, "user_id": current_user_id})
-
-    # Commit to persist
+    # Now delete the task
+    await session.delete(task)
     await session.commit()
 
-    logger.info(f"Task deleted: id={task_id}, title={task_title!r}, rows={result.rowcount}")
-
-    if result.rowcount == 0:
-        logger.warning(f"Delete affected 0 rows - task may have been already deleted")
+    logger.info(f"Task deleted: id={task_id}, title={task.title!r}")
 
     return {"id": task_id, "message": "Task deleted successfully"}
 
