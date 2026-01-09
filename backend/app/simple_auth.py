@@ -7,6 +7,7 @@ which is simpler than JWKS for this hackathon project.
 For production with Ed25519 asymmetric signing, use jwt_middleware.py instead.
 """
 
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Optional
@@ -16,6 +17,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -75,9 +78,31 @@ def verify_token(token: str) -> dict:
         HTTPException: If token is invalid or expired
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Debug logging in development
+        if os.getenv("DEBUG"):
+            parts = token.split(".") if token else []
+            logger.debug(f"JWT verify attempt: token_parts={len(parts)}, secret_length={len(SECRET_KEY)}")
+            if len(parts) >= 2:
+                import base64
+                import json
+                try:
+                    header = json.loads(base64.urlsafe_b64decode(parts[0] + "=="))
+                    payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=="))
+                    logger.debug(f"JWT header={header}, payload sub={payload.get('sub')}")
+                except Exception as decode_err:
+                    logger.debug(f"JWT decode error: {decode_err}")
+
+        # Decode JWT - skip audience verification since we use shared secret auth
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+            options={"verify_aud": False},  # Skip audience validation
+        )
+        logger.debug(f"JWT decoded successfully, sub={payload.get('sub')}")
         return payload
     except JWTError as e:
+        logger.warning(f"JWT verification failed: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -146,20 +171,19 @@ async def get_current_user_id(
         )
 
     token = credentials.credentials
-    print(f"[DEBUG] Token length: {len(token)}, first 50 chars: {token[:50]}")
-    print(f"[DEBUG] SECRET_KEY set: {bool(SECRET_KEY)}, length: {len(SECRET_KEY) if SECRET_KEY else 0}")
+    logger.debug(f"Token received, length: {len(token)}")
 
     payload = verify_token(token)
 
     user_id: str = payload.get("sub")
     if user_id is None:
-        print(f"[DEBUG] Payload missing 'sub': {payload}")
+        logger.warning(f"Token payload missing 'sub' claim: {payload.keys()}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
 
-    print(f"[DEBUG] Authenticated user_id: {user_id}")
+    logger.debug(f"Authenticated user_id: {user_id}")
     return user_id
 
 

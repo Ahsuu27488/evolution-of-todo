@@ -203,19 +203,23 @@ async def list_tasks(
         SortField.TITLE: Task.title,
     }.get(sort_by, Task.created_at)
 
+    # Calculate pagination offset before applying sort/pagination
+    offset = (page - 1) * per_page
+
     if sort_by == SortField.PRIORITY:
         # Special handling for priority enum sort
-        # In Python, we'll sort after fetching
+        # Fetch all matching tasks, sort in Python, then paginate
         tasks_result = await session.execute(statement)
         tasks = tasks_result.scalars().all()
         tasks.sort(key=lambda t: priority_sort_value(t.priority), reverse=(sort_order == SortOrder.DESC))
+        # Apply pagination after sorting
+        tasks = tasks[offset:offset + per_page]
     else:
         statement = statement.order_by(
             desc(sort_column) if sort_order == SortOrder.DESC else asc(sort_column)
         )
 
         # Apply pagination
-        offset = (page - 1) * per_page
         statement = statement.offset(offset).limit(per_page)
 
         tasks_result = await session.execute(statement)

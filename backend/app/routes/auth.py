@@ -7,6 +7,7 @@ Per contracts/backend-api.yaml specification.
 """
 
 import logging
+import uuid
 from datetime import datetime
 from typing import AsyncGenerator
 
@@ -43,21 +44,33 @@ router = APIRouter()
 # For Phase II, we'll use a simple dict-based user store.
 # In production with Better Auth, users table is managed by Better Auth.
 # This is a minimal implementation for standalone backend auth.
+# Users are stored by UUID, with a separate email index for lookups.
 
-_users_store: dict[str, dict] = {}  # email -> user data
+_users_store: dict[str, dict] = {}  # user_id (UUID) -> user data
+_email_index: dict[str, str] = {}  # email -> user_id mapping
+
+
+def get_user_by_id(user_id: str) -> dict | None:
+    """Get user by ID from in-memory store."""
+    return _users_store.get(user_id)
 
 
 def get_user_by_email(email: str) -> dict | None:
     """Get user by email from in-memory store."""
-    return _users_store.get(email)
+    user_id = _email_index.get(email)
+    if user_id:
+        return _users_store.get(user_id)
+    return None
 
 
 def create_user(user_data: dict) -> dict:
     """Create a new user in the in-memory store."""
     email = user_data["email"]
-    if email in _users_store:
+    user_id = user_data["id"]
+    if email in _email_index:
         raise ValueError("Email already registered")
-    _users_store[email] = user_data
+    _users_store[user_id] = user_data
+    _email_index[email] = user_id
     return user_data
 
 
@@ -94,8 +107,8 @@ async def signup(
     # Hash password
     hashed_password = get_password_hash(user_data.password)
 
-    # Create user (using email as user_id for simplicity)
-    user_id = user_data.email  # In production, use UUID
+    # Create user with proper UUID as user_id
+    user_id = str(uuid.uuid4())
     user = {
         "id": user_id,
         "email": user_data.email,
@@ -195,7 +208,7 @@ async def get_current_user(
     """Get current authenticated user information.
 
     Args:
-        user_id: Authenticated user ID from JWT
+        user_id: Authenticated user ID from JWT (UUID string)
 
     Returns:
         Current user information
@@ -203,7 +216,7 @@ async def get_current_user(
     Raises:
         HTTPException: If user not found
     """
-    user = get_user_by_email(user_id)  # Using email as user_id
+    user = get_user_by_id(user_id)  # Look up by UUID
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

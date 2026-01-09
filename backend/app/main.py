@@ -18,8 +18,9 @@ from typing import AsyncGenerator
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
-from app.db import create_db_and_tables
+from app.db import create_db_and_tables, engine
 from app.errors import setup_error_handling
 from app.routes import auth, tasks
 
@@ -129,17 +130,48 @@ app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 # Health Check
 # =============================================================================
 
+async def check_database_health() -> dict:
+    """Check database connectivity.
+
+    Returns:
+        Dict with database status and latency in milliseconds
+    """
+    try:
+        start = datetime.utcnow()
+        async with engine.connect() as conn:
+            # Simple query to verify connection
+            await conn.execute(text("SELECT 1"))
+        latency_ms = int((datetime.utcnow() - start).total_seconds() * 1000)
+        return {
+            "status": "healthy",
+            "latency_ms": latency_ms,
+        }
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "error": str(e.__class__.__name__),
+        }
+
+
 @app.get("/api/health", tags=["Health"])
-def health_check() -> dict:
+async def health_check() -> dict:
     """Health check endpoint.
 
-    Returns server status and timestamp.
+    Returns server status, database connectivity, and timestamp.
     Used by monitoring tools and frontend health checks.
     """
+    db_health = await check_database_health()
+
+    overall_status = "ok" if db_health["status"] == "healthy" else "degraded"
+
     return {
-        "status": "ok",
+        "status": overall_status,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "version": "2.0.0",
+        "checks": {
+            "database": db_health,
+        },
     }
 
 

@@ -10,6 +10,7 @@ Usage:
 
 import sys
 import json
+import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -21,8 +22,14 @@ from jose import jwt
 # CONFIGURATION
 # =============================================================================
 
-BASE_URL = "http://localhost:8000"
-SECRET_KEY = "mlHt/eQkNbw8oSExN56WdGS0dxwBdNGtMtG0XJ7jveE="
+BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# Read secret from environment variable - MUST be set for tests to run
+SECRET_KEY = os.getenv("BETTER_AUTH_SECRET")
+if not SECRET_KEY:
+    print("ERROR: BETTER_AUTH_SECRET environment variable is not set.")
+    print("Please run: export BETTER_AUTH_SECRET=<your-secret-key>")
+    sys.exit(1)
+
 ALGORITHM = "HS256"
 
 # Test user credentials
