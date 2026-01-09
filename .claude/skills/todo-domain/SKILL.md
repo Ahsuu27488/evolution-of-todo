@@ -1,134 +1,417 @@
 ---
-name: "todo-domain"
-description: "Apply todo app domain knowledge and data models. Use when designing or implementing todo features."
-version: "2.0.0"
+name: todo-domain
+description: Apply todo app domain knowledge and data models. Use when designing or implementing todo features.
+version: 2.0.0
 ---
 
-# Todo Domain Skill
+# Todo Domain Mastery Skill
+
+## Theoretical Foundation
+
+This skill encapsulates the **canonical todo/task domain model** used across all phases:
+- **Core Entity**: Task with priority, status, tags, timestamps
+- **CRUD Operations**: Create, Read, Update, Delete, Toggle Complete
+- **Advanced Features**: Search, filter, sort, recurring tasks
+- **User Isolation**: Multi-user with user-specific data
+
+### Domain Model Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                         TODO DOMAIN DATA MODEL                                │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐     │
+│  │                          Task Entity                                │     │
+│  │  ┌─────────────────┐  ┌─────────────────────────────────────────┐   │     │
+│  │  │  Core Fields     │  │  Optional Fields (Phase I Enhanced)     │   │     │
+│  │  │                 │  │                                         │   │     │
+│  │  │ • id: int       │  │ • description: str (max 1000)           │   │     │
+│  │  │ • title: str    │  │ • due_date: datetime                   │   │     │
+│  │  │ • completed:    │  │ • recurrence_pattern: str (future)      │   │     │
+│  │  │   bool          │  │ • tags: set[str] (max 10, 30 chars)     │   │     │
+│  │  │ • created_at:   │  │ • user_id: str (Phase II+)             │   │     │
+│  │  │   datetime      │  │                                         │   │     │
+│  │  └─────────────────┘  └─────────────────────────────────────────┘   │     │
+│  │                                                                  │     │
+│  │  ┌──────────────────────────────────────────────────────────────┐ │     │
+│  │  │                  Priority Enum                               │ │     │
+│  │  │  HIGH (3)    >    MEDIUM (2)    >    LOW (1)                │ │     │
+│  │  └──────────────────────────────────────────────────────────────┘ │     │
+│  └─────────────────────────────────────────────────────────────────────┘     │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
 
 ## When to Use This Skill
 
-Activation triggers (Claude auto-detects these):
-- User discusses todo/task features (add, delete, update, view, complete)
-- Data model design for tasks or todos
-- API endpoint design for task management
-- Implementing priorities, tags, search, filter, or sort features
-- CLI menu design for task operations
+Activation triggers:
+- Implementing todo/task features (add, delete, update, view, complete)
+- Designing data models for tasks
+- Creating API endpoints for task management
+- Implementing filters, search, or sorting
+- Validating task input
 
-## How This Skill Works
+## Domain Model Specification
 
-Step-by-step workflow:
-1. **Identify Feature**: Map user request to Basic/Intermediate/Advanced level
-2. **Apply Model**: Use standard Task data model with priority, tags, timestamps
-3. **Validate Scope**: Ensure feature matches current phase constraints
-4. **Generate**: Produce implementation aligned with domain rules and patterns
-
-## Output Format
-
-Provide structured output:
-- **Feature Level**: Basic, Intermediate, or Advanced
-- **Data Model**: Entity fields, types, and constraints
-- **Operations**: CRUD operations and query methods involved
-- **Validation**: Input validation rules to apply
-
-## Domain Model Summary
-
-### Task Entity (Phase I - Enhanced)
+### Core Task Entity
 
 ```python
+from dataclasses import dataclass
+from datetime import datetime
+from enum import IntEnum
+from typing import Optional, Set
+
+class Priority(IntEnum):
+    """Task priority with numeric ordering."""
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+
 @dataclass
 class Task:
+    """Canonical Task entity - valid across all phases."""
     id: int                    # Auto-assigned, sequential, unique
     title: str                 # Required, 1-200 chars
     description: str = ""      # Optional, max 1000 chars
-    priority: Priority = MEDIUM # HIGH(3), MEDIUM(2), LOW(1)
-    tags: set[str] = set()     # Max 10 tags, each max 30 chars
+    priority: Priority = Priority.MEDIUM
+    tags: set[str] = None      # Max 10 tags, each max 30 chars
     completed: bool = False    # Toggleable status
-    created_at: datetime       # Auto-assigned on creation
+    created_at: datetime = None  # Auto-assigned on creation
 ```
 
-### Priority Enum
+### Validation Rules
+
+| Field | Rules |
+|-------|-------|
+| `id` | Auto-generated, unique, never reused |
+| `title` | Required, 1-200 chars, trimmed |
+| `description` | Optional, max 1000 chars |
+| `priority` | One of: HIGH, MEDIUM, LOW |
+| `tags` | Max 10 tags, each max 30 chars, lowercase, unique |
+| `completed` | Boolean, toggleable |
+
+## CRUD Operations
+
+### Create Task
 
 ```python
-class Priority(IntEnum):
-    LOW = 1      # Display: [LOW]
-    MEDIUM = 2   # Display: [MEDIUM] (default)
-    HIGH = 3     # Display: [HIGH]
+def create_task(
+    title: str,
+    description: str = "",
+    priority: Priority = Priority.MEDIUM,
+    tags: set[str] = None
+) -> Task:
+    """
+    Create a new task.
+
+    Validation:
+    - Title trimmed and validated (1-200 chars)
+    - Tags deduplicated and limited to 10
+    - ID auto-generated
+    - created_at set to now
+
+    Returns: The created Task with generated ID
+    """
+    task_id = generate_id()
+    normalized_tags = normalize_tags(tags or set())
+
+    return Task(
+        id=task_id,
+        title=title.strip(),
+        description=description.strip(),
+        priority=priority,
+        tags=normalized_tags,
+        completed=False,
+        created_at=datetime.utcnow()
+    )
 ```
 
-## Constraints and Rules
+### Read/Filter Tasks
 
-**Validation Rules:**
-- Task ID must be unique and auto-generated (never reused)
-- Title is required, 1-200 characters after trimming
-- Description is optional, max 1000 characters
-- Priority must be valid enum value (high/medium/low)
-- Tags: max 10 per task, each max 30 chars, lowercase, unique
-- Status toggles between complete/incomplete
+```python
+def list_tasks(
+    status: str = "all",      # all, pending, completed
+    priority: Priority = None, # HIGH, MEDIUM, LOW, or None
+    tag: str = None,           # Filter by tag
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+) -> list[Task]:
+    """
+    List tasks with optional filters and sorting.
 
-**Phase Constraints:**
-- Phase I: In-memory storage only, standard library only
-- Phase II+: User isolation required (user_id field)
-- Phase III+: Operations become MCP tools
+    Filter combinations:
+    - status + priority: Tasks matching both
+    - tag only: Tasks with that tag
+    - No filters: All tasks
 
-## Feature Levels
+    Sorting:
+    - created_at, priority, title
+    - asc or desc order
+    """
+    tasks = get_all_tasks()
 
-### Basic Level (Phase I Required)
-1. **Add Task** - Create with title, description, priority, tags
-2. **Delete Task** - Remove with confirmation prompt
-3. **Update Task** - Modify any field by task ID
-4. **View Tasks** - Display with status, priority, tags indicators
-5. **Mark Complete** - Toggle completion status
+    # Apply filters
+    if status != "all":
+        tasks = filter_by_status(tasks, status)
+    if priority:
+        tasks = filter_by_priority(tasks, priority)
+    if tag:
+        tasks = filter_by_tag(tasks, tag)
 
-### Intermediate Level (Phase I Enhanced)
-1. **Priorities** - HIGH/MEDIUM/LOW with visual indicators
-2. **Tags** - Multiple tags, hashtag display (#work #urgent)
-3. **Search** - Case-insensitive keyword search in title/description
-4. **Filter** - By status, priority, or tag
-5. **Sort** - By priority, title, created date, status
-
-### Advanced Level (Phase V)
-1. **Recurring Tasks** - Auto-reschedule repeating tasks
-2. **Due Dates & Reminders** - Deadlines with notifications
-
-## Example
-
-**Input**: "Implement task search functionality"
-
-**Output**:
-```
-Feature Level: Intermediate
-Data Model: Task { id, title, description, priority, tags, completed, created_at }
-Operations:
-  - list_tasks(search="keyword") - Filter tasks by keyword
-  - Search in title and description fields
-  - Case-insensitive matching
-Validation:
-  - Empty search returns all tasks
-  - Search term trimmed before matching
-Display:
-  - Show matching results with keyword context
-  - Indicate "No tasks found matching 'xyz'" if empty
+    # Apply sorting
+    return sort_tasks(tasks, sort_by, sort_order)
 ```
 
-**Input**: "Add high priority task with tags"
+### Update Task
 
-**Output**:
+```python
+def update_task(
+    task_id: int,
+    title: str = None,
+    description: str = None,
+    priority: Priority = None,
+    tags: set[str] = None,
+    completed: bool = None
+) -> Task:
+    """
+    Update an existing task.
+
+    Only updates provided fields (partial update).
+    Returns error if task_id not found.
+    """
+    task = get_task(task_id)
+    if not task:
+        raise TaskNotFoundError(f"Task {task_id} not found")
+
+    if title is not None:
+        task.title = title.strip()
+    if description is not None:
+        task.description = description.strip()
+    if priority is not None:
+        task.priority = priority
+    if tags is not None:
+        task.tags = normalize_tags(tags)
+    if completed is not None:
+        task.completed = completed
+
+    return task
 ```
-Feature Level: Basic + Intermediate
-Data Model: Task with priority=HIGH, tags=set()
-Operations:
-  - create_task(title, description, priority=Priority.HIGH, tags={"work", "urgent"})
-Validation:
-  - Title required, ≤200 chars
-  - Priority must be valid enum
-  - Tags: parse comma-separated, dedupe, max 10
-Display:
-  - Task ID: X
-  - Priority: [HIGH]
-  - Tags: #work #urgent
+
+### Delete Task
+
+```python
+def delete_task(task_id: int) -> bool:
+    """
+    Delete a task by ID.
+
+    Returns: True if deleted, False if not found
+    """
+    task = get_task(task_id)
+    if not task:
+        return False
+
+    remove_task(task_id)
+    return True
 ```
 
-## Supporting Files
+### Toggle Complete
 
-- `reference/data-models.md`: Complete data models for all phases with code examples
+```python
+def toggle_complete(task_id: int) -> Task:
+    """
+    Toggle task completion status.
+
+    If pending → mark completed
+    If completed → mark pending
+
+    Returns: The updated task
+    """
+    task = get_task(task_id)
+    if not task:
+        raise TaskNotFoundError(f"Task {task_id} not found")
+
+    task.completed = not task.completed
+    return task
+```
+
+## Advanced Features
+
+### Search
+
+```python
+def search_tasks(query: str) -> list[Task]:
+    """
+    Case-insensitive search in title and description.
+
+    Matches: Substring anywhere in title or description
+    Returns: Tasks matching the search query
+    """
+    query_lower = query.strip().lower()
+    if not query_lower:
+        return []
+
+    return [
+        task for task in get_all_tasks()
+        if query_lower in task.title.lower()
+        or query_lower in task.description.lower()
+    ]
+```
+
+### Filter Combinations
+
+```python
+def filter_tasks(
+    status: str = "all",
+    priority: Priority = None,
+    tag: str = None,
+    search: str = None
+) -> list[Task]:
+    """
+    Apply multiple filters simultaneously.
+
+    Filter logic: AND between different filter types
+    - status AND priority AND tag AND search
+
+    Example:
+        status="completed", priority="HIGH"
+        Returns: High priority tasks that are completed
+    """
+    tasks = get_all_tasks()
+
+    if status != "all":
+        tasks = [t for t in tasks if
+            (status == "completed" and t.completed) or
+            (status == "pending" and not t.completed)]
+
+    if priority:
+        tasks = [t for t in tasks if t.priority == priority]
+
+    if tag:
+        tasks = [t for t in tasks if tag.lower() in [t.lower() for t in t.tags]]
+
+    if search:
+        search_lower = search.lower()
+        tasks = [t for t in tasks if
+            search_lower in t.title.lower() or
+            search_lower in t.description.lower()]
+
+    return tasks
+```
+
+### Sorting
+
+```python
+def sort_tasks(tasks: list[Task], by: str, order: str) -> list[Task]:
+    """
+    Sort tasks by field and order.
+
+    Fields: created_at, priority, title
+    Order: asc, desc
+
+    Priority sort: HIGH > MEDIUM > LOW (descending by value)
+    """
+    reverse = order == "desc"
+
+    if by == "priority":
+        # Sort by priority value (higher = more important)
+        return sorted(tasks, key=lambda t: t.priority.value, reverse=reverse)
+    elif by == "title":
+        return sorted(tasks, key=lambda t: t.title.lower(), reverse=reverse)
+    else:  # created_at
+        return sorted(tasks, key=lambda t: t.created_at, reverse=reverse)
+```
+
+## Tag Management
+
+```python
+def normalize_tags(tags: set[str]) -> set[str]:
+    """
+    Normalize tags to canonical form.
+
+    Rules:
+    - Limit to 10 tags
+    - Each tag max 30 chars
+    - Lowercase
+    - Trim whitespace
+    - Remove duplicates
+    """
+    normalized = set()
+
+    for tag in tags:
+        tag = tag.strip().lower()[:30]
+        if tag:
+            normalized.add(tag)
+
+    # Limit to 10 tags (deterministic selection)
+    if len(normalized) > 10:
+        return set(list(normalized)[:10])
+
+    return normalized
+
+def format_tags(tags: set[str]) -> str:
+    """Format tags for display: #tag1 #tag2 #tag3"""
+    return " ".join(f"#{tag}" for tag in sorted(tags))
+```
+
+## Display Format
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Task ID: 42               [HIGH]              [✓]               │
+├─────────────────────────────────────────────────────────────────┤
+│ Title: Buy groceries for the week                               │
+│                                                                 │
+│ Description: Get milk, eggs, bread, and vegetables               │
+│                                                                 │
+│ Tags: #groceries #weekly                                        │
+│                                                                 │
+│ Created: 2025-01-09 14:30 UTC                                   │
+│ Status: Pending                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Phase-Specific Rules
+
+| Phase | Storage | User Isolation |
+|-------|---------|----------------|
+| I | In-memory (`dict[int, Task]`) | None (single user) |
+| II+ | Database (PostgreSQL/Neon) | Required (`user_id` field) |
+| III | Database + MCP tools | Required |
+| V | Database + recurrence | Required |
+
+## Common Operations by User Intent
+
+| User Intent | Operation |
+|-------------|------------|
+| "Add task: buy milk" | `create_task(title="buy milk")` |
+| "Show my tasks" | `list_tasks()` |
+| "Complete task 5" | `toggle_complete(5)` |
+| "Delete task 3" | `delete_task(3)` |
+| "Show high priority" | `list_tasks(priority=HIGH)` |
+| "Search for grocery" | `search_tasks("grocery")` |
+| "Show pending" | `list_tasks(status="pending")` |
+| "Sort by priority" | `list_tasks(sort_by="priority", sort_order="desc")` |
+
+## Error Handling
+
+```python
+class TaskError(Exception):
+    """Base exception for task operations."""
+    pass
+
+class TaskNotFoundError(TaskError):
+    """Raised when a task ID doesn't exist."""
+    pass
+
+class TaskValidationError(TaskError):
+    """Raised when task data is invalid."""
+    pass
+
+# Usage
+def get_task_or_raise(task_id: int) -> Task:
+    task = get_task(task_id)
+    if not task:
+        raise TaskNotFoundError(f"Task {task_id} not found")
+    return task
+```

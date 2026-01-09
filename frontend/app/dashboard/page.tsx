@@ -6,41 +6,36 @@
  * - US2: Command Center integration for voice input (Phase III foundation)
  */
 
-import { redirect } from "next/navigation"
-import { headers } from "next/headers"
-import { auth } from "@/lib/auth"
 import { Header } from "@/components/layout/header"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getTasks } from "@/app/actions/tasks"
+import { getSession } from "@/app/actions/auth"
 
 export default async function DashboardPage() {
-  // CRITICAL: Call headers() FIRST, before any other async operation
-  // This ensures headers are captured before React's async rendering
-  const headersList = await headers()
+  // Get session (user data) from server-side cookie
+  const session = await getSession()
 
-  const session = await auth.api.getSession({
-    headers: headersList,
-  })
-
-  if (!session?.user) {
-    redirect("/login")
-  }
-
+  // Get tasks
   const result = await getTasks()
   const tasks = result.success && result.data ? result.data.tasks : []
+  const isAuthenticated = result.success && session !== null
 
   const pendingCount = tasks.filter((t) => !t.completed).length
   const completedCount = tasks.filter((t) => t.completed).length
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header
+        isAuthenticated={isAuthenticated}
+        user={session?.user}
+      />
 
       <main className="container py-6 md:py-10">
         <DashboardContent
           tasks={tasks}
           pendingCount={pendingCount}
           completedCount={completedCount}
+          isAuthenticated={isAuthenticated}
         />
       </main>
 

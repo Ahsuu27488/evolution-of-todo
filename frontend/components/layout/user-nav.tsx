@@ -13,26 +13,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { signOut } from "@/lib/auth-client"
+import { signOutAction } from "@/app/actions/auth"
+
+interface User {
+  id: string
+  email: string
+  name: string
+}
 
 interface UserNavProps {
-  user: {
-    id: string
-    email: string
-    name?: string | null
-    image?: string | null
-  }
+  user: User
 }
 
 export function UserNav({ user }: UserNavProps) {
   const router = useRouter()
 
   async function handleSignOut() {
-    try {
-      await signOut()
+    const result = await signOutAction()
+    if (result.success) {
       toast.success("Signed out successfully")
       router.push("/login")
-    } catch (error) {
+    } else {
       toast.error("Failed to sign out")
     }
   }
@@ -42,15 +43,7 @@ export function UserNav({ user }: UserNavProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-            {user.image ? (
-              <img
-                src={user.image}
-                alt={user.name || "User"}
-                className="h-8 w-8 rounded-full"
-              />
-            ) : (
-              <UserIcon className="h-4 w-4" />
-            )}
+            <UserIcon className="h-4 w-4" />
           </div>
         </Button>
       </DropdownMenuTrigger>

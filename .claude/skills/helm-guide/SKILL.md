@@ -1,74 +1,291 @@
 ---
-name: "helm-guide"
-description: "Fetch Helm documentation and apply chart best practices. Use when creating Helm charts, templates, or managing releases (Phase IV+)."
-version: "1.0.0"
+name: helm-guide
+description: Fetch Helm documentation and apply chart best practices. Use when creating Helm charts, templates, or managing releases (Phase IV+).
+version: 2.0.0
 ---
 
-# Helm Chart Guide Skill
+# Helm Chart Mastery Skill
+
+## Context7 Research Results
+
+**Library ID**: `/helm/helm`
+**Source**: https://helm.sh/docs
+**Reputation**: High
 
 ## When to Use This Skill
 
-Activation triggers (Claude auto-detects these):
-- User mentions Helm charts, templates, or releases
-- Implementation requires packaging K8s manifests as Helm charts
-- User asks about values.yaml, Chart.yaml, or Helm templating
-- Phase IV deployment packaging begins
+Activation triggers:
+- Creating Helm charts for deployment
+- Packaging K8s manifests as Helm charts
+- Writing Helm templates with Go templating
+- Managing releases with Helm
 
-## How This Skill Works
+## Helm Chart Structure
 
-Step-by-step workflow:
-1. **Identify Need**: Detect Helm-related requirement from context
-2. **Fetch Docs**: Call `mcp__plugin_context7_context7__get-library-docs` with `/helm/helm` and relevant topic
-3. **Apply Patterns**: Use official Helm patterns for chart structure and templating
-4. **Validate**: Ensure chart follows best practices (values schema, hooks, tests)
-
-## Output Format
-
-Provide structured output:
-- **Context7 Source**: `/helm/helm`
-- **Chart Structure**: Files being created/modified
-- **Template Functions**: Helm functions used
-- **Best Practices**: Applied patterns
-
-## Constraints and Rules
-
-- ALWAYS include Chart.yaml with proper metadata
-- ALWAYS provide values.yaml with documented defaults
-- Use named templates for reusable snippets
-- Include NOTES.txt for post-install instructions
-- Add schema validation with values.schema.json
-- This skill applies to Phase IV and later only
-
-## Example
-
-**Input**: "Create a Helm chart for the todo application"
-
-**Output**:
 ```
-Context7 Source: /helm/helm (topic: chart structure)
-Chart Structure:
-  todo-app/
-  ├── Chart.yaml
-  ├── values.yaml
-  ├── templates/
-  │   ├── deployment.yaml
-  │   ├── service.yaml
-  │   └── _helpers.tpl
-  └── NOTES.txt
-Template Functions: include, tpl, toYaml
-Best Practices:
-- Parameterized image tag and replica count
-- Resource limits in values.yaml
-- Named template for labels
+todo-app/
+├── Chart.yaml              # Chart metadata
+├── values.yaml             # Default configuration values
+├── values.schema.json      # Values schema validation
+├── templates/
+│   ├── _helpers.tpl         # Named template helpers
+│   ├── deployment.yaml      # Deployment template
+│   ├── service.yaml         # Service template
+│   ├── ingress.yaml         # Ingress template
+│   ├── configmap.yaml       # ConfigMap template
+│   ├── secrets.yaml         # Secret template
+│   └── NOTES.txt            # Post-install instructions
+└── tests/
+    └── deployment_test.yaml # Chart tests
 ```
 
-## Reference: Common Topics
+## Core Chart Files
 
-| Topic | Use Case |
-|-------|----------|
-| `chart structure` | Creating new Helm charts |
-| `template functions` | Go templating in Helm |
-| `values files` | Configuration management |
-| `dependencies` | Chart dependencies |
-| `hooks` | Pre/post install hooks |
-| `helm install` | Deployment commands |
+### Chart.yaml
+
+```yaml
+apiVersion: v2
+name: todo-app
+description: Evolution of Todo - Full Stack Application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - todo
+  - fastapi
+  - nextjs
+  - kubernetes
+maintainers:
+  - name: Evolution of Todo Team
+    email: team@example.com
+```
+
+### values.yaml
+
+```yaml
+# Backend Configuration
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: todo-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  env:
+    LOG_LEVEL: info
+
+# Frontend Configuration
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: todo-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: todo.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: frontend
+
+# Database (PostgreSQL)
+postgres:
+  enabled: true
+  auth:
+    database: todo
+    username: todo
+    password: changeme
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# Secrets reference
+secrets:
+  databaseUrl: ""
+  authSecret: ""
+```
+
+### Template Example
+
+```yaml
+# templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-app.fullname" . }}-backend
+  labels:
+    {{- include "todo-app.labels" . | nindent 4 }}
+    component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "todo-app.selectorLabels" . | nindent 6 }}
+      component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "todo-app.selectorLabels" . | nindent 8 }}
+        component: backend
+    spec:
+      containers:
+      - name: backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.backend.service.targetPort }}
+          protocol: TCP
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "todo-app.fullname" . }}-secrets
+              key: database-url
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "todo-app.fullname" . }}-secrets
+              key: auth-secret
+        resources:
+          {{- toYaml .Values.backend.resources | nindent 10 }}
+```
+
+### Helper Templates (_helpers.tpl)
+
+```yaml
+# templates/_helpers.tpl
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "todo-app.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Create a default fully qualified app name.
+*/}}
+{{- define "todo-app.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Create chart name and version as used by the chart label.
+*/}}
+{{- define "todo-app.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "todo-app.labels" -}}
+helm.sh/chart: {{ include "todo-app.chart" . }}
+{{ include "todo-app.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "todo-app.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "todo-app.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+```
+
+## Helm Commands
+
+```bash
+# Lint chart
+helm lint ./todo-app
+
+# Template dry-run
+helm template todo-app ./todo-app
+
+# Install chart
+helm install todo-app ./todo-app
+
+# Install with values override
+helm install todo-app ./todo-app -f custom-values.yaml
+
+# Upgrade release
+helm upgrade todo-app ./todo-app
+
+# Rollback release
+helm rollback todo-app 1
+
+# Uninstall release
+helm uninstall todo-app
+
+# List releases
+helm list
+
+# Show values
+helm show values ./todo-app
+```
+
+## Best Practices
+
+| Practice | Implementation |
+|----------|----------------|
+| Named templates | Use `_helpers.tpl` for reusable templates |
+| Values validation | Add `values.schema.json` |
+| NOTES.txt | Post-install instructions for users |
+| Labels | Include chart labels for discovery |
+| Resource limits | Always configure in values.yaml |
+
+## Context7 Query Patterns
+
+| Topic | Query String |
+|-------|--------------|
+| Chart structure | "Helm chart structure Chart.yaml values.yaml" |
+| Templating | "Helm template functions include define" |
+| Dependencies | "Helm chart dependencies requirements.yaml" |
+| Hooks | "Helm hooks pre-install post-install" |

@@ -3,22 +3,21 @@
 /**
  * Server Actions for Task CRUD operations.
  *
- * These actions:
- * - Run on the server (secure)
- * - Use Better Auth JWT tokens for FastAPI authentication
- * - Return structured results with proper error handling
- * - Revalidate cached data after mutations
+ * Updated to use backend-centric authentication:
+ * - Frontend calls backend /api/auth/* for sign-in/up
+ * - Backend returns JWT token
+ * - Frontend stores token in localStorage
+ * - Server Actions read token from cookies and forward to backend
  *
  * Token Flow:
- * 1. User signs in via Better Auth; session cookie is set
- * 2. Server action calls /api/auth/token with cookies to get JWT
- * 3. Action sends JWT in Authorization: Bearer header to FastAPI
- * 4. FastAPI verifies JWT signature using shared BETTER_AUTH_SECRET
+ * 1. User signs in via frontend → backend returns JWT
+ * 2. Frontend stores JWT in httpOnly cookie via server action
+ * 3. Server Actions read JWT from cookie
+ * 4. Server Actions call backend with JWT in Authorization header
  */
 
 import { revalidatePath } from "next/cache"
-import { headers, cookies } from "next/headers"
-import { auth } from "@/lib/auth"
+import { cookies } from "next/headers"
 import type { Task, TaskCreate, TaskUpdate } from "@/types/task"
 import {
   AppError,
@@ -33,7 +32,7 @@ import {
 // =============================================================================
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-const APP_URL = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+const JWT_COOKIE_NAME = "auth_token"
 
 // =============================================================================
 // Types
@@ -54,109 +53,57 @@ export interface ActionResult<T> {
 // =============================================================================
 
 /**
- * Get the current authenticated user's session.
+ * Get the JWT token from the httpOnly cookie.
  * Returns null if not authenticated.
  */
-async function getAuthSession() {
+async function getAuthToken(): Promise<string | null> {
   try {
-    const reqHeaders = await headers()
-    const session = await auth.api.getSession({
-      headers: reqHeaders,
-    })
-    return session
+    const cookieStore = await cookies()
+    const token = cookieStore.get(JWT_COOKIE_NAME)?.value
+    return token || null
   } catch (error) {
-    // Log error for production debugging
     logError(
       error instanceof Error ? new AppError(error.message, ErrorCode.UNKNOWN, 500) : new AppError("Unknown auth error", ErrorCode.UNKNOWN, 500),
-      { context: "getAuthSession" }
+      { context: "getAuthToken" }
     )
     return null
   }
 }
 
 /**
- * Generate a JWT token for API authentication.
- *
- * Better Auth JWT plugin exposes /api/auth/token endpoint.
- * We call this endpoint with the user's session cookies to get the JWT.
- */
-async function generateJwtToken(): Promise<string | null> {
-  try {
-    // Get cookies to forward to the JWT endpoint
-    const cookieStore = await cookies()
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((c) => `${c.name}=${c.value}`)
-      .join("; ")
-
-    // Call Better Auth JWT generation endpoint
-    const APP_URL = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    const response = await fetch(`${APP_URL}/api/auth/token`, {
-      method: "GET",
-      headers: {
-        Cookie: cookieHeader,
-      },
-      cache: "no-store",
-    })
-
-    if (!response.ok) {
-      // Log error for production debugging
-      const errorText = await response.text().catch(() => "Unknown error")
-      logError(
-        new AppError(`JWT endpoint returned ${response.status}: ${errorText}`, ErrorCode.UNAUTHORIZED, response.status),
-        { context: "generateJwtToken", endpoint: "/api/auth/token" }
-      )
-      return null
-    }
-
-    const data = await response.json()
-
-    // JWT plugin returns { token: "..." }
-    if (!data.token) {
-      logError(
-        new AppError("JWT response missing 'token' field", ErrorCode.SERVER_ERROR, 500),
-        { context: "generateJwtToken", response: data }
-      )
-      return null
-    }
-
-    return data.token
-  } catch (error) {
-    logError(
-      error instanceof Error ? new AppError(error.message, ErrorCode.NETWORK_ERROR, 0) : new AppError("Failed to generate JWT", ErrorCode.UNKNOWN, 500),
-      { context: "generateJwtToken" }
-    )
-    return null
-  }
-}
-
-/**
- * Get authenticated user ID and JWT token.
+ * Get authenticated user data from backend.
  * Returns null if not authenticated.
  */
 async function getAuthData(): Promise<{
   userId: string
   token: string
 } | null> {
-  // Get session first to verify user is logged in and get user ID
-  const session = await getAuthSession()
-  if (!session?.user?.id) {
-    return null
-  }
-
-  // Generate JWT for API calls
-  const token = await generateJwtToken()
+  const token = await getAuthToken()
   if (!token) {
-    logError(
-      new AppError("Session exists but failed to generate JWT", ErrorCode.SESSION_EXPIRED, 401),
-      { context: "getAuthData", userId: session.user.id }
-    )
     return null
   }
 
-  return {
-    userId: session.user.id,
-    token,
+  // Optionally verify token by calling /api/auth/me
+  try {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const user = await response.json()
+    return {
+      userId: user.id,
+      token,
+    }
+  } catch {
+    return null
   }
 }
 

@@ -1,80 +1,101 @@
 ---
-name: "kafka-guide"
-description: "Fetch Apache Kafka documentation and apply messaging best practices. Use when implementing producers, consumers, or event streaming (Phase V)."
-version: "1.0.0"
+name: kafka-guide
+description: Fetch Apache Kafka documentation and apply messaging best practices. Use when implementing producers, consumers, or event streaming (Phase V).
+version: 2.0.0
 ---
 
-# Apache Kafka Guide Skill
+# Apache Kafka Mastery Skill
+
+## Context7 Research Results
+
+**Library ID**: `/dpkp/kafka-python`
+**Source**: https://kafka-python.readthedocs.io
+**Reputation**: High
 
 ## When to Use This Skill
 
-Activation triggers (Claude auto-detects these):
-- User mentions Kafka, topics, producers, or consumers
-- Implementation requires event streaming or message queues
-- User asks about partitions, consumer groups, or Kafka configuration
-- Phase V event-driven architecture begins
+Activation triggers:
+- Implementing Kafka producers/consumers
+- Setting up event streaming
+- Configuring message topics
+- Phase V event-driven architecture
 
-## How This Skill Works
+## Core Patterns
 
-Step-by-step workflow:
-1. **Identify Need**: Detect Kafka-related requirement from context
-2. **Fetch Docs**: Call `mcp__plugin_context7_context7__get-library-docs` with `/dpkp/kafka-python` and relevant topic
-3. **Apply Patterns**: Use official Kafka patterns for producers/consumers
-4. **Validate**: Ensure configuration follows Kafka best practices (partitioning, replication)
+### Producer
 
-## Output Format
+```python
+from kafka import KafkaProducer
+import json
 
-Provide structured output:
-- **Context7 Source**: `/dpkp/kafka-python`
-- **Pattern Applied**: Kafka pattern used (producer, consumer, etc.)
-- **Configuration**: Key Kafka settings
-- **Best Practices**: Applied optimizations
+producer = KafkaProducer(
+    bootstrap_servers=['kafka:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    key_serializer=str.encode,
+    acks='all',  # Wait for all replicas
+    retries=3,
+)
 
-## Constraints and Rules
+def send_task_event(task_id: int, event_type: str, data: dict):
+    """Send task event to Kafka."""
+    message = {
+        'event_type': event_type,
+        'task_id': task_id,
+        'timestamp': datetime.utcnow().isoformat(),
+        'data': data
+    }
+    producer.send(
+        'task-events',
+        key=str(task_id),
+        value=message
+    )
+    producer.flush()
 
-- ALWAYS configure appropriate replication factor for production
-- ALWAYS use consumer groups for scalable consumption
-- Implement idempotent producers for exactly-once semantics
-- Use appropriate serialization (JSON, Avro, Protobuf)
-- Configure proper retention and cleanup policies
-- This skill applies to Phase V only
-
-## Example
-
-**Input**: "Create a Kafka consumer for todo events"
-
-**Output**:
-```
-Context7 Source: /dpkp/kafka-python (topic: consumer)
-Pattern Applied: Consumer Group with auto-commit
-Configuration:
-  from kafka import KafkaConsumer
-
-  consumer = KafkaConsumer(
-      'todo-events',
-      bootstrap_servers=['kafka:9092'],
-      group_id='todo-processor',
-      auto_offset_reset='earliest',
-      enable_auto_commit=True,
-      value_deserializer=lambda x: json.loads(x.decode('utf-8'))
-  )
-
-  for message in consumer:
-      process_todo_event(message.value)
-Best Practices:
-- Consumer group for parallel processing
-- Earliest offset reset for new groups
-- JSON deserialization
-- Graceful shutdown handling
+# Usage
+send_task_event(123, 'TASK_CREATED', {'title': 'Buy milk'})
 ```
 
-## Reference: Common Topics
+### Consumer with Group
 
-| Topic | Use Case |
-|-------|----------|
-| `producer` | Publishing messages |
-| `consumer` | Consuming messages |
-| `consumer groups` | Scalable consumption |
-| `partitions` | Parallel processing |
-| `serialization` | Message encoding |
-| `configuration` | Broker/client settings |
+```python
+from kafka import KafkaConsumer
+import json
+
+consumer = KafkaConsumer(
+    'task-events',
+    bootstrap_servers=['kafka:9092'],
+    group_id='task-processor',
+    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+    key_deserializer=lambda m: m.decode('utf-8'),
+    auto_offset_reset='earliest',
+    enable_auto_commit=True,
+)
+
+for message in consumer:
+    event_type = message.value.get('event_type')
+    task_id = message.key
+
+    if event_type == 'TASK_CREATED':
+        handle_task_created(message.value)
+    elif event_type == 'TASK_COMPLETED':
+        handle_task_completed(message.value)
+```
+
+## Best Practices
+
+| Practice | Implementation |
+|----------|----------------|
+| Consumer groups | One group per service type |
+| Partitioning | Key by user_id for even distribution |
+| Retention | Configure based on data criticality |
+| Dead letter topics | Failed messages go to DLT |
+| Idempotent consumers | Handle duplicate messages |
+
+## Context7 Query Patterns
+
+| Topic | Query String |
+|-------|--------------|
+| Producer | "KafkaProducer send acks retries" |
+| Consumer | "KafkaConsumer group_id offset_reset" |
+| Topics | "create topic partitions replication" |
+| Serialization | "json deserializer value_serializer" |

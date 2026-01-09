@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
-import { signIn } from "@/lib/auth-client"
+import { signInAction } from "@/app/actions/auth"
 
 export function LoginForm() {
   const router = useRouter()
@@ -37,22 +37,24 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      const result = await signIn.email({
-        email: data.email,
-        password: data.password,
-      })
+      console.log("Submitting login for:", data.email)
+      const result = await signInAction(data.email, data.password)
+      console.log("SignIn result:", result)
 
       if (result.error) {
         // Show generic error message for security
         toast.error("Invalid email or password")
+        setIsLoading(false)
         return
       }
 
       toast.success("Welcome back!")
-      router.push("/dashboard")
+      console.log("Redirecting to dashboard...")
+      // Use window.location.href for a hard redirect
+      window.location.href = "/dashboard"
     } catch (error) {
+      console.error("Login error:", error)
       toast.error("Something went wrong. Please try again.")
-    } finally {
       setIsLoading(false)
     }
   }

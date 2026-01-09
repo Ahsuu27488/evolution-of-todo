@@ -34,3 +34,17 @@ Here is the detailed analysis of the current defects. Use this as your checklist
 /home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/FRONTEND CODE ANALYSIS REPORT
 ### Output
 Please generate the code blocks for the modified files. Start with the "Critical" issues defined in the report.
+
+
+---------------------------------------------
+
+
+ here is a tasks for you.
+| HIGH     | tailwindcss-v4-guide        | Tailwind v4 is a major rewrite (CSS-first, no config file) |
+  | HIGH     | framer-motion-guide         | Complex animations used heavily in your app                |
+  | HIGH     | zustand-guide               | State management for UI (modals, filters, toasts)          |
+  | MEDIUM   | tanstack-query-guide        | Server state management (though you use Server Actions)    |
+  | MEDIUM   | next-themes-guide           | Dark mode support                                          |
+  | LOW      | canvas-confetti-guide       | Simple lib, just one function                              |
+  | LOW      | next-view-transitions-guide | View routing transitions                                   |
+    them using skill-forger skill and with the help of context7

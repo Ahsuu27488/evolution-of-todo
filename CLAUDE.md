@@ -1,4 +1,4 @@
-
+@/.claude/skills/skill-forger/SKILL.md
 
 # Claude Code Rules
 

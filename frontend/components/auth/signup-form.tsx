@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { signupSchema, type SignupInput } from "@/lib/validations/auth"
-import { signUp } from "@/lib/auth-client"
+import { signUpAction } from "@/app/actions/auth"
 
 export function SignupForm() {
   const router = useRouter()
@@ -38,28 +38,33 @@ export function SignupForm() {
     setIsLoading(true)
 
     try {
-      const result = await signUp.email({
-        email: data.email,
-        password: data.password,
-        name: data.email.split("@")[0], // Use email prefix as name
-      })
+      console.log("Submitting signup for:", data.email)
+      const result = await signUpAction(
+        data.email,
+        data.password,
+        data.email.split("@")[0] // Use email prefix as name
+      )
+      console.log("SignUp result:", result)
 
       if (result.error) {
         // Handle specific error cases
-        if (result.error.message?.toLowerCase().includes("already exists") ||
-            result.error.message?.toLowerCase().includes("already registered")) {
+        if (result.error.toLowerCase().includes("already") ||
+            result.error.toLowerCase().includes("registered")) {
           toast.error("An account with this email already exists")
         } else {
-          toast.error(result.error.message || "Failed to create account")
+          toast.error(result.error || "Failed to create account")
         }
+        setIsLoading(false)
         return
       }
 
       toast.success("Account created successfully!")
-      router.push("/dashboard")
+      console.log("Redirecting to dashboard...")
+      // Use window.location.href for a hard redirect
+      window.location.href = "/dashboard"
     } catch (error) {
+      console.error("Signup error:", error)
       toast.error("Something went wrong. Please try again.")
-    } finally {
       setIsLoading(false)
     }
   }

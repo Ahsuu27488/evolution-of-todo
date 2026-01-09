@@ -171,18 +171,19 @@
 @layer utilities {
   /* Glass card effect */
   .glass {
-    background: rgba(var(--card) / 0.6);
+    /* Use color-mix for proper alpha blending with CSS variables */
+    background: color-mix(in srgb, rgb(var(--card)) 60%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgb(var(--border) / 0.3);
+    border: 1px solid color-mix(in srgb, rgb(var(--border)) 30%, transparent);
   }
 
   /* Glass card with stronger effect */
   .glass-strong {
-    background: rgba(var(--card) / 0.8);
+    background: color-mix(in srgb, rgb(var(--card)) 80%, transparent);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgb(var(--border) / 0.4);
+    border: 1px solid color-mix(in srgb, rgb(var(--border)) 40%, transparent);
   }
 
   /* Glass modal effect */

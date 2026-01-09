@@ -21,11 +21,11 @@ export default function SignupPage() {
       <Card className="w-full max-w-md glass-modal border-primary/20">
         <CardHeader className="space-y-2 text-center pb-6">
           {/* Logo/Icon */}
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-linear-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20 mb-4">
             <Sparkles className="h-8 w-8 text-background" />
           </div>
 
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          <CardTitle className="text-2xl font-bold bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
             Create an Account
           </CardTitle>
           <CardDescription className="text-muted-foreground">

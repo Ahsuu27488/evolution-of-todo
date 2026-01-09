@@ -28,24 +28,34 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
         {/* Animated gradient orbs */}
         <motion.div
           animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
+            scale: 1.2,
+            opacity: 0.4,
+          }}
+          initial={{
+            scale: 1,
+            opacity: 0.2,
           }}
           transition={{
-            duration: 8,
+            duration: 4,
             repeat: Infinity,
+            repeatType: "reverse",
             ease: "easeInOut",
           }}
           className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.2, 0.4, 0.2],
+            scale: 1,
+            opacity: 0.3,
+          }}
+          initial={{
+            scale: 1.2,
+            opacity: 0.2,
           }}
           transition={{
-            duration: 10,
+            duration: 5,
             repeat: Infinity,
+            repeatType: "reverse",
             ease: "easeInOut",
           }}
           className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl"
@@ -85,7 +95,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
           {/* Hero Title */}
           <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-bold mb-6">
             <span className="block">The Evolution of</span>
-            <span className="block bg-gradient-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <span className="block bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
               Todo Management
             </span>
           </motion.h1>
