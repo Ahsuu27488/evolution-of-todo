@@ -1,0 +1,246 @@
+FRONTEND CODE ANALYSIS REPORT
+
+  Executive Summary
+
+  The frontend is well-structured with good patterns but has several critical issues that prevent proper communication with the backend.
+
+  ---
+  ❌ CRITICAL ISSUES (Must Fix)
+
+  1. Missing /api/auth/token Endpoint
+
+  Location: app/actions/tasks.ts:89-96, lib/auth-client.ts:115-130
+
+  Problem: The code tries to call /api/auth/token to get JWT tokens, but this route does not exist. Only /api/auth/[...all]/route.ts exists.
+
+  // In tasks.ts - this will fail!
+  const response = await fetch(`${APP_URL}/api/auth/token`, {
+    method: "GET",
+    headers: { Cookie: cookieHeader },
+  })
+
+  Solution: Create app/api/auth/token/route.ts OR use the Better Auth session directly to get JWT from the session object.
+
+  ---
+  2. Duplicate API Client Files
+
+  Location: lib/api.ts vs lib/api-client.ts
+
+  Problem: Two different API client implementations exist with conflicting patterns:
+  - lib/api.ts - Uses authHeaders() with /api/auth/token (doesn't exist)
+  - lib/api-client.ts - Uses ApiError classes with proper Result types
+
+  Solution: Consolidate to one file. Keep lib/api-client.ts (better error handling), fix the JWT retrieval.
+
+  ---
+  3. Auth Token Retrieval Method Mismatch
+
+  Location: lib/auth-client.ts:115-130
+
+  Problem: Code expects JWT in session.data.token but Better Auth JWT plugin may not expose it this way. The token may need to be generated from the session.
+
+  // This @ts-ignore is suspicious
+  return session.data.token || null
+
+  Solution: Verify Better Auth JWT plugin behavior and implement proper token generation if needed.
+
+  ---
+  4. Middleware Authentication Cookie Name
+
+  Location: middleware.ts:38-39
+
+  Problem: Cookie names may not match Better Auth's actual cookie names:
+  const authCookie = request.cookies.get("better-auth.session_token") ||
+                     request.cookies.get("session")
+
+  Solution: Verify actual cookie names from Better Auth config in lib/auth.ts.
+
+  ---
+  ⚠️ IMPORTANT ISSUES
+
+  5. Inconsistent User ID Types
+
+  Location: lib/query-client.ts, lib/api-client.ts
+
+  Problem: API methods accept userId parameter but never use it:
+  async getTasks(userId: string, token: string) {  // userId is unused!
+    const result = await this.request<TaskList>(`/api/tasks`, token)
+
+  The backend gets user ID from JWT token, not request body.
+
+  Solution: Remove unused userId parameters from all API methods.
+
+  ---
+  6. Missing /api/auth/signout Endpoint
+
+  Location: lib/query-client.ts:203-205
+
+  Problem: References a /api/auth/signout endpoint that may not exist:
+  signout: async () => {
+    await fetch('/api/auth/signout', { method: 'POST' });
+  }
+
+  Solution: Use Better Auth's signOut() method directly via auth client.
+
+  ---
+  7. Health Check Endpoint Path Mismatch
+
+  Location: lib/api-client.ts:285
+
+  Problem: Uses /health but backend serves it at /api/health:
+  const response = await fetch(`${this.baseUrl}/health`, {
+
+  Solution: Change to /api/health or verify backend route.
+
+  ---
+  ⚡ PERFORMANCE CONCERNS
+
+  8. No Query Caching Strategy
+
+  Location: app/dashboard/page.tsx
+
+  Problem: Dashboard fetches tasks on every render without caching. Could use React Query or Next.js caching.
+
+  Solution: Consider using TanStack Query's useQuery hook for client-side data fetching with caching.
+
+  ---
+  9. CSS-in-JS for Animations
+
+  Location: app/dashboard/page.tsx:62-70, components/landing/hero-section.tsx:195-203
+
+  Problem: Style tags in components for keyframes - not ideal for maintenance.
+
+  Solution: Move all keyframes to globals.css.
+
+  ---
+  🟡 MINOR ISSUES
+
+  10. Inconsistent Error Handling
+
+  - Some files use toast.error() directly
+  - Others use result.error?.message
+  - No centralized error display component
+
+  11. Unused userId Parameters
+
+  As noted in issue #5, many API methods accept userId but don't use it.
+
+  12. Console Logging in Production
+
+  Location: Multiple files (page.tsx, dashboard/page.tsx, middleware.ts)
+
+  console.log("[Dashboard] Session:", session?.user ? `Found...` : "Missing")
+
+  Solution: Remove or conditionally apply debug logs.
+
+  ---
+  ✅ WHAT'S GOOD
+
+  | Aspect                         | Status                                       |
+  |--------------------------------|----------------------------------------------|
+  | TypeScript Types               | ✅ Well-defined interfaces                   |
+  | Component Structure            | ✅ Clean separation Server/Client components |
+  | Form Validation                | ✅ Zod schemas properly implemented          |
+  | Animations                     | ✅ Framer Motion variants well-organized     |
+  | Error Handling (api-client.ts) | ✅ Proper Result types, ApiError classes     |
+  | UI Design                      | ✅ Deep Space theme consistent               |
+  | Accessibility                  | ✅ ARIA labels, keyboard nav considered      |
+  | Code Organization              | ✅ lib/, components/, app/ structure clean   |
+
+  ---
+  🔧 FRONTEND-BACKEND SYNC ISSUES
+
+  | Frontend                 | Backend                  | Status           |
+  |--------------------------|--------------------------|------------------|
+  | /api/auth/signup         | /api/auth/signup         | ✅ Synced        |
+  | /api/auth/signin         | /api/auth/signin         | ✅ Synced        |
+  | /api/tasks               | /api/tasks               | ✅ Synced        |
+  | /api/tasks/{id}          | /api/tasks/{id}          | ✅ Synced        |
+  | /api/tasks/{id}/complete | /api/tasks/{id}/complete | ✅ Synced        |
+  | /api/auth/token          | Doesn't exist            | ❌ Issue         |
+  | /api/auth/signout        | Doesn't exist            | ❌ Issue         |
+  | /health                  | /api/health              | ❌ Path mismatch |
+
+  ---
+  📋 RECOMMENDED FIXES (In Priority Order)
+
+  1. Create /api/auth/token endpoint OR use Better Auth's session JWT directly
+  2. Consolidate API clients - remove lib/api.ts, fix lib/api-client.ts
+  3. Remove unused userId parameters from API methods
+  4. Fix middleware cookie names to match Better Auth config
+  5. Fix health check path to /api/health
+  6. Remove debug console.logs or make them development-only
+  7. Add /api/auth/signout route or use Better Auth client method
+
+  ---
+  📊 FINAL VERDICT
+
+  Frontend Status: 70% Ready
+
+  Blockers:
+  - JWT token retrieval doesn't work
+  - API calls will fail without proper auth
+
+  Non-Blockers:
+  - Code quality issues
+  - Performance optimizations
+  - Minor bugs
+
+  The architecture is sound but the auth integration is broken. Once the JWT flow is fixed, the frontend should work properly with the perfect backend.
+
+
+-----------------------------------------------
+
+
+## Error Type
+Console Error
+
+## Error Message
+[Error] "{\n  \"name\": \"AppError\",\n  \"message\": \"JWT endpoint returned 401: {\\\"error\\\":\\\"No token in session\\\"}\",\n  \"code\": \"UNAUTHORIZED\",\n  \"statusCode\": 401,\n  \"additionalContext\": {\n    \"context\": \"generateJwtToken\",\n    \"endpoint\": \"/api/auth/token\"\n  },\n  \"stack\": \"AppError: JWT endpoint returned 401: {\\\"error\\\":\\\"No token in session\\\"}\\n    at generateJwtToken (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/_28153012._.js:453:140)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async getAuthData (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/_28153012._.js:486:19)\\n    at async getTasks (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/_28153012._.js:569:22)\\n    at async DashboardPage (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/[root-of-the-server]__6761f411._.js:141:20)\",\n  \"timestamp\": \"2026-01-09T13:04:34.616Z\"\n}"
+
+
+    at logError (lib/errors.ts:301:17)
+    at generateJwtToken (app/actions/tasks.ts:105:15)
+    at getAuthData (app/actions/tasks.ts:148:17)
+    at getTasks (app/actions/tasks.ts:266:20)
+    at DashboardPage (app/dashboard/page.tsx:29:18)
+    at DashboardPage (<anonymous>:null:null)
+
+## Code Frame
+  299 |     // In development, log full error
+  300 |     if (process.env.NODE_ENV === "development") {
+> 301 |         console.error("[Error]", JSON.stringify(logData, null, 2))
+      |                 ^
+  302 |     } else {
+  303 |         // In production, log minimal info
+  304 |         console.error(`[Error] ${logData.code}: ${logData.message} (${logData.requestId || "no-request-id"})`)
+
+Next.js version: 16.1.1 (Turbopack)
+
+
+-----------------------------------------------------------
+
+
+## Error Type
+Console Error
+
+## Error Message
+[Error] "{\n  \"name\": \"AppError\",\n  \"message\": \"Session exists but failed to generate JWT\",\n  \"code\": \"SESSION_EXPIRED\",\n  \"statusCode\": 401,\n  \"additionalContext\": {\n    \"context\": \"getAuthData\",\n    \"userId\": \"B07guRr3jqS36LLrakOBYPjLaxQ1b79b\"\n  },\n  \"stack\": \"AppError: Session exists but failed to generate JWT\\n    at getAuthData (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/_28153012._.js:488:136)\\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\\n    at async getTasks (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/_28153012._.js:569:22)\\n    at async DashboardPage (/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/frontend/.next/dev/server/chunks/ssr/[root-of-the-server]__6761f411._.js:141:20)\",\n  \"timestamp\": \"2026-01-09T13:04:34.616Z\"\n}"
+
+
+    at logError (lib/errors.ts:301:17)
+    at getAuthData (app/actions/tasks.ts:150:13)
+    at getTasks (app/actions/tasks.ts:266:20)
+    at DashboardPage (app/dashboard/page.tsx:29:18)
+    at DashboardPage (<anonymous>:null:null)
+
+## Code Frame
+  299 |     // In development, log full error
+  300 |     if (process.env.NODE_ENV === "development") {
+> 301 |         console.error("[Error]", JSON.stringify(logData, null, 2))
+      |                 ^
+  302 |     } else {
+  303 |         // In production, log minimal info
+  304 |         console.error(`[Error] ${logData.code}: ${logData.message} (${logData.requestId || "no-request-id"})`)
+
+Next.js version: 16.1.1 (Turbopack)

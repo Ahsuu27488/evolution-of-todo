@@ -31,24 +31,14 @@ export default async function HomePage() {
   // CRITICAL: Call headers() FIRST, before any other async operation
   const headersList = await headers()
 
-  // DIAGNOSTIC: Log cookie header
-  const allCookies = headersList.get("cookie") || ""
-  console.log("[HomePage] Cookie header present:", !!allCookies)
-
   const session = await auth.api.getSession({
     headers: headersList,
   })
 
-  // DIAGNOSTIC: Log session status
-  console.log("[HomePage] Session:", session?.user ? `Found (user: ${session.user.email})` : "Missing")
-
   // Redirect authenticated users to dashboard
   if (session?.user) {
-    console.log("[HomePage] User authenticated - redirecting to /dashboard")
     redirect("/dashboard")
   }
-
-  console.log("[HomePage] No session - showing landing page")
 
   // Render the animated landing page (Client Component)
   return <HeroSection />

@@ -219,6 +219,8 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - Python 3.13+ (backend), TypeScript 5+ (frontend) (006-phase2-fullstack-webapp)
 - Neon Serverless PostgreSQL (connection via `DATABASE_URL`) (006-phase2-fullstack-webapp)
 - Neon Serverless PostgreSQL (connection pooling enabled) (007-phase2-chronos-webapp)
+- TypeScript 5+, Next.js 16+ + Better Auth (JWT plugin), TanStack Query, FastAPI (backend) (001-frontend-infra)
+- Neon Serverless PostgreSQL (backend only) (001-frontend-infra)
 
 ## Recent Changes
 - 001-reusable-intelligence: Added Markdown (Skills/Agents are configuration files, not code) + Claude Code Skills/Agents system, Context7 MCP

@@ -5,18 +5,17 @@ import type { NextRequest } from "next/server"
  * Middleware for route protection.
  * Redirects unauthenticated users to login for protected routes.
  *
+ * Per T016: Only checks "better-auth.session_token" cookie (removed fallback to "session")
+ * Per T017: Removed all console.log debug statements
+ *
  * IMPORTANT: This middleware does NOT interfere with API routes.
  * Better Auth API routes at /api/auth/* are handled separately.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // DIAGNOSTIC: Log all requests
-  console.log("[Middleware] Checking:", pathname)
-
   // Skip middleware for API routes entirely - let them handle their own auth
   if (pathname.startsWith("/api")) {
-    console.log("[Middleware] API route - allowing through")
     return NextResponse.next()
   }
 
@@ -31,18 +30,16 @@ export function middleware(request: NextRequest) {
 
   // Public routes that don't require authentication
   const publicRoutes = ["/login", "/signup", "/"]
-  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route))
+  const isPublicRoute = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route)
+  )
 
   // Check for Better Auth session cookie
-  // Better Auth uses "better-auth.session_token" or custom name based on config
-  const authCookie = request.cookies.get("better-auth.session_token") ||
-                     request.cookies.get("session")
-
-  console.log("[Middleware] Auth cookie present:", !!authCookie, "Public route:", isPublicRoute)
+  // Per T016: Only check "better-auth.session_token" - Better Auth's default cookie name
+  const authCookie = request.cookies.get("better-auth.session_token")
 
   // If accessing protected route without auth, redirect to login
   if (!isPublicRoute && !authCookie) {
-    console.log("[Middleware] PROTECTED route, no auth - redirecting to /login")
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
@@ -50,11 +47,9 @@ export function middleware(request: NextRequest) {
 
   // If authenticated user tries to access login/signup, redirect to dashboard
   if (authCookie && (pathname === "/login" || pathname === "/signup")) {
-    console.log("[Middleware] Authenticated user on auth page - redirecting to /dashboard")
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  console.log("[Middleware] Allow through to:", pathname)
   return NextResponse.next()
 }
 

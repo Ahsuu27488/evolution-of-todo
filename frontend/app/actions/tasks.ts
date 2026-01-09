@@ -65,7 +65,11 @@ async function getAuthSession() {
     })
     return session
   } catch (error) {
-    console.error("[Auth] Failed to get session:", error)
+    // Log error for production debugging
+    logError(
+      error instanceof Error ? new AppError(error.message, ErrorCode.UNKNOWN, 500) : new AppError("Unknown auth error", ErrorCode.UNKNOWN, 500),
+      { context: "getAuthSession" }
+    )
     return null
   }
 }
@@ -96,10 +100,11 @@ async function generateJwtToken(): Promise<string | null> {
     })
 
     if (!response.ok) {
+      // Log error for production debugging
       const errorText = await response.text().catch(() => "Unknown error")
-      console.error(
-        `[Auth] JWT endpoint returned ${response.status}:`,
-        errorText
+      logError(
+        new AppError(`JWT endpoint returned ${response.status}: ${errorText}`, ErrorCode.UNAUTHORIZED, response.status),
+        { context: "generateJwtToken", endpoint: "/api/auth/token" }
       )
       return null
     }
@@ -108,13 +113,19 @@ async function generateJwtToken(): Promise<string | null> {
 
     // JWT plugin returns { token: "..." }
     if (!data.token) {
-      console.error("[Auth] JWT response missing 'token' field:", data)
+      logError(
+        new AppError("JWT response missing 'token' field", ErrorCode.SERVER_ERROR, 500),
+        { context: "generateJwtToken", response: data }
+      )
       return null
     }
 
     return data.token
   } catch (error) {
-    console.error("[Auth] Failed to generate JWT:", error)
+    logError(
+      error instanceof Error ? new AppError(error.message, ErrorCode.NETWORK_ERROR, 0) : new AppError("Failed to generate JWT", ErrorCode.UNKNOWN, 500),
+      { context: "generateJwtToken" }
+    )
     return null
   }
 }
@@ -130,14 +141,16 @@ async function getAuthData(): Promise<{
   // Get session first to verify user is logged in and get user ID
   const session = await getAuthSession()
   if (!session?.user?.id) {
-    console.debug("[Auth] No active session")
     return null
   }
 
   // Generate JWT for API calls
   const token = await generateJwtToken()
   if (!token) {
-    console.error("[Auth] Session exists but failed to generate JWT")
+    logError(
+      new AppError("Session exists but failed to generate JWT", ErrorCode.SESSION_EXPIRED, 401),
+      { context: "getAuthData", userId: session.user.id }
+    )
     return null
   }
 
@@ -169,8 +182,6 @@ async function apiCall<T>(
   const url = `${API_URL}${endpoint}`
 
   try {
-    console.debug(`[API] ${method} ${endpoint} [request_id=${requestId}]`)
-
     const response = await fetch(url, {
       method,
       headers: {

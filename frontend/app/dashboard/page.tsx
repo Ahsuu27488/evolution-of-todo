@@ -14,28 +14,15 @@ import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getTasks } from "@/app/actions/tasks"
 
 export default async function DashboardPage() {
-  // DIAGNOSTIC: Log dashboard render attempt
-  console.log("[Dashboard] Component rendering...")
-
   // CRITICAL: Call headers() FIRST, before any other async operation
   // This ensures headers are captured before React's async rendering
   const headersList = await headers()
-
-  // DIAGNOSTIC: Log available cookies for debugging
-  const allCookies = headersList.get("cookie") || ""
-  console.log("[Dashboard] Cookie header present:", !!allCookies)
-  console.log("[Dashboard] Cookie header (first 100 chars):", allCookies.substring(0, 100))
 
   const session = await auth.api.getSession({
     headers: headersList,
   })
 
-  // DIAGNOSTIC: Log session status
-  console.log("[Dashboard] Session:", session?.user ? `Found (user: ${session.user.email})` : "Missing")
-  console.log("[Dashboard] Session object:", JSON.stringify(session, null, 2))
-
   if (!session?.user) {
-    console.log("[Dashboard] No session - redirecting to /login")
     redirect("/login")
   }
 
@@ -44,8 +31,6 @@ export default async function DashboardPage() {
 
   const pendingCount = tasks.filter((t) => !t.completed).length
   const completedCount = tasks.filter((t) => t.completed).length
-
-  console.log("[Dashboard] Rendering with", tasks.length, "tasks")
 
   return (
     <div className="min-h-screen bg-background">

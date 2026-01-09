@@ -1,0 +1,36 @@
+i have three tasks for you, RULE: FIRST AND LAST RULE IS TO DO NOT CHANGE/MODIFY/UPDATE/EDIT any single file
+
+Move Step by step as directed
+
+read every single file in ./backend.
+Then same with ./frontend directory.
+EVERY SINGLE FILE MEANS EVERY SINGLE FILE!!!!!
+then run these  script files:
+ ./backend/scripts/test_all.py 
+         &
+ ./scripts/verify-e2e.sh
+
+Last: Give me what you acheived 
+
+-------------------------------------------------
+/sp.implement
+I am proceeding with the "001-frontend-infra" feature. I have a detailed file analysis report of the current broken state of the frontend. 
+
+Your goal is to execute the fixes outlined in the Specification and the Analysis Report below. 
+
+### Instructions:
+1. **Refactor Strategy**: 
+   - First, resolve the `lib/api-client.ts` vs `lib/api.ts` conflict. Create the definitive `lib/api-client.ts` and delete `lib/api.ts`.
+   - Update `app/actions/tasks.ts` and `lib/auth-client.ts` to use the unified client.
+2. **Auth Repair**: 
+   - Create `app/api/auth/token/route.ts` if it is the cleanest way to bridge the gap, or update the client to access the session token directly.
+   - Fix `middleware.ts` cookie targeting.
+3. **Cleanup**: 
+   - Go through the file list and remove unused `userId` parameters.
+   - Fix the `/health` vs `/api/health` mismatch.
+
+### Input Data
+Here is the detailed analysis of the current defects. Use this as your checklist for what to fix:
+/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/FRONTEND CODE ANALYSIS REPORT
+### Output
+Please generate the code blocks for the modified files. Start with the "Critical" issues defined in the report.
