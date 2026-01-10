@@ -125,35 +125,6 @@ export function DashboardContent({
         </motion.div>
       </div>
 
-      {/* Task count or empty state message */}
-      {!isLoading && filteredTasks.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12"
-        >
-          {searchQuery || filters.status !== "all" || filters.priority !== "all" ? (
-            <>
-              <p className="text-muted-foreground text-lg mb-2">
-                No tasks match your filters
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Try adjusting your search or filters
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-muted-foreground text-lg mb-2">
-                No tasks yet
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Create your first task to get started!
-              </p>
-            </>
-          )}
-        </motion.div>
-      ) : null}
-
       {/* Task List */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
