@@ -72,6 +72,5 @@ frontend/.env.local
 frontend/.env*.local
 
 # Claude Code & MCP
-.claude/**/*.bak
 .playwright-mcp/
 testing prompts
