@@ -2,12 +2,21 @@
  *
  * Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
  * Per spec.md US3: "stunning glassmorphism modal slides in from bottom"
+ * Per US1 (008-dashboard-ui-overhaul): Enhanced with due date, tags, and recurrence pattern
  *
  * Acceptance Scenarios (US3):
  * - Given an authenticated user on dashboard, When they click "+" FAB,
  *   Then a glassmorphism modal slides in from bottom with backdrop blur
  * - Given a user creating task, When they enter title and select priority,
  *   Then task is saved with priority indicator and appears with slide-in animation
+ *
+ * New Acceptance Scenarios (US1):
+ * - Given a user creating task, When they select a due date using the datetime picker,
+ *   Then the selected date is formatted and saved with the task
+ * - Given a user creating task, When they add tags by typing and pressing Enter,
+ *   Then colored tag chips appear and can be removed by clicking their × icon
+ * - Given a user creating task, When they select a recurrence pattern (DAILY, WEEKLY, MONTHLY),
+ *   Then a recurrence icon appears on the saved task card
  */
 
 "use client"
@@ -17,7 +26,7 @@ import { motion } from "framer-motion"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2, Plus, Sparkles } from "lucide-react"
+import { Loader2, Plus, Sparkles, Repeat2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -49,6 +58,8 @@ import {
 import { taskCreateSchema, type TaskCreateInput } from "@/lib/validations/task"
 import { createTask, updateTask } from "@/app/actions/tasks"
 import { slideInBottom } from "@/lib/animations"
+import { TagInput } from "@/components/tags/tag-input"
+import { DueDatePicker } from "@/components/tasks/due-date-picker"
 import type { Task } from "@/types/task"
 
 interface TaskFormProps {
@@ -63,6 +74,12 @@ const priorities = [
   { value: "LOW", label: "Low", color: "text-muted-foreground" },
 ]
 
+const recurrencePatterns = [
+  { value: "DAILY", label: "Daily", description: "Repeats every day" },
+  { value: "WEEKLY", label: "Weekly", description: "Repeats every week" },
+  { value: "MONTHLY", label: "Monthly", description: "Repeats every month" },
+]
+
 export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -74,6 +91,9 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
       title: task?.title || "",
       description: task?.description ?? undefined,
       priority: task?.priority || "MEDIUM",
+      tags: task?.tags ?? [],
+      due_date: task?.due_date || undefined,
+      recurrence_pattern: task?.recurrence_pattern || undefined,
     },
   })
 
@@ -218,8 +238,8 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
                     <FormItem>
                       <FormLabel className="text-foreground">Priority</FormLabel>
                       <Select
+                        value={field.value}
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
                       >
                         <FormControl>
                           <SelectTrigger className="bg-background/50 border-border/50">
@@ -244,11 +264,106 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
                 />
               </motion.div>
 
+              {/* Due Date */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <FormField
+                  control={form.control}
+                  name="due_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <DueDatePicker
+                          value={field.value ?? null}
+                          onChange={field.onChange}
+                          disabled={isLoading}
+                          label="Due Date (optional)"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </motion.div>
+
+              {/* Tags */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground">Tags (optional)</FormLabel>
+                      <FormControl>
+                        <TagInput
+                          value={field.value ?? []}
+                          onChange={field.onChange}
+                          disabled={isLoading}
+                          maxTags={10}
+                          placeholder="Type and press Enter to add tags"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </motion.div>
+
+              {/* Recurrence Pattern */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <FormField
+                  control={form.control}
+                  name="recurrence_pattern"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground flex items-center gap-2">
+                        <Repeat2 className="h-4 w-4" />
+                        Recurrence (optional)
+                      </FormLabel>
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="bg-background/50 border-border/50">
+                            <SelectValue placeholder="No recurrence" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="glass-strong">
+                          {recurrencePatterns.map((rp) => (
+                            <SelectItem key={rp.value} value={rp.value}>
+                              <div className="flex flex-col">
+                                <span>{rp.label}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {rp.description}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </motion.div>
+
               {/* Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.5 }}
               >
                 <DialogFooter className="gap-2 sm:gap-0">
                   <Button

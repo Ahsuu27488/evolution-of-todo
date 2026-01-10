@@ -17,7 +17,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { Check, Calendar, Tag } from "lucide-react"
+import { Check, Calendar, Tag, Repeat2 } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -207,6 +207,20 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                     {isOverdue && "Overdue: "}
                     {dueDate.toLocaleDateString()}
                   </span>
+                </div>
+              )}
+
+              {/* Recurrence indicator */}
+              {task.recurrence_pattern && (
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs mt-2",
+                    "text-secondary"
+                  )}
+                  title={`Repeats: ${task.recurrence_pattern.toLowerCase()}`}
+                >
+                  <Repeat2 className="h-3.5 w-3.5" />
+                  <span className="capitalize">{task.recurrence_pattern.toLowerCase()}</span>
                 </div>
               )}
             </div>

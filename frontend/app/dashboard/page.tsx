@@ -8,20 +8,14 @@
 
 import { Header } from "@/components/layout/header"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
-import { getTasks } from "@/app/actions/tasks"
 import { getSession } from "@/app/actions/auth"
 
 export default async function DashboardPage() {
   // Get session (user data) from server-side cookie
   const session = await getSession()
 
-  // Get tasks
-  const result = await getTasks()
-  const tasks = result.success && result.data ? result.data.tasks : []
-  const isAuthenticated = result.success && session !== null
-
-  const pendingCount = tasks.filter((t) => !t.completed).length
-  const completedCount = tasks.filter((t) => t.completed).length
+  // Check if authenticated
+  const isAuthenticated = session !== null
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,9 +26,6 @@ export default async function DashboardPage() {
 
       <main className="container py-6 md:py-10">
         <DashboardContent
-          tasks={tasks}
-          pendingCount={pendingCount}
-          completedCount={completedCount}
           isAuthenticated={isAuthenticated}
         />
       </main>
