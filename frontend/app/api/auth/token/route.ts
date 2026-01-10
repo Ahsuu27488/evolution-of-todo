@@ -12,6 +12,7 @@
  *   }).then(r => r.json()).then(({token}) => {...})
  */
 
+import { createHmac } from "node:crypto"
 import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { NextResponse } from "next/server"
@@ -37,9 +38,7 @@ async function createJWT(payload: Record<string, unknown>, secret: string): Prom
   const data = `${encodedHeader}.${encodedPayload}`
 
   // Sign with HMAC-SHA256
-  const crypto = require("node:crypto")
-  const signature = crypto
-    .createHmac("sha256", secret)
+  const signature = createHmac("sha256", secret)
     .update(data)
     .digest("base64url")
 
@@ -70,6 +69,7 @@ export async function GET() {
     }
 
     // Get session ID - Better Auth stores it in different places depending on version
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sessionId = (session as any).session?.id || (session as any).id || session.user.id
 
     // Calculate expiration (7 days from now)

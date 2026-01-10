@@ -1,9 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    viewTransition: true, // Enable smooth page transitions
-  },
+  // View transitions are now stable in Next.js 15 - remove from experimental
 };
 
 export default nextConfig;

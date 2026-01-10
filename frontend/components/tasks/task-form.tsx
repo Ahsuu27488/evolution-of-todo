@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/select"
 import { taskCreateSchema, type TaskCreateInput } from "@/lib/validations/task"
 import { createTask, updateTask } from "@/app/actions/tasks"
-import { modalContent, slideInBottom } from "@/lib/animations"
+import { slideInBottom } from "@/lib/animations"
 import type { Task } from "@/types/task"
 
 interface TaskFormProps {
@@ -72,7 +72,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
     resolver: zodResolver(taskCreateSchema),
     defaultValues: {
       title: task?.title || "",
-      description: task?.description || "",
+      description: task?.description ?? undefined,
       priority: task?.priority || "MEDIUM",
     },
   })
@@ -94,7 +94,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
       form.reset()
       setOpen(false)
       onSuccess?.()
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong")
     } finally {
       setIsLoading(false)

@@ -55,7 +55,6 @@ const priorityBadgeColors = {
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [optimisticCompleted, setOptimisticCompleted] = useState(task.completed)
-  const [showConfetti, setShowConfetti] = useState(false)
 
   async function handleToggleComplete() {
     if (isUpdating) return
@@ -64,9 +63,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
 
     // Trigger confetti on completion (not on uncheck)
     if (newCompleted) {
-      setShowConfetti(true)
       taskCompletionConfetti()
-      setTimeout(() => setShowConfetti(false), 100)
     }
 
     // Optimistic update

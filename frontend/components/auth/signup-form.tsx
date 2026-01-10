@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Link } from "next-view-transitions"
@@ -22,7 +21,6 @@ import { signupSchema, type SignupInput } from "@/lib/validations/auth"
 import { signUpAction } from "@/app/actions/auth"
 
 export function SignupForm() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<SignupInput>({

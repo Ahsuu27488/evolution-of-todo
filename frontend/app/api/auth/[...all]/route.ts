@@ -9,6 +9,6 @@
 import { auth } from "@/lib/auth"
 import { toNextJsHandler } from "better-auth/next-js"
 
-// Export all HTTP methods that Better Auth might use
-// Including OPTIONS for CORS preflight requests
-export const { GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD } = toNextJsHandler(auth)
+// Export only the HTTP methods that Better Auth provides
+const handler = toNextJsHandler(auth)
+export const { GET, POST, PUT, DELETE, PATCH } = handler

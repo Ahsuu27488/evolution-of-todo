@@ -7,11 +7,15 @@ import { ViewTransitions } from "next-view-transitions"
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: true, // Fallback if Google Fonts fails
 })
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: true, // Fallback if Google Fonts fails
 })
 
 export const metadata: Metadata = {

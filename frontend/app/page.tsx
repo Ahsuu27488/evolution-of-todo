@@ -8,38 +8,18 @@
  * Per spec.md FR-038: "Deep Space" color scheme with cyan/purple neon accents
  * Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
  *
- * This is a Server Component that:
- * 1. Checks authentication status via Better Auth
- * 2. Redirects authenticated users to dashboard
- * 3. Renders the Client Component (HeroSection) for animations
+ * This is a Server Component that renders the Client Component (HeroSection).
+ *
+ * Authenticated users can now view the landing page and will see
+ * personalized content with a "Go to Dashboard" option.
  */
 
-import { redirect } from "next/navigation"
-import { headers } from "next/headers"
-import { auth } from "@/lib/auth"
 import { HeroSection } from "@/components/landing/hero-section"
 
 /**
- * Landing page - redirects authenticated users to dashboard,
- * shows hero section to visitors.
- *
- * Server Component responsibilities:
- * - Auth check and redirect logic
- * - Client Component delegation for animations
+ * Landing page - shows hero section to all visitors.
+ * Auth state is checked client-side for personalized content.
  */
-export default async function HomePage() {
-  // CRITICAL: Call headers() FIRST, before any other async operation
-  const headersList = await headers()
-
-  const session = await auth.api.getSession({
-    headers: headersList,
-  })
-
-  // Redirect authenticated users to dashboard
-  if (session?.user) {
-    redirect("/dashboard")
-  }
-
-  // Render the animated landing page (Client Component)
+export default function HomePage() {
   return <HeroSection />
 }

@@ -11,13 +11,19 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import confetti, { ConfettiOptions } from 'canvas-confetti';
+import confetti from 'canvas-confetti';
+
+// Use inline types since canvas-confetti types are limited
+interface ConfettiOrigin {
+  x: number;
+  y: number;
+}
 
 export interface ConfettiProps {
   /** Trigger confetti animation when true */
   trigger?: boolean;
   /** Position to fire confetti from */
-  origin?: ConfettiOptions['origin'];
+  origin?: ConfettiOrigin;
   /** Custom particle count */
   particleCount?: number;
   /** Spread of particles */
