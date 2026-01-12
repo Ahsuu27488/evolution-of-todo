@@ -10,7 +10,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+**/lib/python*/
 lib64/
 parts/
 sdist/
@@ -70,3 +70,7 @@ npm-debug.log*
 backend/.env
 frontend/.env.local
 frontend/.env*.local
+
+# Claude Code & MCP
+.playwright-mcp/
+testing prompts
