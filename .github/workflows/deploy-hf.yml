@@ -1,0 +1,46 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-hf.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: Ahsuu27488/evolution-of-todo-api
+        run: |
+          # Configure git
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # Clone HF Space (shallow clone for speed)
+          git clone --depth 1 https://huggingface.co/spaces/$HF_SPACE_ID temp_hf_space
+
+          # Copy only backend folder contents
+          rsync -av --delete \
+            --exclude='.git*' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.venv' \
+            --exclude='node_modules' \
+            backend/ temp_hf_space/
+
+          # Push to HF Space
+          cd temp_hf_space
+          git add .
+          git diff --staged --quiet || git commit -m "Deploy from GitHub: ${{ github.sha }}"
+          git push https://$HF_TOKEN@huggingface.co/spaces/$HF_SPACE_ID main
