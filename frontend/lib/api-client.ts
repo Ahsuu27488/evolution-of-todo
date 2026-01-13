@@ -28,7 +28,7 @@ import {
 // Configuration
 // =============================================================================
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://Ahsuu27488-evolution-of-todo-api.hf.space"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ahsuu27488-evolution-of-todo-api.hf.space"
 const APP_URL = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 const REQUEST_TIMEOUT = 15000 // 15 seconds
 const MAX_RETRIES = 2
