@@ -16,7 +16,6 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { toast } from "sonner"
 import { Check, Calendar, Tag, Repeat2 } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -24,7 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { TaskActions } from "./task-actions"
-import { toggleTaskComplete } from "@/app/actions/tasks"
+import { useToggleTaskComplete } from "@/lib/hooks/use-task-mutations"
 import { taskCompletionConfetti } from "@/components/confetti"
 import { taskCard, taskComplete } from "@/lib/animations"
 import type { Task } from "@/types/task"
@@ -53,10 +52,12 @@ const priorityBadgeColors = {
 }
 
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
-  const [isUpdating, setIsUpdating] = useState(false)
   const [optimisticCompleted, setOptimisticCompleted] = useState(task.completed)
 
-  async function handleToggleComplete() {
+  const toggleMutation = useToggleTaskComplete()
+  const isUpdating = toggleMutation.isPending
+
+  function handleToggleComplete() {
     if (isUpdating) return
 
     const newCompleted = !optimisticCompleted
@@ -68,22 +69,13 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
 
     // Optimistic update
     setOptimisticCompleted(newCompleted)
-    setIsUpdating(true)
 
-    try {
-      const result = await toggleTaskComplete(task.id)
-      if (!result.success) {
+    toggleMutation.mutate(task.id, {
+      onError: () => {
         // Rollback on error
         setOptimisticCompleted(task.completed)
-        toast.error(result.error?.message || "Failed to update task")
       }
-    } catch {
-      // Rollback on error
-      setOptimisticCompleted(task.completed)
-      toast.error("Failed to update task")
-    } finally {
-      setIsUpdating(false)
-    }
+    })
   }
 
   const dueDate = task.due_date ? new Date(task.due_date) : null

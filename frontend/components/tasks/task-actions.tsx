@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { TaskForm } from "./task-form"
-import { deleteTask } from "@/app/actions/tasks"
+import { useDeleteTask } from "@/lib/hooks/use-task-mutations"
 import type { Task } from "@/types/task"
 
 interface TaskActionsProps {
@@ -32,23 +31,16 @@ interface TaskActionsProps {
 export function TaskActions({ task }: TaskActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
 
-  async function handleDelete() {
-    setIsDeleting(true)
-    try {
-      const result = await deleteTask(task.id)
-      if (!result.success) {
-        toast.error(result.error?.message || "Failed to delete task")
-        return
+  const deleteMutation = useDeleteTask()
+  const isDeleting = deleteMutation.isPending
+
+  function handleDelete() {
+    deleteMutation.mutate(task.id, {
+      onSuccess: () => {
+        setShowDeleteDialog(false)
       }
-      toast.success("Task deleted")
-    } catch {
-      toast.error("Failed to delete task")
-    } finally {
-      setIsDeleting(false)
-      setShowDeleteDialog(false)
-    }
+    })
   }
 
   return (

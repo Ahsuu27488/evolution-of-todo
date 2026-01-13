@@ -25,7 +25,6 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
 import { Loader2, Plus, Sparkles, Repeat2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -56,10 +55,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { taskCreateSchema, type TaskCreateInput } from "@/lib/validations/task"
-import { createTask, updateTask } from "@/app/actions/tasks"
 import { slideInBottom } from "@/lib/animations"
 import { TagInput } from "@/components/tags/tag-input"
 import { DueDatePicker } from "@/components/tasks/due-date-picker"
+import { useCreateTask, useUpdateTask } from "@/lib/hooks/use-task-mutations"
 import type { Task } from "@/types/task"
 
 interface TaskFormProps {
@@ -82,8 +81,13 @@ const recurrencePatterns = [
 
 export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
   const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const isEditing = !!task
+
+  // Mutation hooks
+  const createMutation = useCreateTask()
+  const updateMutation = useUpdateTask()
+
+  const isLoading = createMutation.isPending || updateMutation.isPending
 
   const form = useForm<TaskCreateInput>({
     resolver: zodResolver(taskCreateSchema),
@@ -98,26 +102,22 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
   })
 
   async function onSubmit(values: TaskCreateInput) {
-    setIsLoading(true)
-
-    try {
-      const result = isEditing
-        ? await updateTask(task.id, values)
-        : await createTask(values)
-
-      if (!result.success) {
-        toast.error(result.error?.message || `Failed to ${isEditing ? "update" : "create"} task`)
-        return
-      }
-
-      toast.success(isEditing ? "Task updated" : "Task created")
-      form.reset()
-      setOpen(false)
-      onSuccess?.()
-    } catch {
-      toast.error("Something went wrong")
-    } finally {
-      setIsLoading(false)
+    if (isEditing && task) {
+      updateMutation.mutate({ taskId: task.id, data: values }, {
+        onSuccess: () => {
+          form.reset()
+          setOpen(false)
+          onSuccess?.()
+        }
+      })
+    } else {
+      createMutation.mutate(values, {
+        onSuccess: () => {
+          form.reset()
+          setOpen(false)
+          onSuccess?.()
+        }
+      })
     }
   }
 
