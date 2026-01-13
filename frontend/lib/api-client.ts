@@ -34,6 +34,9 @@ const REQUEST_TIMEOUT = 15000 // 15 seconds
 const MAX_RETRIES = 2
 const RETRY_DELAY_MS = 500
 
+// Helper to remove trailing slashes from URLs (prevents double-slash issues)
+const normalizeUrl = (url: string): string => url.replace(/\/+$/, "")
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -58,8 +61,8 @@ class ApiClient {
   private appUrl: string
 
   constructor(baseUrl: string, appUrl: string) {
-    this.baseUrl = baseUrl
-    this.appUrl = appUrl
+    this.baseUrl = normalizeUrl(baseUrl)
+    this.appUrl = normalizeUrl(appUrl)
   }
 
   /**
