@@ -19,6 +19,7 @@ import { fadeInUp, staggerContainer } from "@/lib/animations"
 import { useEffect, useState } from "react"
 import { getCurrentUser } from "@/lib/auth-client"
 import type { User } from "@/lib/auth-client"
+import { HeroHeader } from "./hero-header"
 
 interface HeroSectionProps {
   className?: string
@@ -44,37 +45,8 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
   }, [])
   return (
     <div className={`min-h-screen relative overflow-hidden ${className}`}>
-      {/* Top-right navigation bar */}
-      <nav className="fixed top-0 right-0 left-0 z-50 px-4 py-4">
-        <div className="container mx-auto flex justify-end items-center">
-          {!isLoading && (
-            <div className="flex items-center gap-3">
-              {user ? (
-                // Logged in: Show user name and dashboard link
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
-                    {user.name}
-                  </span>
-                  <Button asChild size="sm" variant="outline" className="glass">
-                    <Link href="/dashboard">
-                      Dashboard
-                      <ArrowRight className="h-4 w-5 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                // Logged out: Show sign in button
-                <Button asChild size="sm" variant="outline" className="glass">
-                  <Link href="/login">
-                    Sign In
-                    <ChevronRight className="h-4 w-5 ml-1" />
-                  </Link>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </nav>
+      {/* Unified header with logo, theme toggle, and sign in */}
+      <HeroHeader user={user} isLoading={isLoading} />
 
       {/* Background effects */}
       <div className="fixed inset-0 -z-10">
@@ -122,7 +94,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-16 md:py-24">
+      <div className="container mx-auto px-6 pt-24 pb-16 md:pt-32 md:pb-24">
         <motion.div
           variants={staggerContainer}
           initial="hidden"
@@ -140,7 +112,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
           </motion.div>
 
           {/* Hero Title */}
-          <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-bold mb-6">
+          <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             <span className="block">The Evolution of</span>
             <span className="block bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] will-change-background">
               Todo Management
@@ -171,7 +143,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
                 <Button
                   asChild
                   size="lg"
-                  className="gap-2 text-lg px-8 shadow-lg shadow-primary/20"
+                  className="gap-2 shadow-lg shadow-primary/20"
                 >
                   <Link href="/dashboard">
                     Go to Dashboard
@@ -185,7 +157,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
                 <Button
                   asChild
                   size="lg"
-                  className="gap-2 text-lg px-8 shadow-lg shadow-primary/20"
+                  className="gap-2 shadow-lg shadow-primary/20"
                 >
                   <Link href="/signup">
                     Start Your Journey
@@ -196,7 +168,7 @@ export function HeroSection({ className = "" }: HeroSectionProps) {
                   asChild
                   variant="outline"
                   size="lg"
-                  className="gap-2 text-lg px-8 glass"
+                  className="gap-2 glass"
                 >
                   <Link href="/login">
                     Sign In

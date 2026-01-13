@@ -11,7 +11,7 @@ import { Sparkles } from "lucide-react"
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center px-6 relative overflow-hidden">
       {/* Background gradient effects */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />

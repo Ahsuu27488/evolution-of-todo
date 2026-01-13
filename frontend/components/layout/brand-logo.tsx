@@ -38,7 +38,7 @@ export function BrandLogo() {
         transition={{ duration: 0.2 }}
         className="relative px-2"
       >
-        <span className="text-2xl md:text-3xl font-bold bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-size-[200%_auto] will-change-background">
+        <span className="font-mono text-2xl md:text-3xl font-semibold bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-size-[200%_auto] will-change-background">
           Chronos
           <span className="text-primary">.</span>
         </span>
