@@ -52,7 +52,6 @@ export function DashboardContent({
     completedCount,
     setSearchQuery: setDebouncedSearch,
     toggleSortOrder,
-    isLoading,
   } = useTaskFilters()
 
   // Update debounced search when local query changes
