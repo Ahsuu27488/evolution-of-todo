@@ -1,3 +1,13 @@
+---
+title: Evolution of Todo API
+emoji: ⚡
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+license: mit
+---
+
 # Chronos Todo API — FastAPI Backend
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-teal)](https://fastapi.tiangolo.com)
