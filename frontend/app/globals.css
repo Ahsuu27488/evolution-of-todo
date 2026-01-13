@@ -1,62 +1,176 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* =============================================================================
+   CSS Custom Properties for Theme Switching
+   Per Tailwind CSS v4 docs: Define variables in :root/.dark/.light selectors,
+   then reference them in @theme inline using var()
+   =========================================================================== */
+
+:root {
+  /* Deep Space Theme (Dark Mode - Default) */
+  --custom-background: oklch(0.08 0.01 270);
+  --custom-foreground: oklch(0.98 0.005 270);
+  --custom-card: oklch(0.12 0.01 270 / 0.7);
+  --custom-card-foreground: oklch(0.98 0.005 270);
+  --custom-popover: oklch(0.12 0.01 270 / 0.8);
+  --custom-popover-foreground: oklch(0.98 0.005 270);
+  --custom-primary: oklch(0.91 0.17 195);
+  --custom-primary-foreground: oklch(0.08 0.01 270);
+  --custom-secondary: oklch(0.65 0.26 293);
+  --custom-secondary-foreground: oklch(0.98 0.005 270);
+  --custom-muted: oklch(0.16 0.01 270 / 0.5);
+  --custom-muted-foreground: oklch(0.65 0.01 270);
+  --custom-accent: oklch(0.65 0.26 293);
+  --custom-accent-foreground: oklch(0.98 0.005 270);
+  --custom-destructive: oklch(0.60 0.25 25);
+  --custom-destructive-foreground: oklch(0.98 0.005 270);
+  --custom-border: oklch(1 0 270 / 0.1);
+  --custom-input: oklch(1 0 270 / 0.08);
+  --custom-ring: oklch(0.91 0.17 195);
+  --custom-chart-1: oklch(0.91 0.17 195);
+  --custom-chart-2: oklch(0.65 0.26 293);
+  --custom-chart-3: oklch(0.75 0.20 145);
+  --custom-chart-4: oklch(0.60 0.25 25);
+  --custom-chart-5: oklch(0.85 0.15 85);
+  --custom-sidebar: oklch(0.10 0.01 270);
+  --custom-sidebar-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-primary: oklch(0.91 0.17 195);
+  --custom-sidebar-primary-foreground: oklch(0.08 0.01 270);
+  --custom-sidebar-accent: oklch(0.65 0.26 293);
+  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-border: oklch(1 0 270 / 0.1);
+  --custom-sidebar-ring: oklch(0.91 0.17 195);
+}
+
+.dark {
+  /* Same as :root since Deep Space is inherently dark */
+  --custom-background: oklch(0.08 0.01 270);
+  --custom-foreground: oklch(0.98 0.005 270);
+  --custom-card: oklch(0.12 0.01 270 / 0.7);
+  --custom-card-foreground: oklch(0.98 0.005 270);
+  --custom-popover: oklch(0.12 0.01 270 / 0.8);
+  --custom-popover-foreground: oklch(0.98 0.005 270);
+  --custom-primary: oklch(0.91 0.17 195);
+  --custom-primary-foreground: oklch(0.08 0.01 270);
+  --custom-secondary: oklch(0.65 0.26 293);
+  --custom-secondary-foreground: oklch(0.98 0.005 270);
+  --custom-muted: oklch(0.16 0.01 270 / 0.5);
+  --custom-muted-foreground: oklch(0.65 0.01 270);
+  --custom-accent: oklch(0.65 0.26 293);
+  --custom-accent-foreground: oklch(0.98 0.005 270);
+  --custom-destructive: oklch(0.60 0.25 25);
+  --custom-destructive-foreground: oklch(0.98 0.005 270);
+  --custom-border: oklch(1 0 270 / 0.1);
+  --custom-input: oklch(1 0 270 / 0.08);
+  --custom-ring: oklch(0.91 0.17 195);
+  --custom-chart-1: oklch(0.91 0.17 195);
+  --custom-chart-2: oklch(0.65 0.26 293);
+  --custom-chart-3: oklch(0.75 0.20 145);
+  --custom-chart-4: oklch(0.60 0.25 25);
+  --custom-chart-5: oklch(0.85 0.15 85);
+  --custom-sidebar: oklch(0.10 0.01 270);
+  --custom-sidebar-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-primary: oklch(0.91 0.17 195);
+  --custom-sidebar-primary-foreground: oklch(0.08 0.01 270);
+  --custom-sidebar-accent: oklch(0.65 0.26 293);
+  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-border: oklch(1 0 270 / 0.1);
+  --custom-sidebar-ring: oklch(0.91 0.17 195);
+}
+
+.light {
+  /* Light Mode - Inverted brightness, same brand colors */
+  --custom-background: oklch(0.98 0.005 270);
+  --custom-foreground: oklch(0.15 0.01 270);
+  --custom-card: oklch(1 0 270 / 0.8);
+  --custom-card-foreground: oklch(0.15 0.01 270);
+  --custom-popover: oklch(1 0 270 / 0.9);
+  --custom-popover-foreground: oklch(0.15 0.01 270);
+  --custom-primary: oklch(0.91 0.17 195); /* UNCHANGED - brand cyan */
+  --custom-primary-foreground: oklch(0.98 0.005 270);
+  --custom-secondary: oklch(0.65 0.26 293); /* UNCHANGED - brand purple */
+  --custom-secondary-foreground: oklch(0.98 0.005 270);
+  --custom-muted: oklch(0.94 0.005 270 / 0.6);
+  --custom-muted-foreground: oklch(0.50 0.01 270);
+  --custom-accent: oklch(0.65 0.26 293); /* UNCHANGED */
+  --custom-accent-foreground: oklch(0.98 0.005 270);
+  --custom-destructive: oklch(0.60 0.25 25); /* UNCHANGED */
+  --custom-destructive-foreground: oklch(0.98 0.005 270);
+  --custom-border: oklch(0 0 270 / 0.1);
+  --custom-input: oklch(0 0 270 / 0.08);
+  --custom-ring: oklch(0.91 0.17 195); /* UNCHANGED */
+  --custom-chart-1: oklch(0.91 0.17 195); /* UNCHANGED */
+  --custom-chart-2: oklch(0.65 0.26 293); /* UNCHANGED */
+  --custom-chart-3: oklch(0.75 0.20 145); /* UNCHANGED */
+  --custom-chart-4: oklch(0.60 0.25 25); /* UNCHANGED */
+  --custom-chart-5: oklch(0.85 0.15 85); /* UNCHANGED */
+  --custom-sidebar: oklch(0.96 0.005 270);
+  --custom-sidebar-foreground: oklch(0.15 0.01 270);
+  --custom-sidebar-primary: oklch(0.91 0.17 195); /* UNCHANGED */
+  --custom-sidebar-primary-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-accent: oklch(0.65 0.26 293); /* UNCHANGED */
+  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
+  --custom-sidebar-border: oklch(0 0 270 / 0.1);
+  --custom-sidebar-ring: oklch(0.91 0.17 195); /* UNCHANGED */
+}
 
 @theme inline {
   /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Colors - Direct oklch() values for opacity support */
-  --color-background: oklch(0.08 0.01 270); /* #0a0a0f deep space black */
-  --color-foreground: oklch(0.98 0.005 270); /* #f5f5fa light text */
-  --color-card: oklch(0.12 0.01 270 / 0.7); /* glass effect */
-  --color-card-foreground: oklch(0.98 0.005 270);
-  --color-popover: oklch(0.12 0.01 270 / 0.8);
-  --color-popover-foreground: oklch(0.98 0.005 270);
+  /* Colors - Reference CSS custom properties that respond to class changes */
+  --color-background: var(--custom-background);
+  --color-foreground: var(--custom-foreground);
+  --color-card: var(--custom-card);
+  --color-card-foreground: var(--custom-card-foreground);
+  --color-popover: var(--custom-popover);
+  --color-popover-foreground: var(--custom-popover-foreground);
 
   /* Primary - Neon Cyan #00f5ff */
-  --color-primary: oklch(0.91 0.17 195);
-  --color-primary-foreground: oklch(0.08 0.01 270);
+  --color-primary: var(--custom-primary);
+  --color-primary-foreground: var(--custom-primary-foreground);
 
   /* Secondary - Neon Purple #a855f7 */
-  --color-secondary: oklch(0.65 0.26 293);
-  --color-secondary-foreground: oklch(0.98 0.005 270);
+  --color-secondary: var(--custom-secondary);
+  --color-secondary-foreground: var(--custom-secondary-foreground);
 
   /* Muted */
-  --color-muted: oklch(0.16 0.01 270 / 0.5);
-  --color-muted-foreground: oklch(0.65 0.01 270);
+  --color-muted: var(--custom-muted);
+  --color-muted-foreground: var(--custom-muted-foreground);
 
   /* Accent - Purple */
-  --color-accent: oklch(0.65 0.26 293);
-  --color-accent-foreground: oklch(0.98 0.005 270);
+  --color-accent: var(--custom-accent);
+  --color-accent-foreground: var(--custom-accent-foreground);
 
   /* Destructive - Red #ef4444 */
-  --color-destructive: oklch(0.60 0.25 25);
-  --color-destructive-foreground: oklch(0.98 0.005 270);
+  --color-destructive: var(--custom-destructive);
+  --color-destructive-foreground: var(--custom-destructive-foreground);
 
   /* Border & Input */
-  --color-border: oklch(1 0 270 / 0.1);
-  --color-input: oklch(1 0 270 / 0.08);
-  --color-ring: oklch(0.91 0.17 195);
+  --color-border: var(--custom-border);
+  --color-input: var(--custom-input);
+  --color-ring: var(--custom-ring);
 
   /* Chart Colors */
-  --color-chart-1: oklch(0.91 0.17 195); /* cyan */
-  --color-chart-2: oklch(0.65 0.26 293); /* purple */
-  --color-chart-3: oklch(0.75 0.20 145); /* green #22c55e */
-  --color-chart-4: oklch(0.60 0.25 25); /* red */
-  --color-chart-5: oklch(0.85 0.15 85); /* amber #fbbf24 */
+  --color-chart-1: var(--custom-chart-1);
+  --color-chart-2: var(--custom-chart-2);
+  --color-chart-3: var(--custom-chart-3);
+  --color-chart-4: var(--custom-chart-4);
+  --color-chart-5: var(--custom-chart-5);
 
   /* Sidebar */
-  --color-sidebar: oklch(0.10 0.01 270);
-  --color-sidebar-foreground: oklch(0.98 0.005 270);
-  --color-sidebar-primary: oklch(0.91 0.17 195);
-  --color-sidebar-primary-foreground: oklch(0.08 0.01 270);
-  --color-sidebar-accent: oklch(0.65 0.26 293);
-  --color-sidebar-accent-foreground: oklch(0.98 0.005 270);
-  --color-sidebar-border: oklch(1 0 270 / 0.1);
-  --color-sidebar-ring: oklch(0.91 0.17 195);
+  --color-sidebar: var(--custom-sidebar);
+  --color-sidebar-foreground: var(--custom-sidebar-foreground);
+  --color-sidebar-primary: var(--custom-sidebar-primary);
+  --color-sidebar-primary-foreground: var(--custom-sidebar-primary-foreground);
+  --color-sidebar-accent: var(--custom-sidebar-accent);
+  --color-sidebar-accent-foreground: var(--custom-sidebar-accent-foreground);
+  --color-sidebar-border: var(--custom-sidebar-border);
+  --color-sidebar-ring: var(--custom-sidebar-ring);
 
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
@@ -166,6 +280,64 @@
 }
 
 /* =============================================================================
+   Light Mode Theme
+   Per spec 009-light-mode-theme: Light mode with inverted brightness,
+   same brand colors (cyan/purple), WCAG AA contrast ratios
+   =========================================================================== */
+
+.light {
+  /* Light Mode - Inverted brightness, same brand colors */
+  --background: 248 248 250; /* #f8f8fa near-white */
+  --foreground: 30 30 35; /* #1e1e23 dark text */
+
+  /* Glass surfaces - white with opacity */
+  --card: 255 255 255 / 0.8;
+  --card-foreground: 30 30 35;
+  --popover: 255 255 255 / 0.9;
+  --popover-foreground: 30 30 35;
+
+  /* Brand accents - UNCHANGED */
+  --primary: 0 245 255; /* #00f5ff cyan */
+  --primary-foreground: 248 248 250;
+  --secondary: 168 85 247; /* #a855f7 purple */
+  --secondary-foreground: 248 248 250;
+
+  /* Muted - light gray */
+  --muted: 240 240 245 / 0.6;
+  --muted-foreground: 120 120 140;
+
+  /* Accent - UNCHANGED */
+  --accent: 168 85 247;
+  --accent-foreground: 248 248 250;
+
+  /* Destructive - UNCHANGED */
+  --destructive: 239 68 68;
+  --destructive-foreground: 248 248 250;
+
+  /* Borders - dark for visibility */
+  --border: 0 0 0 / 0.1;
+  --input: 0 0 0 / 0.08;
+  --ring: 0 245 255; /* UNCHANGED */
+
+  /* Charts - UNCHANGED */
+  --chart-1: 0 245 255;
+  --chart-2: 168 85 247;
+  --chart-3: 34 197 94;
+  --chart-4: 239 68 68;
+  --chart-5: 251 191 36;
+
+  /* Sidebar */
+  --sidebar: 245 245 250;
+  --sidebar-foreground: 30 30 35;
+  --sidebar-primary: 0 245 255;
+  --sidebar-primary-foreground: 248 248 250;
+  --sidebar-accent: 168 85 247;
+  --sidebar-accent-foreground: 248 248 250;
+  --sidebar-border: 0 0 0 / 0.1;
+  --sidebar-ring: 0 245 255;
+}
+
+/* =============================================================================
    Base Styles
    =========================================================================== */
 
@@ -182,6 +354,14 @@
       radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
       rgb(var(--background));
     background-attachment: fixed;
+  }
+
+  /* Light mode body background with subtle gradient */
+  .light body {
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.015) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.015) 0%, transparent 50%),
+      rgb(var(--background));
   }
 }
 
@@ -237,6 +417,49 @@
     box-shadow:
       0 0 20px rgba(34, 197, 94, 0.3),
       0 0 40px rgba(34, 197, 94, 0.1);
+  }
+
+  /* =============================================================================
+     Light Mode Glassmorphism & Glow Utilities
+     Per spec 009-light-mode-theme: Adapted for light mode visibility
+     =========================================================================== */
+
+  /* Light mode glassmorphism - white semi-transparent backgrounds */
+  .light .glass {
+    background: color-mix(in srgb, rgb(255 255 255) 70%, transparent);
+    border-color: color-mix(in srgb, rgb(0 0 0 / 0.1) 50%, transparent);
+  }
+
+  .light .glass-strong {
+    background: color-mix(in srgb, rgb(255 255 255) 90%, transparent);
+    border-color: color-mix(in srgb, rgb(0 0 0 / 0.15) 60%, transparent);
+  }
+
+  .light .glass-modal {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.15),
+      0 0 100px -20px rgba(0, 245, 255, 0.05),
+      inset 0 1px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Light mode glow effects - darker shadows with lower opacity */
+  .light .glow-cyan {
+    box-shadow:
+      0 0 20px rgba(0, 245, 255, 0.15),
+      0 0 40px rgba(0, 245, 255, 0.05);
+  }
+
+  .light .glow-purple {
+    box-shadow:
+      0 0 20px rgba(168, 85, 247, 0.15),
+      0 0 40px rgba(168, 85, 247, 0.05);
+  }
+
+  .light .glow-green {
+    box-shadow:
+      0 0 20px rgba(34, 197, 94, 0.15),
+      0 0 40px rgba(34, 197, 94, 0.05);
   }
 
   /* Priority border colors */

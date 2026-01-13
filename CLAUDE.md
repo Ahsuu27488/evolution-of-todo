@@ -238,4 +238,5 @@ Dapr sidecar patterns (planned):
 - Service discovery for microservices
 
 ## Recent Changes
+- 009-light-mode-theme: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 008-dashboard-ui-overhaul: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
