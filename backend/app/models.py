@@ -9,12 +9,14 @@ This module defines:
 Per data-model.md specification.
 """
 
+import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
-from sqlalchemy import Column, DateTime, func, JSON
+from sqlalchemy import Column, DateTime, func, case as sql_case
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field as SQLField, Relationship
 
 
@@ -82,7 +84,7 @@ class TaskBase(SQLModel):
     )
     tags: list[Tag] = SQLField(
         default_factory=list,
-        sa_column=Column(JSON),
+        sa_column=Column(JSONB),
         description="Task tags with colors (JSONB)",
     )
     due_date: Optional[datetime] = SQLField(
@@ -151,7 +153,7 @@ class TaskLogBase(SQLModel):
     action: Action = SQLField(description="Action performed on task")
     changed_fields: dict[str, Any] = SQLField(
         default_factory=dict,
-        sa_column=Column(JSON),
+        sa_column=Column(JSONB),
         description="Before/after values of changed fields",
     )
 
@@ -182,6 +184,37 @@ class TaskLog(TaskLogBase, table=True):
 
     # Relationships
     task: Task = Relationship(back_populates="logs")
+
+
+# =============================================================================
+# User Models
+# =============================================================================
+
+class User(SQLModel, table=True):
+    """Database model for users.
+
+    Stores user credentials for authentication.
+    The id field uses UUID as string for compatibility with Better Auth.
+    """
+    __tablename__ = "users"
+
+    id: str = SQLField(
+        default_factory=lambda: str(uuid.uuid4()),
+        primary_key=True,
+        description="UUID string for user identification",
+    )
+    email: str = SQLField(
+        index=True,
+        unique=True,
+        max_length=255,
+        description="User email (unique)",
+    )
+    hashed_password: str = SQLField(description="Bcrypt hashed password")
+    name: str = SQLField(max_length=100, description="User display name")
+    created_at: datetime = SQLField(
+        default_factory=datetime.utcnow,
+        description="Account creation timestamp",
+    )
 
 
 # =============================================================================

@@ -16,7 +16,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, desc, asc
+from sqlalchemy import select, or_, and_, desc, asc, case as sql_case, String, cast
 
 from app.db import get_session
 from app.models import (
@@ -124,15 +124,6 @@ async def create_task_log(
     session.add(log)
 
 
-def priority_sort_value(priority: str) -> int:
-    """Convert priority to sortable numeric value.
-
-    HIGH = 0, MEDIUM = 1, LOW = 2 (for ascending sort where HIGH comes first)
-    """
-    order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-    return order.get(priority, 1)
-
-
 # =============================================================================
 # Task Endpoints
 # =============================================================================
@@ -207,23 +198,27 @@ async def list_tasks(
     offset = (page - 1) * per_page
 
     if sort_by == SortField.PRIORITY:
-        # Special handling for priority enum sort
-        # Fetch all matching tasks, sort in Python, then paginate
-        tasks_result = await session.execute(statement)
-        tasks = tasks_result.scalars().all()
-        tasks.sort(key=lambda t: priority_sort_value(t.priority), reverse=(sort_order == SortOrder.DESC))
-        # Apply pagination after sorting
-        tasks = tasks[offset:offset + per_page]
+        # Use SQL CASE for database-level priority sorting
+        # HIGH=1, MEDIUM=2, LOW=3 for ascending order
+        # Cast to VARCHAR to avoid enum type issues with prepared statements
+        priority_order = sql_case(
+            (cast(Task.priority, String) == "HIGH", 1),
+            (cast(Task.priority, String) == "MEDIUM", 2),
+            (cast(Task.priority, String) == "LOW", 3),
+            else_=4
+        )
+        order_func = desc if sort_order == SortOrder.DESC else asc
+        statement = statement.order_by(order_func(priority_order))
     else:
         statement = statement.order_by(
             desc(sort_column) if sort_order == SortOrder.DESC else asc(sort_column)
         )
 
-        # Apply pagination
-        statement = statement.offset(offset).limit(per_page)
+    # Apply pagination (now consistent for all sort types)
+    statement = statement.offset(offset).limit(per_page)
 
-        tasks_result = await session.execute(statement)
-        tasks = tasks_result.scalars().all()
+    tasks_result = await session.execute(statement)
+    tasks = tasks_result.scalars().all()
 
     logger.debug(f"Found {len(tasks)} tasks for user {current_user_id} (total: {total})")
 

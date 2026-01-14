@@ -1,7 +1,7 @@
-"""Authentication routes for user signup, login, and logout.
+"""Authentication routes backed by PostgreSQL database.
 
-These endpoints work with Better Auth on the frontend.
-The backend stores user credentials and issues JWT tokens for API access.
+Replaces in-memory storage with database persistence to fix
+issues with data loss on server restart.
 
 Per contracts/backend-api.yaml specification.
 """
@@ -9,7 +9,6 @@ Per contracts/backend-api.yaml specification.
 import logging
 import uuid
 from datetime import datetime
-from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -17,10 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.models import (
-    Action,
+    User,
     LoginResponse,
-    TaskLog,
-    TaskLogPublic,
     UserCreate,
     UserLogin,
     UserPublic,
@@ -38,53 +35,49 @@ router = APIRouter()
 
 
 # =============================================================================
-# User Table (Simple in-memory for Phase II)
+# Database Helpers
 # =============================================================================
 
-# For Phase II, we'll use a simple dict-based user store.
-# In production with Better Auth, users table is managed by Better Auth.
-# This is a minimal implementation for standalone backend auth.
-# Users are stored by UUID, with a separate email index for lookups.
+async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    """Fetch user from database by email.
 
-_users_store: dict[str, dict] = {}  # user_id (UUID) -> user data
-_email_index: dict[str, str] = {}  # email -> user_id mapping
+    Args:
+        session: Async database session
+        email: User email to look up
 
-
-def get_user_by_id(user_id: str) -> dict | None:
-    """Get user by ID from in-memory store."""
-    return _users_store.get(user_id)
-
-
-def get_user_by_email(email: str) -> dict | None:
-    """Get user by email from in-memory store."""
-    user_id = _email_index.get(email)
-    if user_id:
-        return _users_store.get(user_id)
-    return None
+    Returns:
+        User object if found, None otherwise
+    """
+    statement = select(User).where(User.email == email)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none()
 
 
-def create_user(user_data: dict) -> dict:
-    """Create a new user in the in-memory store."""
-    email = user_data["email"]
-    user_id = user_data["id"]
-    if email in _email_index:
-        raise ValueError("Email already registered")
-    _users_store[user_id] = user_data
-    _email_index[email] = user_id
-    return user_data
+async def get_user_by_uuid(session: AsyncSession, user_id: str) -> User | None:
+    """Fetch user from database by ID.
+
+    Args:
+        session: Async database session
+        user_id: User UUID string to look up
+
+    Returns:
+        User object if found, None otherwise
+    """
+    statement = select(User).where(User.id == user_id)
+    result = await session.execute(statement)
+    return result.scalar_one_or_none()
 
 
 # =============================================================================
 # Routes
 # =============================================================================
 
-
 @router.post("/signup", status_code=status.HTTP_201_CREATED, response_model=UserPublic)
 async def signup(
     user_data: UserCreate,
     session: AsyncSession = Depends(get_session),
 ) -> UserPublic:
-    """Register a new user account.
+    """Register a new user account in the database.
 
     Args:
         user_data: User registration data (email, password, name)
@@ -94,77 +87,75 @@ async def signup(
         Created user information
 
     Raises:
-        HTTPException: If email is already registered
+        HTTPException: If email is already registered (409 Conflict)
     """
-    # Check if email already exists
-    existing = get_user_by_email(user_data.email)
+    # Check if email already exists in database
+    existing = await get_user_by_email(session, user_data.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
 
-    # Hash password
+    # Hash password using bcrypt
     hashed_password = get_password_hash(user_data.password)
 
-    # Create user with proper UUID as user_id
-    user_id = str(uuid.uuid4())
-    user = {
-        "id": user_id,
-        "email": user_data.email,
-        "name": user_data.name,
-        "hashed_password": hashed_password,
-        "created_at": datetime.utcnow(),
-    }
+    # Create new User instance with UUID as string
+    new_user = User(
+        id=str(uuid.uuid4()),
+        email=user_data.email,
+        name=user_data.name,
+        hashed_password=hashed_password,
+        created_at=datetime.utcnow(),
+    )
 
-    create_user(user)
+    session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
 
     logger.info(f"New user registered: {user_data.email}")
 
     return UserPublic(
-        id=user_id,
-        email=user_data.email,
-        name=user_data.name,
-        created_at=user["created_at"],
+        id=new_user.id,
+        email=new_user.email,
+        name=new_user.name,
+        created_at=new_user.created_at,
     )
 
 
 @router.post("/signin", response_model=LoginResponse)
 async def signin(
     credentials: UserLogin,
+    session: AsyncSession = Depends(get_session),
 ) -> LoginResponse:
-    """Authenticate user and return JWT token.
+    """Authenticate user against database and return JWT token.
 
     Args:
         credentials: User login credentials (email, password)
+        session: Database session
 
     Returns:
         JWT access token and user information
 
     Raises:
-        HTTPException: If credentials are invalid
+        HTTPException: If credentials are invalid (401 Unauthorized)
     """
-    # Get user
-    user = get_user_by_email(credentials.email)
-    if not user:
+    # Get user from database by email
+    user = await get_user_by_email(session, credentials.email)
+
+    # Verify user exists and password matches
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
-    # Verify password
-    if not verify_password(credentials.password, user["hashed_password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-
-    # Create JWT token
+    # Create JWT token with user claims
     access_token = create_access_token(
         data={
-            "sub": user["id"],
-            "email": user["email"],
-            "name": user["name"],
+            "sub": user.id,
+            "email": user.email,
+            "name": user.name,
         }
     )
 
@@ -174,10 +165,10 @@ async def signin(
         access_token=access_token,
         token_type="bearer",
         user=UserPublic(
-            id=user["id"],
-            email=user["email"],
-            name=user["name"],
-            created_at=user.get("created_at"),
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            created_at=user.created_at,
         ),
     )
 
@@ -187,7 +178,7 @@ async def signout(user_id: str = Depends(get_current_user_id)) -> dict:
     """Logout user (client-side token invalidation).
 
     Args:
-        user_id: Authenticated user ID
+        user_id: Authenticated user ID from JWT
 
     Returns:
         Success message
@@ -204,28 +195,33 @@ async def signout(user_id: str = Depends(get_current_user_id)) -> dict:
 @router.get("/me", response_model=UserPublic)
 async def get_current_user(
     user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
 ) -> UserPublic:
-    """Get current authenticated user information.
+    """Get current authenticated user from database.
 
     Args:
         user_id: Authenticated user ID from JWT (UUID string)
+        session: Database session
 
     Returns:
         Current user information
 
     Raises:
-        HTTPException: If user not found
+        HTTPException: If user not found (404 Not Found)
     """
-    user = get_user_by_id(user_id)  # Look up by UUID
+    user = await get_user_by_uuid(session, user_id)
+
     if not user:
+        # This handles the case where a token is valid, but the user
+        # was deleted from the database
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
 
     return UserPublic(
-        id=user["id"],
-        email=user["email"],
-        name=user["name"],
-        created_at=user.get("created_at"),
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        created_at=user.created_at,
     )
