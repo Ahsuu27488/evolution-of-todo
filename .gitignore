@@ -25,6 +25,11 @@ wheels/
 venv/
 ENV/
 env/
+backend/.venv
+backend/env/
+frontend/.venv
+frontend/env/
+
 
 # UV
 .uv/

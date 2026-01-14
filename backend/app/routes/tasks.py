@@ -16,7 +16,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, desc, asc, case as sql_case, String, cast
+from sqlalchemy import select, or_, and_, desc, asc, case as sql_case, String, cast, func
 
 from app.db import get_session
 from app.models import (
@@ -182,10 +182,8 @@ async def list_tasks(
     if due_after:
         statement = statement.where(Task.due_date >= due_after)
 
-    # Get total count before pagination
-    count_statement = select(Task.id).select_from(statement.subquery())
-    total_result = await session.execute(count_statement)
-    total = len(total_result.all())
+    # Get total count before pagination (use func.count for efficiency)
+    total = await session.scalar(select(func.count()).select_from(statement.subquery()))
 
     # Apply sorting
     sort_column = {
@@ -311,9 +309,8 @@ async def search_tasks(
         )
     ).order_by(Task.created_at.desc())
 
-    # Get total count
-    count_result = await session.execute(select(Task.id).select_from(statement.subquery()))
-    total = len(count_result.all())
+    # Get total count (use func.count for efficiency)
+    total = await session.scalar(select(func.count()).select_from(statement.subquery()))
 
     # Apply pagination
     offset = (page - 1) * per_page
