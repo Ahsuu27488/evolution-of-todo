@@ -18,8 +18,16 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { loginSchema, type LoginInput } from "@/lib/validations/auth"
-import { signInAction } from "@/app/actions/auth"
+import { signIn } from "@/lib/auth-client"
 
+/**
+ * Login Form using Better Auth
+ *
+ * Per Context7 documentation:
+ * - Uses authClient.signIn.email() for authentication
+ * - Session cookies are handled automatically
+ * - Redirects to dashboard on success via callbackURL
+ */
 export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -36,7 +44,15 @@ export function LoginForm() {
 
     try {
       console.log("Submitting login for:", data.email)
-      const result = await signInAction(data.email, data.password)
+
+      // Use Better Auth's signIn.email() method
+      // Per Context7: authClient.signIn.email({ email, password, rememberMe, callbackURL })
+      const result = await signIn({
+        email: data.email,
+        password: data.password,
+        rememberMe: true,
+      })
+
       console.log("SignIn result:", result)
 
       if (result.error) {
@@ -46,10 +62,13 @@ export function LoginForm() {
         return
       }
 
+      // Success - Better Auth handles redirect via callbackURL
       toast.success("Welcome back!")
-      console.log("Redirecting to dashboard...")
-      // Use window.location.href for a hard redirect
-      window.location.href = "/dashboard"
+
+      // Manual redirect as backup (Better Auth should handle via callbackURL)
+      setTimeout(() => {
+        window.location.href = "/dashboard"
+      }, 500)
     } catch (error) {
       console.error("Login error:", error)
       toast.error("Something went wrong. Please try again.")

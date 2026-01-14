@@ -9,6 +9,10 @@
  * Shows different content based on authentication state:
  * - Logged out: "Start Your Journey" and "Sign In" buttons
  * - Logged in: "Welcome back" message and "Go to Dashboard" button
+ *
+ * Per Context7 Better Auth docs:
+ * - Uses authClient.useSession() for client-side session state
+ * - Returns { data, isPending, error }
  */
 
 import { Button } from "@/components/ui/button"
@@ -16,33 +20,19 @@ import { Link } from "next-view-transitions"
 import { motion } from "framer-motion"
 import { Sparkles, Mic, Zap, Shield, Rocket, ChevronRight, ArrowRight } from "lucide-react"
 import { fadeInUp, staggerContainer } from "@/lib/animations"
-import { useEffect, useState } from "react"
-import { getCurrentUser } from "@/lib/auth-client"
-import type { User } from "@/lib/auth-client"
 import { HeroHeader } from "./hero-header"
+import { authClient } from "@/lib/auth-client"
 
 interface HeroSectionProps {
   className?: string
 }
 
 export function HeroSection({ className = "" }: HeroSectionProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // Per Context7: Use authClient.useSession() for client-side session state
+  const { data: session, isPending } = authClient.useSession()
 
-  useEffect(() => {
-    // Check auth state on mount
-    const currentUser = getCurrentUser()
-    setUser(currentUser)
-    setIsLoading(false)
-
-    // Listen for storage changes (e.g., logout from another tab)
-    const handleStorageChange = () => {
-      setUser(getCurrentUser())
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
+  const user = session?.user || null
+  const isLoading = isPending
   return (
     <div className={`min-h-screen relative overflow-hidden ${className}`}>
       {/* Unified header with logo, theme toggle, and sign in */}

@@ -1,231 +1,122 @@
 /**
- * Backend-centric Auth Client
+ * Better Auth Client Configuration
  *
- * This client handles authentication by calling the FastAPI backend endpoints.
- * All auth operations (signup, signin, signout) flow through the backend.
+ * This uses Better Auth's createAuthClient for client-side authentication.
+ * Per Better Auth documentation from Context7:
+ * - Uses authClient.signUp.email() for signup
+ * - Uses authClient.signIn.email() for signin
+ * - Uses authClient.useSession() for session state
+ * - Session cookies are handled automatically via nextCookies plugin
  *
- * Architecture:
- * - Frontend calls backend /api/auth/* endpoints
- * - Backend manages users in database and issues JWT tokens
- * - Frontend stores JWT for subsequent API calls
- *
- * JWT Flow:
- * 1. POST /api/auth/signup → Creates user, returns JWT
- * 2. POST /api/auth/signin → Validates credentials, returns JWT
- * 3. Frontend stores JWT in localStorage
- * 4. All API calls include: Authorization: Bearer <JWT>
+ * References:
+ * - https://context7.com/better-auth/better-auth
  */
 
-// =============================================================================
-// Configuration
-// =============================================================================
+import { createAuthClient } from "better-auth/client"
+import { inferAdditionalFields } from "better-auth/client/plugins"
+import type { auth } from "./auth"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+/**
+ * Better Auth Client Instance
+ *
+ * Per Context7 docs: The client automatically handles session cookies
+ * via the nextCookies plugin configured in lib/auth.ts
+ */
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  plugins: [
+    // Infer additional fields from server configuration
+    inferAdditionalFields<typeof auth>(),
+  ],
+})
 
-// =============================================================================
-// Types
-// =============================================================================
+/**
+ * Session Type
+ * Inferred from Better Auth client for type safety
+ */
+export type Session = typeof authClient.$Infer.Session
 
-export interface User {
-  id: string
-  email: string
-  name: string
-  created_at: string
-}
+/**
+ * User Type
+ * Inferred from Better Auth client
+ */
+export type User = typeof authClient.$Infer.Session.user
 
-export interface Session {
-  user: User
-  token: string
-}
+/**
+ * React Hook for Session
+ * Per Context7: Call authClient.useSession() directly
+ *
+ * Usage:
+ * ```tsx
+ * import { authClient } from "@/lib/auth-client"
+ * const { data: session, isPending, error } = authClient.useSession()
+ * ```
+ *
+ * Note: useSession is a method on authClient, not a standalone export
+ */
 
-export interface SignInCredentials {
+/**
+ * Sign Up with Email and Password
+ * Per Context7 docs:
+ * ```ts
+ * await authClient.signUp.email({
+ *   email,
+ *   password,
+ *   name,
+ *   callbackURL: "/dashboard"
+ * })
+ * ```
+ */
+export async function signUp(data: {
   email: string
   password: string
-}
-
-export interface SignUpCredentials extends SignInCredentials {
   name: string
-}
-
-export interface AuthResult {
-  success: boolean
-  data?: Session
-  error?: string
-}
-
-// =============================================================================
-// Local Storage Helpers
-// =============================================================================
-
-const SESSION_KEY = "auth_session"
-const TOKEN_KEY = "auth_token"
-
-function saveSession(session: Session): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-    localStorage.setItem(TOKEN_KEY, session.token)
-  }
-}
-
-function getSession(): Session | null {
-  if (typeof window !== "undefined") {
-    const data = localStorage.getItem(SESSION_KEY)
-    if (data) {
-      try {
-        return JSON.parse(data)
-      } catch {
-        return null
-      }
-    }
-  }
-  return null
-}
-
-function clearSession(): void {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem(SESSION_KEY)
-    localStorage.removeItem(TOKEN_KEY)
-  }
-}
-
-// =============================================================================
-// Auth Client
-// =============================================================================
-
-/**
- * Sign up a new user
- */
-export async function signUp(credentials: SignUpCredentials): Promise<AuthResult> {
-  try {
-    const response = await fetch(`${API_URL}/api/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Signup failed" }))
-      return {
-        success: false,
-        error: error.detail || error.message || "Signup failed",
-      }
-    }
-
-    await response.json() // Parse user data but use signIn response instead
-
-    // After signup, automatically sign in to get token
-    return signIn({ email: credentials.email, password: credentials.password })
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Network error",
-    }
-  }
+}) {
+  return authClient.signUp.email({
+    ...data,
+    callbackURL: "/dashboard",
+  })
 }
 
 /**
- * Sign in with email and password
+ * Sign In with Email and Password
+ * Per Context7 docs:
+ * ```ts
+ * await authClient.signIn.email({
+ *   email,
+ *   password,
+ *   rememberMe: true,
+ *   callbackURL: "/dashboard"
+ * })
+ * ```
  */
-export async function signIn(credentials: SignInCredentials): Promise<AuthResult> {
-  try {
-    const response = await fetch(`${API_URL}/api/auth/signin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credentials),
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Sign in failed" }))
-      return {
-        success: false,
-        error: error.detail || error.message || "Invalid credentials",
-      }
-    }
-
-    const data = await response.json()
-    const session: Session = {
-      user: data.user,
-      token: data.access_token,
-    }
-
-    saveSession(session)
-    return { success: true, data: session }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Network error",
-    }
-  }
+export async function signIn(data: {
+  email: string
+  password: string
+  rememberMe?: boolean
+}) {
+  return authClient.signIn.email({
+    ...data,
+    callbackURL: "/dashboard",
+  })
 }
 
 /**
- * Sign out current user
+ * Sign Out
+ * Per Context7 docs:
+ * ```ts
+ * await authClient.signOut()
+ * ```
  */
-export async function signOut(): Promise<void> {
-  try {
-    const session = getSession()
-    if (session) {
-      await fetch(`${API_URL}/api/auth/signout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.token}`,
-        },
-      })
-    }
-  } catch {
-    // Ignore signout API errors
-  } finally {
-    clearSession()
-  }
-}
-
-/**
- * Get current session
- */
-export function getClientSession(): Session | null {
-  return getSession()
-}
-
-/**
- * Get current user
- */
-export function getCurrentUser(): User | null {
-  const session = getSession()
-  return session?.user || null
-}
-
-/**
- * Get JWT token for API calls
- */
-export function getAuthToken(): string | null {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem(TOKEN_KEY)
-  }
-  return null
-}
-
-/**
- * Check if user is authenticated
- */
-export function isAuthenticated(): boolean {
-  return getSession() !== null
-}
-
-// =============================================================================
-// React Hook (for backward compatibility)
-// =============================================================================
-
-/**
- * Simple session hook for React components
- * Note: This won't auto-update like Better Auth's hook
- */
-export function useSession() {
-  const session = getSession()
-
-  return {
-    data: session,
-    isPending: false,
-    error: null,
-  }
+export async function signOut() {
+  return authClient.signOut({
+    fetchOptions: {
+      onSuccess: () => {
+        // Redirect to home after sign out
+        if (typeof window !== "undefined") {
+          window.location.href = "/"
+        }
+      },
+    },
+  })
 }

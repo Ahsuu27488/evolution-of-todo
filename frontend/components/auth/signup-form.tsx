@@ -18,8 +18,16 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { signupSchema, type SignupInput } from "@/lib/validations/auth"
-import { signUpAction } from "@/app/actions/auth"
+import { signUp } from "@/lib/auth-client"
 
+/**
+ * Signup Form using Better Auth
+ *
+ * Per Context7 documentation:
+ * - Uses authClient.signUp.email() for registration
+ * - Session cookies are handled automatically
+ * - Redirects to dashboard on success via callbackURL
+ */
 export function SignupForm() {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -37,29 +45,39 @@ export function SignupForm() {
 
     try {
       console.log("Submitting signup for:", data.email)
-      const result = await signUpAction(
-        data.email,
-        data.password,
-        data.email.split("@")[0] // Use email prefix as name
-      )
+
+      // Use Better Auth's signUp.email() method
+      // Per Context7: authClient.signUp.email({ email, password, name, callbackURL })
+      const result = await signUp({
+        email: data.email,
+        password: data.password,
+        name: data.email.split("@")[0], // Use email prefix as name
+      })
+
       console.log("SignUp result:", result)
 
       if (result.error) {
         // Handle specific error cases
-        if (result.error.toLowerCase().includes("already") ||
-            result.error.toLowerCase().includes("registered")) {
+        const errorMessage = result.error.message || result.error.toString()
+        if (errorMessage.toLowerCase().includes("already") ||
+            errorMessage.toLowerCase().includes("exists") ||
+            errorMessage.toLowerCase().includes("registered")) {
           toast.error("An account with this email already exists")
         } else {
-          toast.error(result.error || "Failed to create account")
+          toast.error(errorMessage || "Failed to create account")
         }
         setIsLoading(false)
         return
       }
 
+      // Success - Better Auth handles redirect via callbackURL
+      // But we show a toast for feedback
       toast.success("Account created successfully!")
-      console.log("Redirecting to dashboard...")
-      // Use window.location.href for a hard redirect
-      window.location.href = "/dashboard"
+
+      // Manual redirect as backup (Better Auth should handle via callbackURL)
+      setTimeout(() => {
+        window.location.href = "/dashboard"
+      }, 500)
     } catch (error) {
       console.error("Signup error:", error)
       toast.error("Something went wrong. Please try again.")

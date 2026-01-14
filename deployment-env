@@ -1,0 +1,17 @@
+secrets backend: On huggingface.co
+
+BETTER_AUTH_SECRET="mlHt/eQkNbw8oSExN56WdGS0dxwBdNGtMtG0XJ7jveE="
+CORS_ORIGINS=https://evolution-of-todo-tau.vercel.app
+DATABASE_URL="postgresql://neondb_owner:npg_cXY2EI8DAqhx@ep-fragrant-firefly-ahri4549-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+FRONTEND_URL=https://evolution-of-todo-tau.vercel.app
+
+
+frontend: On vercel
+
+BETTER_AUTH_ISSUER=https://evolution-of-todo-tau.vercel.app
+BETTER_AUTH_AUDIENCE=https://ahsuu27488-evolution-of-todo-api.hf.space
+NEXT_PUBLIC_API_URL=https://ahsuu27488-evolution-of-todo-api.hf.space
+BETTER_AUTH_URL=https://evolution-of-todo-tau.vercel.app
+DATABASE_URL=postgresql://neondb_owner:npg_cXY2EI8DAqhx@ep-fragrant-firefly-ahri4549.c-3.us-east-1.aws.neon.tech/neondb
+BETTER_AUTH_SECRET=mlHt/eQkNbw8oSExN56WdGS0dxwBdNGtMtG0XJ7jveE=
+NEXT_PUBLIC_APP_URL=https://evolution-of-todo-tau.vercel.app
