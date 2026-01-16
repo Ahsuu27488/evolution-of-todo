@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -33,6 +34,7 @@ export function TaskActions({ task }: TaskActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const queryClient = useQueryClient()
 
   async function handleDelete() {
     setIsDeleting(true)
@@ -42,6 +44,8 @@ export function TaskActions({ task }: TaskActionsProps) {
         toast.error(result.error?.message || "Failed to delete task")
         return
       }
+      // Invalidate TanStack Query cache to refetch tasks
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
       toast.success("Task deleted")
     } catch {
       toast.error("Failed to delete task")

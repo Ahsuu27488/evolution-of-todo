@@ -18,6 +18,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { Check, Calendar, Tag, Repeat2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -55,6 +56,7 @@ const priorityBadgeColors = {
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [optimisticCompleted, setOptimisticCompleted] = useState(task.completed)
+  const queryClient = useQueryClient()
 
   async function handleToggleComplete() {
     if (isUpdating) return
@@ -76,6 +78,9 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
         // Rollback on error
         setOptimisticCompleted(task.completed)
         toast.error(result.error?.message || "Failed to update task")
+      } else {
+        // Invalidate TanStack Query cache to refetch tasks
+        queryClient.invalidateQueries({ queryKey: ["tasks"] })
       }
     } catch {
       // Rollback on error

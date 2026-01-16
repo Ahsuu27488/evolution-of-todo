@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import { Loader2, Plus, Sparkles, Repeat2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -84,6 +85,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const isEditing = !!task
+  const queryClient = useQueryClient()
 
   const form = useForm<TaskCreateInput>({
     resolver: zodResolver(taskCreateSchema),
@@ -109,6 +111,9 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
         toast.error(result.error?.message || `Failed to ${isEditing ? "update" : "create"} task`)
         return
       }
+
+      // Invalidate TanStack Query cache to refetch tasks
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
 
       toast.success(isEditing ? "Task updated" : "Task created")
       form.reset()
