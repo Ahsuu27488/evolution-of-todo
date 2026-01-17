@@ -49,12 +49,29 @@ function toDateTimeLocalValue(isoString: string | null): string {
 
 /**
  * Format datetime-local input value to ISO 8601 string
+ *
+ * The datetime-local input gives us "YYYY-MM-DDTHH:mm" which is in local time.
+ * We need to convert this to ISO 8601 while preserving the local time.
  */
 function fromDateTimeLocalValue(localValue: string): string {
   if (!localValue) return ""
 
-  const date = new Date(localValue)
-  return date.toISOString()
+  // Parse the datetime-local value (format: YYYY-MM-DDTHH:mm)
+  const [datePart, timePart] = localValue.split("T")
+  if (!datePart || !timePart) return ""
+
+  const [year, month, day] = datePart.split("-").map(Number)
+  const [hours, minutes] = timePart.split(":").map(Number)
+
+  // Create Date object using local time components
+  const date = new Date(year, month - 1, day, hours, minutes)
+
+  // Return ISO string but ensure it represents the local time that was selected
+  // by adding the timezone offset
+  const tzOffset = date.getTimezoneOffset() * 60000 // offset in milliseconds
+  const localISOTime = new Date(date.getTime() - tzOffset).toISOString()
+
+  return localISOTime
 }
 
 /**
