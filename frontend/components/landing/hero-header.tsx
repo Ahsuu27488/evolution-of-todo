@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { BrandLogo } from "@/components/layout/brand-logo"
+import { UserNav } from "@/components/layout/user-nav"
 import { ChevronRight } from "lucide-react"
-import type { User } from "@/lib/auth-client"
+import type { User } from "./hero-section"
 
 interface HeroHeaderProps {
   user: User | null
@@ -51,17 +52,25 @@ export function HeroHeader({ user, isLoading }: HeroHeaderProps) {
         {/* Logo */}
         <BrandLogo />
 
-        {/* Right side: Theme toggle + optional Sign In */}
+        {/* Right side: Theme toggle + Sign In (logged out) or UserNav (logged in) */}
         <div className="flex items-center gap-3 px-2">
           <ThemeToggle />
 
-          {!isLoading && !user && (
-            <Button asChild size="sm" variant="outline" className="glass">
-              <Link href="/login">
-                Sign In
-                <ChevronRight className="h-4 w-5 ml-1" />
-              </Link>
-            </Button>
+          {!isLoading && (
+            <>
+              {user ? (
+                // Logged in: Show profile icon with dropdown
+                <UserNav user={user} />
+              ) : (
+                // Logged out: Show Sign In button
+                <Button asChild size="sm" variant="outline" className="glass">
+                  <Link href="/login">
+                    Sign In
+                    <ChevronRight className="h-4 w-5 ml-1" />
+                  </Link>
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>

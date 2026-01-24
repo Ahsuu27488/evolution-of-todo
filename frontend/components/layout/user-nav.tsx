@@ -32,6 +32,14 @@ export function UserNav({ user }: UserNavProps) {
     const result = await signOutAction()
     if (result.success) {
       toast.success("Signed out successfully")
+
+      // Dispatch logout event for cross-tab communication
+      window.dispatchEvent(new CustomEvent("auth-logout"))
+
+      // Also set storage for tabs listening to storage events
+      localStorage.setItem("auth_logout", "true")
+      localStorage.removeItem("auth_logout") // Clean up immediately
+
       router.push("/login")
     } else {
       toast.error("Failed to sign out")

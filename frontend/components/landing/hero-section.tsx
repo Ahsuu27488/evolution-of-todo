@@ -9,6 +9,10 @@
  * Shows different content based on authentication state:
  * - Logged out: "Start Your Journey" and "Sign In" buttons
  * - Logged in: "Welcome back" message and "Go to Dashboard" button
+ *
+ * HYBRID APPROACH:
+ * - Receives initialUser from server (no loading flash)
+ * - Listens for logout events to update client state
  */
 
 import { Button } from "@/components/ui/button"
@@ -17,31 +21,44 @@ import { motion } from "framer-motion"
 import { Sparkles, Mic, Zap, Shield, Rocket, ChevronRight, ArrowRight } from "lucide-react"
 import { fadeInUp, staggerContainer } from "@/lib/animations"
 import { useEffect, useState } from "react"
-import { getCurrentUser } from "@/lib/auth-client"
-import type { User } from "@/lib/auth-client"
 import { HeroHeader } from "./hero-header"
 
+export interface User {
+  id: string
+  email: string
+  name: string
+}
+
 interface HeroSectionProps {
+  initialUser: User | null
   className?: string
 }
 
-export function HeroSection({ className = "" }: HeroSectionProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
+  // Initialize with server-provided user data (no flash!)
+  const [user, setUser] = useState<User | null>(initialUser)
+  const isLoading = false // Server has data instantly, no loading state needed
 
   useEffect(() => {
-    // Check auth state on mount
-    const currentUser = getCurrentUser()
-    setUser(currentUser)
-    setIsLoading(false)
-
-    // Listen for storage changes (e.g., logout from another tab)
-    const handleStorageChange = () => {
-      setUser(getCurrentUser())
+    // Listen for logout events (e.g., from another tab or dashboard)
+    const handleLogout = () => {
+      setUser(null)
     }
 
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
+    // Custom event that signout action will dispatch
+    window.addEventListener("auth-logout", handleLogout)
+
+    // Also listen for storage changes (logout from another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "auth_logout" && e.newValue === "true") {
+        setUser(null)
+      }
+    }
+
+    return () => {
+      window.removeEventListener("auth-logout", handleLogout)
+      window.removeEventListener("storage", handleStorageChange)
+    }
   }, [])
   return (
     <div className={`min-h-screen relative overflow-hidden ${className}`}>

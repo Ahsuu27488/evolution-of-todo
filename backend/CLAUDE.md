@@ -284,7 +284,7 @@ When a recurring task is marked complete:
 3. Create new task with same properties, new due date
 4. Log `RECURRED` action with parent task ID
 
-**Location**: `routes/tasks.py:498-541` (toggle_task_complete)
+**Location**: `routes/tasks.py:453-537` (toggle_task_complete)
 
 ## Extension Points for Phase III
 
