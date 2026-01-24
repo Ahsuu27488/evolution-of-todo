@@ -2,14 +2,15 @@
 ================================================================================
 SYNC IMPACT REPORT
 ================================================================================
-Version Change: 1.1.0 -> 1.2.0 (MINOR - added explicit strict requirement)
+Version Change: 1.3.0 -> 1.4.0 (MINOR - elevated Context7 to primary source of truth)
 Modified Principles:
-  - Section V.1 "Core Stack (All Phases)": Python version requirement made explicit
+  - Section III.1 "Context7 MCP Mandate": Strengthened to establish Context7 as PRIMARY source of truth
+  - Section II.2 "Required Actions": Updated to reference Context7 as primary source
 Added Sections:
-  - V.1.1 "Python Version Enforcement" - New strict requirement section
+  - III.1.2 "Context7 Primary Source Priority" - New core directive for all coding tasks
 Removed Sections: None
 Templates Status:
-  - .specify/templates/plan-template.md: No changes needed (already references language version)
+  - .specify/templates/plan-template.md: No changes needed
   - .specify/templates/spec-template.md: No changes needed
   - .specify/templates/tasks-template.md: No changes needed
   - Command files: None exist (verified)
@@ -83,11 +84,12 @@ Before any `/sp.implement` command:
 - **No deviation from approved specifications**
 - **No code generation without Task ID reference**
 - **No architecture changes without Plan update**
+- **No reliance on training data for external libraries** - Use Context7 instead
 
 ### 2.2 Required Actions
 - Reference Task IDs in all code comments: `[Task]: T-XXX`
 - Link code to spec sections: `[From]: spec.md §X.X, plan.md §X.X`
-- Use Context7 MCP for ALL external library/framework documentation
+- **Treat Context7 as PRIMARY source of truth for ALL coding tasks** (see §III.1)
 - Create PHR (Prompt History Record) after every significant interaction
 - Suggest ADRs for architecturally significant decisions
 
@@ -102,19 +104,151 @@ Invoke the user for input when encountering:
 
 ## III. Knowledge & Documentation Protocol
 
-### 3.1 Context7 MCP Mandate (CRITICAL)
-**ALWAYS use Context7 MCP tools to retrieve official documentation** before using ANY:
-- Framework (FastAPI, Next.js, SQLModel, Dapr, etc.)
-- Library (OpenAI Agents SDK, MCP SDK, kafka-python, etc.)
-- Service (Neon DB, Kubernetes, Helm, Docker, etc.)
-- Tool (kubectl-ai, kagent, Gordon, etc.)
+### 3.1 Context7 MCP Mandate (CRITICAL - PRIMARY SOURCE OF TRUTH)
 
-**Workflow:**
+**CORE DIRECTIVE: Context7 is the PRIMARY source of truth for ALL coding tasks.**
+
+For **ALL coding activities** - including code generation, refactoring, or debugging - you MUST:
+
+1. **Treat Context7 as the authoritative source** for patterns, syntax, and APIs
+2. **Explicitly prioritize Context7 documentation over internal training data**
+3. **Retrieve current documentation before using ANY**:
+   - Framework (FastAPI, Next.js, SQLModel, Dapr, etc.)
+   - Library (OpenAI Agents SDK, MCP SDK, kafka-python, etc.)
+   - Service (Neon DB, Kubernetes, Helm, Docker, etc.)
+   - Tool (kubectl-ai, kagent, Gordon, etc.)
+
+**Mandatory Workflow:**
 1. `mcp__plugin_context7_context7__resolve-library-id` - Get library ID
-2. `mcp__plugin_context7_context7__get-library-docs` - Fetch current docs
-3. Apply retrieved patterns and APIs in implementation
+2. `mcp__plugin_context7_context7__query-docs` - Fetch current docs
+3. **Apply ONLY retrieved patterns and APIs** in implementation
+4. **Never rely on training data** for external library usage
 
-**Never assume knowledge from training data for external tools.**
+**Priority Hierarchy:**
+```
+Context7 Documentation (CURRENT) > Training Data (POTENTIALLY STALE)
+```
+
+**Why Context7 is Primary:**
+- Training data has a knowledge cutoff (January 2025)
+- Frameworks evolve rapidly with breaking changes
+- Official docs contain current best practices and deprecation notices
+- APIs change between versions (e.g., FastAPI 0.100 vs 0.115)
+- Context7 provides real-time access to latest documentation
+
+**Prohibited Actions:**
+- ❌ Writing code based solely on training data knowledge
+- ❌ Assuming APIs without verifying in Context7
+- ❌ Using deprecated patterns or syntax
+- ❌ Guessing parameter names or function signatures
+
+### 3.1.1 Context7 Primary Source Priority (MANDATORY)
+
+**APPLIES TO: ALL coding tasks without exception**
+
+**Scope:**
+This requirement applies to **EVERY** instance of:
+- **Code Generation**: Writing new code with external libraries
+- **Refactoring**: Modifying existing code that uses external libraries
+- **Debugging**: Investigating errors related to external libraries
+- **Architecture Design**: Choosing between libraries or frameworks
+
+**Explicit Prioritization Rules:**
+
+1. **Before Writing Code**:
+   - Query Context7 for the library/framework
+   - Review current API documentation
+   - Identify current best practices
+   - Check for breaking changes or deprecations
+
+2. **During Code Writing**:
+   - Use ONLY patterns from retrieved Context7 documentation
+   - Match function signatures exactly as shown in docs
+   - Follow current examples from official documentation
+   - Apply current error handling patterns
+
+3. **When Debugging**:
+   - First action: Query Context7 for relevant error patterns
+   - Cross-reference error messages with documentation
+   - Apply documented solutions before attempting alternatives
+   - Verify against current library version docs
+
+4. **When Refactoring**:
+   - Re-verify APIs via Context7 before modifying
+   - Check if newer patterns exist in current docs
+   - Ensure refactored code follows current best practices
+
+**Compliance Verification:**
+
+For each coding task, agents MUST be able to demonstrate:
+- ✅ Context7 was queried for all external libraries used
+- ✅ Retrieved documentation matches the code written
+- ✅ Patterns/syntax align with current official docs
+- ✅ No training-data assumptions were made
+
+**Example - Correct Workflow:**
+```
+Task: "Add JWT authentication to FastAPI backend"
+
+WRONG (Training Data):
+- Write code based on remembered FastAPI patterns from training
+- Assume OAuth2PasswordBearer() signature
+- Guess at middleware setup
+
+CORRECT (Context7 Primary):
+1. Query Context7: "fastapi latest authentication"
+2. Retrieve current FastAPI security docs
+3. Follow current OAuth2 flow examples from docs
+4. Apply documented patterns exactly
+5. Verify code matches retrieved documentation
+```
+
+### 3.1.2 Context7 Fallback Protocol (MANDATORY)
+
+**CRITICAL FALLBACK RULE:**
+When a proposed fix fails to resolve an error, the agent **MUST** retrieve and utilize Context7 documentation before attempting a second solution.
+
+**Trigger Conditions:**
+This protocol activates when ALL of the following occur:
+1. An error or bug is encountered during implementation
+2. The agent proposes and applies a fix
+3. The fix fails (error persists, new error appears, or tests still fail)
+4. The agent is about to attempt a second solution
+
+**Required Actions (in order):**
+1. **STOP** - Do not propose a second solution yet
+2. **IDENTIFY** the relevant library/framework causing the error
+3. **RETRIEVE** current documentation via Context7 MCP tools:
+   ```
+   resolve-library-id → query-docs
+   ```
+4. **ANALYZE** the retrieved documentation for:
+   - Correct API usage patterns
+   - Common pitfalls and error handling
+   - Breaking changes or version-specific behavior
+   - Official examples matching the use case
+5. **APPLY** documentation-based solution
+6. **VERIFY** the fix resolves the error before proceeding
+
+**Prohibited Actions:**
+- ❌ Attempting a second fix based on assumptions
+- ❌ Guessing alternative solutions without documentation
+- ❌ Trying multiple iterations without consulting official docs
+- ❌ Relying on training data knowledge (may be outdated)
+
+**Rationale:**
+- Training data knowledge becomes stale quickly
+- Frameworks evolve rapidly (FastAPI, Next.js, etc.)
+- Official documentation contains current best practices
+- Prevents "fix cycles" that waste time and complicate code
+- Ensures solutions align with current library versions
+
+**Example Flow:**
+```
+Error encountered → Proposed fix → Fix failed
+→ [MANDATED] Context7 lookup on failing library
+→ Apply doc-based solution → Verify success
+```
 
 ### 3.2 Reusable Intelligence Assets
 All agents MUST prioritize creating and using:
@@ -339,7 +473,15 @@ evolution-of-todo/
 - [ ] Explicit error paths and constraints stated
 - [ ] Smallest viable change; no unrelated edits
 - [ ] Code references to modified/inspected files
-- [ ] Context7 used for all external documentation needs
+- [ ] **Context7 used as PRIMARY source for all external libraries**
+
+### 8.3 Error Resolution Protocol
+When encountering errors during implementation:
+1. **First attempt**: Apply initial fix based on analysis
+2. **If fix fails**: **MANDATORY Context7 lookup** before second attempt
+3. **Apply documentation-based solution**
+4. **Verify** success before proceeding
+5. **Log** the resolution in PHR for future reference
 
 ---
 
@@ -406,7 +548,7 @@ Additional skills created to ensure superior implementation:
 
 ---
 
-**Version**: 1.2.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-08
+**Version**: 1.4.0 | **Ratified**: 2025-12-26 | **Last Amended**: 2026-01-24
 
 ---
 
