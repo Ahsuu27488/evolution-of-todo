@@ -22,12 +22,7 @@ import { Sparkles, Mic, Zap, Shield, Rocket, ChevronRight, ArrowRight } from "lu
 import { fadeInUp, staggerContainer } from "@/lib/animations"
 import { useEffect, useState } from "react"
 import { HeroHeader } from "./hero-header"
-
-export interface User {
-  id: string
-  email: string
-  name: string
-}
+import type { User } from "@/lib/auth-client"
 
 interface HeroSectionProps {
   initialUser: User | null
@@ -142,7 +137,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto"
           >
             {user
-              ? `Welcome back, ${user.name.split(" ")[0]}! Ready to be productive?`
+              ? `Welcome back, ${user.display_name || user.first_name || user.email}! Ready to be productive?`
               : "Experience the future of productivity with our stunning deep space interface. Voice commands coming soon in Phase III."}
           </motion.p>
 

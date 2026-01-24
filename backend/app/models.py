@@ -195,6 +195,9 @@ class User(SQLModel, table=True):
 
     Stores user credentials for authentication.
     The id field uses UUID as string for compatibility with Better Auth.
+
+    [T009] Updated to support first_name and last_name fields.
+    Legacy 'name' field retained for backward compatibility.
     """
     __tablename__ = "users"
 
@@ -210,11 +213,52 @@ class User(SQLModel, table=True):
         description="User email (unique)",
     )
     hashed_password: str = SQLField(description="Bcrypt hashed password")
-    name: str = SQLField(max_length=100, description="User display name")
+
+    # [T009] New name fields (Phase II: Loading States & User Profile Enhancement)
+    first_name: Optional[str] = SQLField(
+        default=None,
+        max_length=50,
+        description="User's given name (required after migration phase 4)",
+    )
+    last_name: Optional[str] = SQLField(
+        default=None,
+        max_length=50,
+        description="User's family name (optional, supports mononyms)",
+    )
+
+    # [T009] Legacy field retained for backward compatibility during migration
+    name: Optional[str] = SQLField(
+        default=None,
+        max_length=100,
+        description="Legacy single name field (retained for migration compatibility)",
+    )
+
     created_at: datetime = SQLField(
         default_factory=datetime.utcnow,
         description="Account creation timestamp",
     )
+
+    @property
+    def display_name(self) -> str:
+        """[T010] Computed display name with inclusive fallback logic.
+
+        Priority:
+        1. first_name + last_name (if both present)
+        2. first_name only (if first_name present)
+        3. name (legacy field for migrated users)
+        4. email (ultimate fallback)
+
+        [From]: data-model.md §Display Name Logic
+        """
+        if self.first_name:
+            if self.last_name:
+                return f"{self.first_name} {self.last_name}"
+            return self.first_name
+
+        if self.name:
+            return self.name
+
+        return self.email
 
 
 # =============================================================================
@@ -325,24 +369,112 @@ class TaskLogPublic(SQLModel):
 # =============================================================================
 
 class UserPublic(SQLModel):
-    """Public user information returned by auth endpoints."""
+    """[T012] Public user information returned by auth endpoints.
+
+    Includes new name fields with display_name computed property.
+    """
     id: str
     email: str
-    name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    display_name: str
     created_at: Optional[datetime] = None
 
 
 class UserCreate(SQLModel):
-    """Request model for user registration."""
+    """[T011] Request model for user registration.
+
+    Updated to accept first_name (required) and last_name (optional).
+    Validates name fields for XSS prevention and character limits.
+    """
     email: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=8, max_length=100)
-    name: str = Field(min_length=1, max_length=100)
+    first_name: str = Field(min_length=1, max_length=50, description="User's given name (required)")
+    last_name: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="User's family name (optional, supports mononyms)",
+    )
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_names(cls, v: Optional[str]) -> Optional[str]:
+        """[T011] Validate name fields for XSS prevention and character limits.
+
+        [From]: data-model.md §Validation Rules
+        [From]: research.md §Research Area 3: Name Field Validation Strategy
+        """
+        if v is None:
+            return v
+
+        # Character limit validation
+        if len(v) > 50:
+            raise ValueError("Name field must be 50 characters or less")
+
+        # XSS prevention - HTML tags not allowed
+        if "<" in v or ">" in v:
+            raise ValueError("Invalid characters: HTML tags not allowed")
+
+        # Must not start or end with whitespace
+        if v != v.strip():
+            raise ValueError("Name cannot start or end with whitespace")
+
+        return v
+
+    @field_validator("last_name")
+    @classmethod
+    def last_name_allows_empty_string(cls, v: Optional[str]) -> Optional[str]:
+        """[T011] Allow empty string for last_name (treat as None).
+
+        Supports mononyms where user only provides first name.
+        """
+        if v == "" or v is None:
+            return None
+        return v
 
 
 class UserLogin(SQLModel):
     """Request model for user login."""
     email: str
     password: str
+
+
+class UserUpdate(SQLModel):
+    """Request model for updating user profile.
+
+    All fields optional - user can update any combination.
+    """
+    first_name: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="User's given name"
+    )
+    last_name: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="User's family name"
+    )
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_names(cls, v: Optional[str]) -> Optional[str]:
+        """Validate name fields for XSS prevention and character limits."""
+        if v is None or v == "":
+            return None
+
+        # Character limit validation
+        if len(v) > 50:
+            raise ValueError("Name field must be 50 characters or less")
+
+        # XSS prevention - HTML tags not allowed
+        if "<" in v or ">" in v:
+            raise ValueError("Invalid characters: HTML tags not allowed")
+
+        # Must not start or end with whitespace
+        if v != v.strip():
+            raise ValueError("Name cannot start or end with whitespace")
+
+        return v
 
 
 class LoginResponse(SQLModel):

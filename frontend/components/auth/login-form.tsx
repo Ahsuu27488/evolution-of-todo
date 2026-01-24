@@ -35,9 +35,7 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      console.log("Submitting login for:", data.email)
       const result = await signInAction(data.email, data.password)
-      console.log("SignIn result:", result)
 
       if (result.error) {
         // Show generic error message for security
@@ -47,7 +45,6 @@ export function LoginForm() {
       }
 
       toast.success("Welcome back!")
-      console.log("Redirecting to dashboard...")
       // Use window.location.href for a hard redirect
       window.location.href = "/dashboard"
     } catch (error) {

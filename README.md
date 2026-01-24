@@ -193,6 +193,8 @@ A modern, multi-user todo application with authentication and persistent storage
 ### Features
 
 - ✅ User registration and email/password authentication
+- ✅ User profile with first name and last name fields (supports mononyms)
+- ✅ Edit profile functionality for existing users
 - ✅ JWT-based session management
 - ✅ Task CRUD with optimistic UI updates
 - ✅ Task filtering by status, priority, tags
@@ -200,16 +202,20 @@ A modern, multi-user todo application with authentication and persistent storage
 - ✅ Data isolation between users
 - ✅ Responsive design (mobile, tablet, desktop)
 - ✅ Dark mode support
+- ✅ Enhanced loading states with dual-ring spinner animation
+- ✅ Inline error handling with retry functionality
 - ✅ Toast notifications
 - ✅ Audit trail for task modifications
+- ✅ Zero-downtime database migrations with Alembic
 
 ### API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/signup` | Register new user |
+| POST | `/api/auth/signup` | Register new user (with first name, last name) |
 | POST | `/api/auth/signin` | Login and get JWT |
-| GET | `/api/auth/me` | Get current user |
+| GET | `/api/auth/me` | Get current user profile |
+| PUT | `/api/auth/me` | Update current user profile |
 | GET | `/api/tasks` | List tasks (filter, sort, paginate) |
 | POST | `/api/tasks` | Create task |
 | GET | `/api/tasks/search` | Search tasks |
@@ -220,6 +226,27 @@ A modern, multi-user todo application with authentication and persistent storage
 | GET | `/api/tasks/{id}/logs` | Get audit logs |
 
 See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md) for detailed documentation.
+
+### Database Migration
+
+For users who signed up before name fields were added, use the migration CLI:
+
+```bash
+# Check migration status
+python backend/scripts/migrate_users.py --status
+
+# Preview changes (dry-run)
+python backend/scripts/migrate_users.py --dry-run
+
+# Run migration
+python backend/scripts/migrate_users.py
+```
+
+**Migration Strategy**:
+- Legacy single-name users migrated to first_name/last_name schema
+- Zero-downtime with batch processing (100 users per batch)
+- Rollback safety and integrity checks
+- Supports mononyms (last_name can be NULL)
 
 ## Development
 

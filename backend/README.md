@@ -23,9 +23,16 @@ FastAPI backend for the Evolution of Todo hackathon project.
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/signup` - User registration
+- `POST /api/auth/signup` - User registration (with firstName, lastName)
 - `POST /api/auth/signin` - User login
-- `GET /api/auth/me` - Get current user
+- `GET /api/auth/me` - Get current user (includes displayName)
+
+**User Schema (v2)**:
+- `firstName` (string, required): User's first name
+- `lastName` (string, optional): User's last name (supports mononyms)
+- `displayName` (string, computed): "First Last" or "First" or legacy name
+- `email` (string): User email address
+- `created_at` (datetime): Account creation timestamp
 
 ### Tasks
 - `GET /api/tasks` - List tasks (with filters/sort/pagination)
@@ -39,6 +46,36 @@ FastAPI backend for the Evolution of Todo hackathon project.
 
 ### Health
 - `GET /api/health` - System health check
+
+## Data Migration
+
+### Legacy User Name Migration
+
+The backend includes a migration service for migrating legacy single-name users to the new first_name/last_name schema:
+
+**Migration Script**:
+```bash
+# Check migration status
+python backend/scripts/migrate_users.py --status
+
+# Preview changes (dry-run)
+python backend/scripts/migrate_users.py --dry-run
+
+# Run migration
+python backend/scripts/migrate_users.py
+```
+
+**Migration Strategy**:
+- Legacy `name` value becomes `first_name`
+- `last_name` set to `NULL` (supports mononyms)
+- Batch processing (100 users per batch)
+- Zero-downtime with rollback safety
+- Progress monitoring and integrity checks
+
+**Migration Service** (`app/services/migration.py`):
+- `get_migration_progress()`: Get migration statistics
+- `migrate_user_names()`: Execute batch migration
+- `verify_migration_integrity()`: Check data consistency
 
 ## Tech Stack
 

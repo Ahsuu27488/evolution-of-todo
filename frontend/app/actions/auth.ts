@@ -11,6 +11,7 @@
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import type { User } from "@/lib/auth-client"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const JWT_COOKIE_NAME = "auth_token"
@@ -22,19 +23,11 @@ const JWT_COOKIE_NAME = "auth_token"
 export interface AuthResult {
   success: boolean
   error?: string
-  user?: {
-    id: string
-    email: string
-    name: string
-  }
+  user?: User
 }
 
 export interface Session {
-  user: {
-    id: string
-    email: string
-    name: string
-  }
+  user: User
 }
 
 // =============================================================================
@@ -88,18 +81,19 @@ export async function signInAction(
 }
 
 /**
- * Sign up action - calls backend and stores JWT in httpOnly cookie
+ * [T035] Sign up action - calls backend with first_name and last_name
  */
 export async function signUpAction(
   email: string,
   password: string,
-  name: string
+  firstName: string,
+  lastName?: string
 ): Promise<AuthResult> {
   try {
     const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, first_name: firstName, last_name: lastName }),
     })
 
     if (!response.ok) {
@@ -172,4 +166,68 @@ export async function requireAuth(): Promise<Session> {
   }
 
   return session
+}
+
+/**
+ * Update user profile
+ */
+export async function updateProfileAction(
+  firstName?: string,
+  lastName?: string,
+): Promise<AuthResult> {
+  const authData = await getAuthData()
+  if (!authData) {
+    return {
+      success: false,
+      error: "Not authenticated",
+    }
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/me`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authData.token}`,
+      },
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Profile update failed" }))
+      return {
+        success: false,
+        error: error.detail || "Profile update failed",
+      }
+    }
+
+    const updatedUser = await response.json()
+
+    return {
+      success: true,
+      user: updatedUser,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Network error",
+    }
+  }
+}
+
+/**
+ * Helper to get auth data (token)
+ */
+async function getAuthData() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(JWT_COOKIE_NAME)?.value
+
+  if (!token) {
+    return null
+  }
+
+  return { token }
 }

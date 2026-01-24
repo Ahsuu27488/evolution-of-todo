@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle"
 import { BrandLogo } from "@/components/layout/brand-logo"
 import { UserNav } from "@/components/layout/user-nav"
 import { ChevronRight } from "lucide-react"
-import type { User } from "./hero-section"
+import type { User } from "@/lib/auth-client"
 
 interface HeroHeaderProps {
   user: User | null

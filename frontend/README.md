@@ -11,6 +11,9 @@
 ## Features
 
 - User authentication with Better Auth (email/password)
+- **Enhanced signup** with firstName/lastName fields (supports mononyms)
+- **Dual-ring loading spinner** with smooth fade transitions
+- **Error cards** with retry functionality
 - Task CRUD operations with real-time updates
 - Task filtering by status, priority, and tags
 - Task sorting and search
@@ -45,12 +48,13 @@ frontend/
 ├── components/
 │   ├── auth/                # Auth components
 │   │   ├── login-form.tsx
-│   │   └── signup-form.tsx
+│   │   └── signup-form.tsx  # Now with firstName/lastName fields
 │   ├── dashboard/           # Dashboard components
-│   │   └── dashboard-content.tsx
+│   │   ├── dashboard-content.tsx  # Integrated with DualRingSpinner
+│   │   ├── loading-error-card.tsx # NEW: Inline error handling
 │   ├── layout/              # Layout components
 │   │   ├── header.tsx
-│   │   ├── user-nav.tsx
+│   │   ├── user-nav.tsx     # Displays user displayName
 │   │   ├── brand-logo.tsx
 │   │   └── theme-toggle.tsx
 │   ├── tasks/              # Task components
@@ -60,6 +64,7 @@ frontend/
 │   │   ├── task-actions.tsx
 │   │   └── empty-state.tsx
 │   ├── ui/                 # shadcn/ui components
+│   │   └── dual-ring-spinner.tsx # NEW: Dual-ring loading animation
 │   ├── confetti.tsx
 │   └── error-boundary.tsx
 ├── lib/
@@ -180,12 +185,47 @@ npm start
 
 ## Key Components
 
+### Loading States
+
+The app uses custom loading components for better UX:
+
+**DualRingSpinner** (`components/ui/dual-ring-spinner.tsx`):
+- Pure CSS dual-ring animation (no JS overhead)
+- Outer ring: neon cyan, clockwise rotation
+- Inner ring: neon purple, counter-clockwise rotation
+- Minimum display duration (400ms) to prevent flash
+- Fade-out transition (300ms) for smooth UX
+
+**LoadingErrorCard** (`components/dashboard/loading-error-card.tsx`):
+- Inline error display with retry button
+- Accessible error handling (role="alert")
+- Automatic retry functionality
+- User-friendly error messages
+
+**Integration** (`components/dashboard/dashboard-content.tsx`):
+- Conditional rendering: loading → error → success
+- 15-second timeout with error fallback
+- Debounce logic for rapid tab switches
+
 ### Authentication
 
 - **Better Auth** configured with Neon PostgreSQL and JWT plugin
 - JWT tokens issued with HS256 (shared secret with backend)
 - Session stored in httpOnly cookies
 - Token accessible via `/api/auth/token` endpoint
+
+**User Profile** (`lib/auth-client.ts`):
+- `firstName` (string, required): User's first name
+- `lastName` (string, optional): User's last name
+- `displayName` (string, computed): "First Last" or "First" or email fallback
+- `getDisplayName()` helper: Fallback logic for inclusive name display
+
+**Signup Form** (`components/auth/signup-form.tsx`):
+- Separate firstName (required) and lastName (optional) fields
+- 50-character limit per field
+- XSS prevention validation (HTML tag rejection)
+- Whitespace trimming
+- Supports mononyms (first name only)
 
 ### API Client
 

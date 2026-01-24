@@ -1,7 +1,10 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "chronos-todo-frontend",
+  "version": "1.0.0",
+  "description": "Chronos | Evolution of Task Management - Modern full-stack todo app with Next.js 15, Better Auth, and shadcn/ui",
   "private": true,
+  "author": "Chronos",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

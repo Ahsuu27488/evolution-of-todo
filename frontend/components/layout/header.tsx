@@ -5,12 +5,7 @@ import { motion, useScroll, useMotionValueEvent } from "framer-motion"
 import { UserNav } from "./user-nav"
 import { ThemeToggle } from "./theme-toggle"
 import { BrandLogo } from "./brand-logo"
-
-interface User {
-  id: string
-  email: string
-  name: string
-}
+import type { User } from "@/lib/auth-client"
 
 interface HeaderProps {
   isAuthenticated?: boolean

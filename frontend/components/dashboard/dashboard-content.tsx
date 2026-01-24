@@ -4,6 +4,8 @@
  * Per spec.md US3: Sort tasks by created date, due date, priority, or title with ascending/descending toggle.
  * Per spec.md US4: Glassmorphism visual design matching hero page aesthetic.
  *
+ * [T021-T026] Enhanced with dual-ring loading states and error handling.
+ *
  * Acceptance Scenarios (US2):
  * - Given an authenticated user with multiple tasks, When they type in the search bar,
  *   Then the task list updates in real-time (debounced) to show only matching tasks
@@ -22,6 +24,8 @@ import { fadeInUp } from "@/lib/animations"
 import { TaskForm } from "@/components/tasks/task-form"
 import { TaskList } from "@/components/tasks/task-list"
 import { DashboardToolbar } from "@/components/dashboard/dashboard-toolbar"
+import { DualRingSpinner } from "@/components/ui/dual-ring-spinner"
+import { LoadingErrorCard } from "@/components/dashboard/loading-error-card"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useTaskFilters } from "@/lib/hooks/use-task-filters"
 import { Button } from "@/components/ui/button"
@@ -44,7 +48,7 @@ export function DashboardContent({
   const setPriorityFilter = useUIStore((state) => state.setFilterPriority)
   const setSortBy = useUIStore((state) => state.setSortBy)
 
-  // Use the useTaskFilters hook for filtered/sorted tasks and stable actions
+  // [T021] Use the useTaskFilters hook with loading and error states
   const {
     displayTasks: filteredTasks,
     totalCount,
@@ -52,6 +56,9 @@ export function DashboardContent({
     completedCount,
     setSearchQuery: setDebouncedSearch,
     toggleSortOrder,
+    isLoading,  // [T021] Loading state for spinner
+    error,      // [T021] Error state for error card
+    refetch,    // [T021] Refetch function for retry
   } = useTaskFilters()
 
   // Update debounced search when local query changes
@@ -73,12 +80,12 @@ export function DashboardContent({
           Please sign in to manage your tasks.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/login">
-            <Button>Sign In</Button>
-          </Link>
-          <Link href="/signup">
-            <Button variant="outline">Sign Up</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/login">Sign In</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/signup">Sign Up</Link>
+          </Button>
         </div>
       </motion.div>
     )
@@ -124,13 +131,29 @@ export function DashboardContent({
         </motion.div>
       </div>
 
-      {/* Task List */}
+      {/* [T021] Task List with Loading States */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        className="min-h-[400px] relative"
       >
-        <TaskList tasks={filteredTasks} />
+        {isLoading ? (
+          /* [T021] Show dual-ring spinner during data fetch */
+          <div className="flex items-center justify-center h-full min-h-[300px]">
+            <DualRingSpinner show={true} />
+          </div>
+        ) : error ? (
+          /* [T021] Show error card with retry button on failure */
+          <LoadingErrorCard
+            message="Unable to load tasks. Please check your connection and try again."
+            onRetry={() => refetch()}
+            isRetrying={isLoading}
+          />
+        ) : (
+          /* Show task list when data is loaded successfully */
+          <TaskList tasks={filteredTasks} />
+        )}
       </motion.div>
     </motion.div>
   )

@@ -26,10 +26,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 // Types
 // =============================================================================
 
+/**
+ * [T027] User interface with first_name and last_name support.
+ * Matches backend UserPublic schema (snake_case from backend).
+ */
 export interface User {
   id: string
   email: string
-  name: string
+  first_name: string | null
+  last_name: string | null
+  display_name: string  // Computed by backend
   created_at: string
 }
 
@@ -43,14 +49,48 @@ export interface SignInCredentials {
   password: string
 }
 
+/**
+ * [T027] Updated signup credentials with first_name (required) and last_name (optional).
+ * Note: These use camelCase for form inputs, but are converted to snake_case when sent to backend.
+ */
 export interface SignUpCredentials extends SignInCredentials {
-  name: string
+  firstName: string
+  lastName?: string
 }
 
 export interface AuthResult {
   success: boolean
   data?: Session
   error?: string
+}
+
+/**
+ * [T028] Helper function to get display name with fallbacks.
+ * Provides client-side fallback for legacy data.
+ *
+ * Priority:
+ * 1. display_name (computed by backend)
+ * 2. first_name + last_name
+ * 3. first_name
+ * 4. email
+ *
+ * @param user - User object
+ * @returns Display name string
+ */
+export function getDisplayName(user: User): string {
+  if (user.display_name) {
+    return user.display_name
+  }
+
+  if (user.first_name && user.last_name) {
+    return `${user.first_name} ${user.last_name}`
+  }
+
+  if (user.first_name) {
+    return user.first_name
+  }
+
+  return user.email
 }
 
 // =============================================================================

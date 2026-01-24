@@ -1,5 +1,6 @@
 /**
  * Zod validation schemas for authentication forms.
+ * [T029] Updated to include first_name (required) and last_name (optional) fields.
  */
 
 import { z } from "zod"
@@ -15,6 +16,17 @@ export const signupSchema = z
       .min(8, "Password must be at least 8 characters")
       .max(100, "Password must be 100 characters or less"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
+    firstName: z
+      .string()
+      .min(1, "First name is required")
+      .max(50, "First name must be 50 characters or less")
+      .refine((val) => !/<[^>]*>/.test(val), "Invalid characters detected")
+      .refine((val) => val === val.trim(), "First name cannot start or end with spaces"),
+    lastName: z.union([
+      z.string().max(50, "Last name must be 50 characters or less").transform((val) => val.trim()),
+      z.literal(""),
+      z.undefined(),
+    ]).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",

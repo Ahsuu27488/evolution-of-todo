@@ -21,6 +21,7 @@ from app.models import (
     UserCreate,
     UserLogin,
     UserPublic,
+    UserUpdate,
 )
 from app.simple_auth import (
     create_access_token,
@@ -77,10 +78,12 @@ async def signup(
     user_data: UserCreate,
     session: AsyncSession = Depends(get_session),
 ) -> UserPublic:
-    """Register a new user account in the database.
+    """[T014] Register a new user account in the database.
+
+    Updated to handle first_name and last_name fields.
 
     Args:
-        user_data: User registration data (email, password, name)
+        user_data: User registration data (email, password, first_name, last_name)
         session: Database session
 
     Returns:
@@ -88,6 +91,8 @@ async def signup(
 
     Raises:
         HTTPException: If email is already registered (409 Conflict)
+
+    [From]: openapi.yaml §/api/auth/signup
     """
     # Check if email already exists in database
     existing = await get_user_by_email(session, user_data.email)
@@ -100,11 +105,14 @@ async def signup(
     # Hash password using bcrypt
     hashed_password = get_password_hash(user_data.password)
 
-    # Create new User instance with UUID as string
+    # [T014] Create new User instance with first_name and last_name
     new_user = User(
         id=str(uuid.uuid4()),
         email=user_data.email,
-        name=user_data.name,
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
+        # [T014] Legacy name field populated for backward compatibility
+        name=f"{user_data.first_name} {user_data.last_name or ''}".strip(),
         hashed_password=hashed_password,
         created_at=datetime.utcnow(),
     )
@@ -115,10 +123,13 @@ async def signup(
 
     logger.info(f"New user registered: {user_data.email}")
 
+    # [T015] Return UserPublic with new name fields and display_name
     return UserPublic(
         id=new_user.id,
         email=new_user.email,
-        name=new_user.name,
+        first_name=new_user.first_name,
+        last_name=new_user.last_name,
+        display_name=new_user.display_name,  # Computed property
         created_at=new_user.created_at,
     )
 
@@ -128,7 +139,9 @@ async def signin(
     credentials: UserLogin,
     session: AsyncSession = Depends(get_session),
 ) -> LoginResponse:
-    """Authenticate user against database and return JWT token.
+    """[T016] Authenticate user against database and return JWT token.
+
+    Updated to include first_name and last_name in JWT token.
 
     Args:
         credentials: User login credentials (email, password)
@@ -139,6 +152,8 @@ async def signin(
 
     Raises:
         HTTPException: If credentials are invalid (401 Unauthorized)
+
+    [From]: openapi.yaml §/api/auth/signin
     """
     # Get user from database by email
     user = await get_user_by_email(session, credentials.email)
@@ -150,12 +165,14 @@ async def signin(
             detail="Invalid email or password",
         )
 
-    # Create JWT token with user claims
+    # [T016] Create JWT token with user claims including new name fields
     access_token = create_access_token(
         data={
             "sub": user.id,
             "email": user.email,
-            "name": user.name,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "name": user.name,  # Legacy field for compatibility
         }
     )
 
@@ -167,7 +184,9 @@ async def signin(
         user=UserPublic(
             id=user.id,
             email=user.email,
-            name=user.name,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            display_name=user.display_name,  # Computed property
             created_at=user.created_at,
         ),
     )
@@ -197,7 +216,9 @@ async def get_current_user(
     user_id: str = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ) -> UserPublic:
-    """Get current authenticated user from database.
+    """[T015] Get current authenticated user from database.
+
+    Updated to return new name fields and display_name.
 
     Args:
         user_id: Authenticated user ID from JWT (UUID string)
@@ -208,6 +229,8 @@ async def get_current_user(
 
     Raises:
         HTTPException: If user not found (404 Not Found)
+
+    [From]: openapi.yaml §/api/auth/me
     """
     user = await get_user_by_uuid(session, user_id)
 
@@ -222,6 +245,66 @@ async def get_current_user(
     return UserPublic(
         id=user.id,
         email=user.email,
-        name=user.name,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        display_name=user.display_name,  # Computed property
+        created_at=user.created_at,
+    )
+
+
+@router.put("/me", response_model=UserPublic)
+async def update_current_user(
+    user_data: UserUpdate,
+    user_id: str = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+) -> UserPublic:
+    """Update current user profile.
+
+    Allows users to update their first_name and last_name.
+    All fields are optional - update only what's provided.
+
+    Args:
+        user_data: Updated user data (first_name, last_name)
+        user_id: Authenticated user ID from JWT
+        session: Database session
+
+    Returns:
+        Updated user information
+
+    Raises:
+        HTTPException: If user not found (404 Not Found)
+
+    [From]: openapi.yaml §/api/auth/me
+    """
+    user = await get_user_by_uuid(session, user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Update fields if provided
+    if user_data.first_name is not None:
+        user.first_name = user_data.first_name
+
+    if user_data.last_name is not None:
+        user.last_name = user_data.last_name
+
+    # Update legacy name field for backward compatibility
+    if user.first_name or user.last_name:
+        user.name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+
+    await session.commit()
+    await session.refresh(user)
+
+    logger.info(f"User profile updated: {user.email}")
+
+    return UserPublic(
+        id=user.id,
+        email=user.email,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        display_name=user.display_name,
         created_at=user.created_at,
     )

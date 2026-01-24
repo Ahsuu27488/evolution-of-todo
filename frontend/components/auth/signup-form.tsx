@@ -29,6 +29,8 @@ export function SignupForm() {
       email: "",
       password: "",
       confirmPassword: "",
+      firstName: "",
+      lastName: "",
     },
   })
 
@@ -36,28 +38,28 @@ export function SignupForm() {
     setIsLoading(true)
 
     try {
-      console.log("Submitting signup for:", data.email)
+      // [T035] Updated to pass firstName and lastName
       const result = await signUpAction(
         data.email,
         data.password,
-        data.email.split("@")[0] // Use email prefix as name
+        data.firstName,
+        data.lastName
       )
-      console.log("SignUp result:", result)
 
       if (result.error) {
         // Handle specific error cases
-        if (result.error.toLowerCase().includes("already") ||
-            result.error.toLowerCase().includes("registered")) {
+        const errorMessage = String(result.error)
+        if (errorMessage.toLowerCase().includes("already") ||
+            errorMessage.toLowerCase().includes("registered")) {
           toast.error("An account with this email already exists")
         } else {
-          toast.error(result.error || "Failed to create account")
+          toast.error(errorMessage || "Failed to create account")
         }
         setIsLoading(false)
         return
       }
 
       toast.success("Account created successfully!")
-      console.log("Redirecting to dashboard...")
       // Use window.location.href for a hard redirect
       window.location.href = "/dashboard"
     } catch (error) {
@@ -84,6 +86,49 @@ export function SignupForm() {
                   disabled={isLoading}
                   className="bg-background/50 border-border/50"
                   {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* [T030] First name field (required) */}
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  placeholder="John"
+                  autoComplete="given-name"
+                  disabled={isLoading}
+                  className="bg-background/50 border-border/50"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* [T030] Last name field (optional) */}
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Last Name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+              <FormControl>
+                <Input
+                  type="text"
+                  placeholder="Doe"
+                  autoComplete="family-name"
+                  disabled={isLoading}
+                  className="bg-background/50 border-border/50"
+                  {...field}
+                  value={field.value || ""}
                 />
               </FormControl>
               <FormMessage />

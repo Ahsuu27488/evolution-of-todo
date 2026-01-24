@@ -155,6 +155,8 @@ interface UseTaskFiltersResult {
   isLoading: boolean
   /** Error state */
   error: Error | null
+  /** [T021] Refetch function for retry functionality */
+  refetch: () => void
 }
 
 // =============================================================================
@@ -189,6 +191,7 @@ export function useTaskFilters(): UseTaskFiltersResult {
     data: tasksResult,
     isLoading,
     error,
+    refetch,  // [T021] Extract refetch for retry functionality
   } = useQuery({
     queryKey: ["tasks", filters.status, filters.priority],
     queryFn: () =>
@@ -283,5 +286,6 @@ export function useTaskFilters(): UseTaskFiltersResult {
     resetFilters,
     isLoading: isLoading || isSearching,
     error,
+    refetch,  // [T021] Include refetch for retry functionality
   }
 }

@@ -524,3 +524,109 @@
     background: rgba(var(--card) / 0.95);
   }
 }
+/* =============================================================================
+   Dual-Ring Spinner Loading Animation
+   [T018] Pure CSS dual-ring spinner for loading states
+
+   Per research.md §Research Area 1: Loading Animation Implementation
+   - Outer ring: Neon cyan (clockwise rotation, 1.5s)
+   - Inner ring: Neon purple (counter-clockwise rotation, 1s)
+   - Performance: Runs on compositor thread, no JS overhead
+   =========================================================================== */
+
+.dual-ring-spinner {
+  /* Spinner dimensions */
+  --spinner-size: 40px;
+  --ring-width: 3px;
+
+  /* Theme colors from CSS custom properties */
+  --outer-color: var(--custom-primary); /* Neon cyan #00f5ff */
+  --inner-color: var(--custom-secondary); /* Neon purple #a855f7 */
+
+  /* Layout */
+  position: relative;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+
+  /* Flex center for alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Fade transition for smooth appearance */
+  opacity: 1;
+  transition: opacity 300ms ease-out; /* SC-002: Fade within 300ms */
+}
+
+.dual-ring-spinner.fade-out {
+  opacity: 0;
+}
+
+/* Outer ring - clockwise rotation */
+.dual-ring-spinner .outer-ring {
+  position: absolute;
+  inset: 0;
+  border: var(--ring-width) solid var(--outer-color);
+  border-radius: 50%;
+  border-top-color: transparent; /* Creates gap effect */
+  border-left-color: transparent;
+  animation: rotate-cw 1.5s linear infinite;
+  filter: drop-shadow(0 0 3px var(--outer-color)); /* Neon glow */
+}
+
+/* Inner ring - counter-clockwise rotation */
+.dual-ring-spinner .inner-ring {
+  position: absolute;
+  inset: 6px; /* Smaller than outer ring */
+  border: var(--ring-width) solid var(--inner-color);
+  border-radius: 50%;
+  border-bottom-color: transparent; /* Creates gap effect */
+  border-right-color: transparent;
+  animation: rotate-ccw 1s linear infinite;
+  filter: drop-shadow(0 0 3px var(--inner-color)); /* Neon glow */
+}
+
+/* Clockwise rotation keyframe */
+@keyframes rotate-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Counter-clockwise rotation keyframe */
+@keyframes rotate-ccw {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+/* =============================================================================
+   Dual-Ring Spinner Variants
+   =========================================================================== */
+
+/* Small spinner variant */
+.dual-ring-spinner.sm {
+  --spinner-size: 24px;
+  --ring-width: 2px;
+}
+
+/* Large spinner variant */
+.dual-ring-spinner.lg {
+  --spinner-size: 56px;
+  --ring-width: 4px;
+}
+
+/* Centered variant for full-screen loading */
+.dual-ring-spinner.centered {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+}
