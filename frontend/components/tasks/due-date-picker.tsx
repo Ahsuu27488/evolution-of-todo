@@ -25,7 +25,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -309,21 +308,22 @@ export function DueDatePicker({
         </PopoverContent>
       </Popover>
 
-      {/* Clear button - positioned absolutely over the trigger */}
-      <AnimatePresence>
-        {hasValue && !disabled && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0 rounded-md hover:bg-destructive/20 flex items-center justify-center transition-colors z-10"
-          >
-            <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+        {/* Clear button - positioned absolutely over the trigger */}
+        <AnimatePresence>
+          {hasValue && !disabled && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 p-0 rounded-md hover:bg-destructive/20 flex items-center justify-center transition-colors z-10"
+            >
+              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Helper text */}
       {hasValue && (
@@ -354,7 +354,6 @@ export function DueDatePicker({
           {!overdue && !dueSoon && "Due date set"}
         </motion.p>
       )}
-    </div>
     </div>
   )
 }
