@@ -144,7 +144,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
           </motion.div>
         )}
       </DialogTrigger>
-      <DialogContent className="glass-modal sm:max-w-[500px]">
+      <DialogContent className="glass-modal w-[calc(100%-1rem)] sm:max-w-[500px]">
         <motion.div
           variants={slideInBottom}
           initial="hidden"
@@ -157,7 +157,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <DialogTitle className="text-xl">
+              <DialogTitle className="text-lg sm:text-xl">
                 {isEditing ? (
                   "Edit Task"
                 ) : (
@@ -176,7 +176,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               {/* Title */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -370,7 +370,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <DialogFooter className="gap-2 sm:gap-0">
+                <DialogFooter>
                   <Button
                     type="button"
                     variant="outline"

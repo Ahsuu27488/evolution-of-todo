@@ -106,7 +106,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-6 pt-24 pb-16 md:pt-32 md:pb-24">
+      <div className="container mx-auto px-4 sm:px-6 pt-20 pb-12 sm:pt-24 sm:pb-16 md:pt-32 md:pb-24">
         <motion.div
           variants={staggerContainer}
           initial="hidden"
@@ -114,17 +114,17 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           className="max-w-4xl mx-auto text-center"
         >
           {/* Badge */}
-          <motion.div variants={fadeInUp} className="mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-primary/30">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
+          <motion.div variants={fadeInUp} className="mb-6 sm:mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass border-primary/30">
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+              <span className="text-xs sm:text-sm font-medium text-foreground">
                 Phase II: Chronos Professional Web App
               </span>
             </div>
           </motion.div>
 
           {/* Hero Title */}
-          <motion.h1 variants={fadeInUp} className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl md:text-7xl font-bold mb-4 sm:mb-6 leading-tight">
             <span className="block">The Evolution of</span>
             <span className="block bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] will-change-background">
               Todo Management
@@ -134,7 +134,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           {/* Hero Description */}
           <motion.p
             variants={fadeInUp}
-            className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+            className="text-base sm:text-lg md:text-xl lg:text-2xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto px-2"
           >
             {user
               ? `Welcome back, ${user.display_name || user.first_name || user.email}! Ready to be productive?`
@@ -144,7 +144,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           {/* CTA Buttons */}
           <motion.div
             variants={fadeInUp}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-12 sm:mb-16"
           >
             {isLoading ? (
               // Loading state
@@ -194,20 +194,20 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           {/* Feature Cards */}
           <motion.div
             variants={staggerContainer}
-            className="grid md:grid-cols-3 gap-6 mt-16"
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-12 sm:mt-16"
           >
             {/* Voice Commands (Coming Soon) */}
             <motion.div
               variants={fadeInUp}
-              className="glass p-6 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300 group will-change-transform"
+              className="glass p-4 sm:p-6 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300 group will-change-transform"
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform will-change-transform">
-                <Mic className="h-6 w-6 text-primary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Mic className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-foreground">
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
                 Voice Commands
               </h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-xs sm:text-sm">
                 Coming in Phase III: Manage tasks with natural language voice input.
               </p>
             </motion.div>
@@ -215,15 +215,15 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             {/* Advanced Features */}
             <motion.div
               variants={fadeInUp}
-              className="glass p-6 rounded-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-300 group will-change-transform"
+              className="glass p-4 sm:p-6 rounded-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-300 group will-change-transform"
             >
-              <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform will-change-transform">
-                <Zap className="h-6 w-6 text-secondary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-foreground">
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
                 Advanced Features
               </h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-xs sm:text-sm">
                 Priorities, tags, due dates, recurring tasks, and intelligent search.
               </p>
             </motion.div>
@@ -231,15 +231,15 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             {/* Secure & Private */}
             <motion.div
               variants={fadeInUp}
-              className="glass p-6 rounded-2xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 group will-change-transform"
+              className="glass p-4 sm:p-6 rounded-2xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 group will-change-transform sm:col-span-2 lg:col-span-1"
             >
-              <div className="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform will-change-transform">
-                <Shield className="h-6 w-6 text-green-400" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-foreground">
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
                 Secure & Private
               </h3>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-xs sm:text-sm">
                 Your data is encrypted and stored securely. We value your privacy.
               </p>
             </motion.div>
@@ -248,7 +248,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           {/* Tagline */}
           <motion.div
             variants={fadeInUp}
-            className="mt-20 text-muted-foreground text-sm"
+            className="mt-16 sm:mt-20 text-muted-foreground text-xs sm:text-sm"
           >
             <p>Built with Next.js 16, FastAPI, and Neon PostgreSQL</p>
             <p className="mt-2">Part of the AI-Driven Development Hackathon Series</p>

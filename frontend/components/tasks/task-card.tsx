@@ -120,10 +120,10 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
             optimisticCompleted && "opacity-75"
           )}
         >
-          <CardContent className="flex items-start gap-4 p-4">
+          <CardContent className="flex items-start gap-3 p-3 sm:gap-4 sm:p-4">
             {/* Checkbox with glow effect */}
             <motion.div
-              className="pt-1"
+              className="pt-0.5 sm:pt-1"
               animate={optimisticCompleted ? { scale: [1, 1.2, 1] } : { scale: 1 }}
               transition={{ duration: 0.3 }}
             >
@@ -231,14 +231,14 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
             </div>
 
             {/* Actions and completion indicator */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <AnimatePresence mode="wait">
                 {optimisticCompleted && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.5, x: -10 }}
                     animate={{ opacity: 1, scale: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.5, x: -10 }}
-                    className="flex items-center gap-1 text-xs text-primary font-medium"
+                    className="hidden sm:flex items-center gap-1 text-xs text-primary font-medium"
                   >
                     <Check className="h-4 w-4" />
                     Done

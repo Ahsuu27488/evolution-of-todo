@@ -92,9 +92,9 @@ export function DashboardToolbar({
       className="mb-6"
     >
       {/* Main toolbar container */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Left side: Search and filters */}
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           {/* Search input */}
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -115,7 +115,7 @@ export function DashboardToolbar({
               <button
                 type="button"
                 onClick={() => onSearchChange("")}
-                className="absolute right-3 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/30"
+                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/30"
                 aria-label="Clear search"
               >
                 ×
@@ -126,8 +126,8 @@ export function DashboardToolbar({
           {/* Status tabs */}
           <div
             className={cn(
-              "glass inline-flex rounded-full border border-border/50 bg-background/50 p-1",
-              "gap-1"
+              "glass inline-flex flex-wrap rounded-full border border-border/50 bg-background/50 p-1",
+              "gap-1 flex-1 sm:flex-initial"
             )}
           >
             {statusTabs.map((tab) => {
@@ -146,18 +146,18 @@ export function DashboardToolbar({
                   type="button"
                   onClick={() => onStatusChange(tab.value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                    "inline-flex flex-1 items-center justify-center gap-1 rounded-full px-2 py-1 text-xs font-medium transition-all duration-200 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:flex-initial",
                     isActive
                       ? "bg-primary/20 text-primary shadow-[0_0_10px_rgba(0,245,255,0.2)]"
                       : "text-muted-foreground hover:bg-muted/50"
                   )}
                 >
-                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {Icon && <Icon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
                   <span>{tab.label}</span>
                   {count > 0 && (
                     <span
                       className={cn(
-                        "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+                        "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs font-semibold",
                         isActive
                           ? "bg-primary/30 text-primary"
                           : "bg-muted-foreground/20 text-muted-foreground"

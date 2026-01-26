@@ -96,7 +96,7 @@ export function DashboardContent({
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
-      className="mx-auto max-w-3xl"
+      className="mx-auto w-full max-w-2xl lg:max-w-3xl"
     >
       {/* Dashboard Toolbar - integrates search, filters, and sort */}
       <DashboardToolbar
@@ -116,8 +116,8 @@ export function DashboardContent({
       />
 
       {/* Section header with title and add button */}
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-3xl font-bold bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <h1 className="text-2xl font-bold bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] sm:text-3xl">
           My Tasks
         </h1>
 
@@ -136,11 +136,11 @@ export function DashboardContent({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="min-h-[400px] relative"
+        className="min-h-[300px] sm:min-h-[400px] relative"
       >
         {isLoading ? (
           /* [T021] Show dual-ring spinner during data fetch */
-          <div className="flex items-center justify-center h-full min-h-[300px]">
+          <div className="flex items-center justify-center h-full min-h-[250px] sm:min-h-[300px]">
             <DualRingSpinner show={true} />
           </div>
         ) : error ? (

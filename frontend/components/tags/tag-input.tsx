@@ -78,7 +78,7 @@ export function TagInput({
   return (
     <div
       className={cn(
-        "flex flex-wrap gap-2 p-2 rounded-md border",
+        "flex flex-wrap gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-md border",
         "bg-background/50 border-border/50",
         "focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20",
         "transition-all duration-200",
@@ -110,7 +110,7 @@ export function TagInput({
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => removeTag(index)}
-                className="ml-0.5 hover:bg-white/10 rounded-full p-0.5 transition-colors"
+                className="ml-0.5 h-4 w-4 hover:bg-white/10 rounded-full p-0.5 flex items-center justify-center transition-colors"
               >
                 <X className="h-3 w-3" />
               </motion.button>
@@ -130,7 +130,7 @@ export function TagInput({
           onBlur={addTag}
           placeholder={value.length === 0 ? placeholder : ""}
           disabled={disabled}
-          className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
+          className="flex-1 min-w-[100px] sm:min-w-[120px] bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground py-1"
         />
       )}
 

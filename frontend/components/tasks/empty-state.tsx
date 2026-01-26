@@ -20,18 +20,18 @@ export function EmptyState() {
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
-      className="flex flex-col items-center justify-center py-16 text-center"
+      className="flex flex-col items-center justify-center py-10 sm:py-16 text-center"
     >
       {/* Icon with glow effect */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        className="relative mb-6"
+        className="relative mb-4 sm:mb-6"
       >
         <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-        <div className="glass relative rounded-full p-6">
-          <ClipboardList className="h-10 w-10 text-primary" />
+        <div className="glass relative rounded-full p-4 sm:p-6">
+          <ClipboardList className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
         </div>
       </motion.div>
 
@@ -40,7 +40,7 @@ export function EmptyState() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="text-xl font-semibold mb-2"
+        className="text-lg font-semibold mb-2 sm:text-xl"
       >
         No tasks yet
       </motion.h3>
@@ -50,7 +50,7 @@ export function EmptyState() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="text-muted-foreground mb-6 max-w-sm"
+        className="text-muted-foreground mb-4 sm:mb-6 max-w-sm px-4"
       >
         Get started by creating your first task. Stay organized and track your
         progress.

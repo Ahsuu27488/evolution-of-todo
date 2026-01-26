@@ -24,7 +24,7 @@ export default async function DashboardPage() {
         user={session?.user}
       />
 
-      <main className="container px-6 pt-24 pb-6 md:pt-28 md:pb-10">
+      <main className="container px-4 sm:px-6 pt-20 pb-4 sm:pt-24 sm:pb-6">
         <DashboardContent
           isAuthenticated={isAuthenticated}
         />

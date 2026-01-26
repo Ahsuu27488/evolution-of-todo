@@ -33,9 +33,9 @@ export function Header({ isAuthenticated, user }: HeaderProps) {
         boxShadow: isScrolled ? "0 4px 20px -2px rgb(0 0 0 / 0.3)" : "none"
       }}
     >
-      <div className="container flex h-16 items-center px-6">
+      <div className="container flex h-16 items-center px-4 sm:px-6">
         <BrandLogo />
-        <div className="flex flex-1 items-center justify-end gap-4 px-2">
+        <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">
           <ThemeToggle />
           {isAuthenticated && user && <UserNav user={user} />}
         </div>
