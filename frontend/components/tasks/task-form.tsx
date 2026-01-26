@@ -144,7 +144,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
           </motion.div>
         )}
       </DialogTrigger>
-      <DialogContent className="glass-modal w-[calc(100%-1rem)] sm:max-w-[500px]">
+      <DialogContent className="glass-modal w-[calc(100%-1.5rem)] sm:max-w-[500px] my-4">
         <motion.div
           variants={slideInBottom}
           initial="hidden"

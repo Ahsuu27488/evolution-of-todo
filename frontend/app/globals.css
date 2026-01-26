@@ -366,6 +366,81 @@
 }
 
 /* =============================================================================
+   Custom Scrollbar Styling
+   Deep Space themed scrollbars with cyan/purple accents
+   Applies globally to all scrollable elements
+   =========================================================================== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+@layer base {
+  /* Scrollbar track - the background */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Scrollbar thumb - the draggable part */
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, rgb(var(--muted-foreground)) 25%, transparent);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, rgb(var(--primary)) 60%, transparent);
+    border-color: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: rgb(var(--primary));
+  }
+
+  /* Corner where horizontal and vertical scrollbars meet */
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Firefox scrollbar - uses scrollbar-color and scrollbar-width properties (Firefox 64+) */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    /* scrollbar-color: <thumb> <track> - requires TWO separate colors per MDN spec */
+    scrollbar-color: color-mix(in srgb, rgb(var(--muted-foreground)) 25%, transparent) transparent;
+  }
+
+  *:hover {
+    scrollbar-color: color-mix(in srgb, rgb(var(--primary)) 60%, transparent) transparent;
+  }
+}
+
+/* Light mode scrollbars */
+@layer base {
+  .light *::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, rgb(120 120 140) 30%, transparent);
+  }
+
+  .light *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, rgb(var(--primary)) 50%, transparent);
+  }
+
+  .light * {
+    scrollbar-width: thin;
+    /* scrollbar-color: <thumb> <track> - requires TWO separate colors per MDN spec */
+    scrollbar-color: color-mix(in srgb, rgb(120 120 140) 30%, transparent) transparent;
+  }
+
+  .light *:hover {
+    scrollbar-color: color-mix(in srgb, rgb(var(--primary)) 50%, transparent) transparent;
+  }
+}
+
+/* =============================================================================
    Glassmorphism Utilities
    Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
    =========================================================================== */
