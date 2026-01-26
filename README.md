@@ -125,13 +125,16 @@ cd frontend
 npm install
 
 # Create .env.local file
-cat > .env.local << EOF
+cp .env.example .env.local
+```
+
+Edit `frontend/.env.local`:
+```env
 DATABASE_URL=postgresql://username:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
 BETTER_AUTH_SECRET=your-32-character-secret-here
 NEXT_PUBLIC_API_URL=http://localhost:8000
 BETTER_AUTH_URL=http://localhost:3000
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-EOF
 ```
 
 > **⚠️ Important:** `BETTER_AUTH_SECRET` must be **identical** in both `backend/.env` and `frontend/.env.local`!
