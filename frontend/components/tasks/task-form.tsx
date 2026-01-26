@@ -21,12 +21,12 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
-import { Loader2, Plus, Sparkles, Repeat2 } from "lucide-react"
+import { Loader2, Plus, Sparkles, Repeat2, Pencil } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 
 import { Button } from "@/components/ui/button"
@@ -67,6 +67,10 @@ interface TaskFormProps {
   task?: Task
   trigger?: React.ReactNode
   onSuccess?: () => void
+  /** Controlled open state for external dialog control (e.g., from Edit button) */
+  open?: boolean
+  /** Callback when open state changes */
+  onOpenChange?: (open: boolean) => void
 }
 
 const priorities = [
@@ -81,8 +85,12 @@ const recurrencePatterns = [
   { value: "MONTHLY", label: "Monthly", description: "Repeats every month" },
 ]
 
-export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
-  const [open, setOpen] = useState(false)
+export function TaskForm({ task, trigger, onSuccess, open: controlledOpen, onOpenChange }: TaskFormProps) {
+  // Use internal state unless controlled externally
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = onOpenChange ?? setInternalOpen
+
   const [isLoading, setIsLoading] = useState(false)
   const isEditing = !!task
   const queryClient = useQueryClient()
@@ -98,6 +106,22 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
       recurrence_pattern: task?.recurrence_pattern || undefined,
     },
   })
+
+  // Reset form when dialog opens with a task (for editing)
+  useEffect(() => {
+    if (open && task) {
+      form.reset({
+        title: task.title,
+        description: task.description ?? undefined,
+        priority: task.priority,
+        tags: task.tags ?? [],
+        due_date: task.due_date ?? undefined,
+        recurrence_pattern: task.recurrence_pattern ?? undefined,
+      })
+    }
+    // Only reset when open or task changes, not when form reference changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, task])
 
   async function onSubmit(values: TaskCreateInput) {
     setIsLoading(true)
@@ -128,22 +152,25 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button
-              size="lg"
-              className="gap-2 shadow-lg shadow-primary/20"
+      {/* Only render trigger when not controlled externally (i.e., not editing from dropdown) */}
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <Plus className="h-5 w-5" />
-              <span className="hidden sm:inline">Add Task</span>
-            </Button>
-          </motion.div>
-        )}
-      </DialogTrigger>
+              <Button
+                size="lg"
+                className="gap-2 shadow-lg shadow-primary/20"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="hidden sm:inline">Add Task</span>
+              </Button>
+            </motion.div>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="glass-modal w-[calc(100%-1.5rem)] sm:max-w-[500px] my-4">
         <motion.div
           variants={slideInBottom}
@@ -151,7 +178,7 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
           animate="visible"
           exit="hidden"
         >
-          <DialogHeader>
+          <DialogHeader className="gap-1.5 sm:gap-2">
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -159,7 +186,10 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
             >
               <DialogTitle className="text-lg sm:text-xl">
                 {isEditing ? (
-                  "Edit Task"
+                  <span className="flex items-center gap-2">
+                    <Pencil className="h-5 w-5 text-secondary" />
+                    Edit Task
+                  </span>
                 ) : (
                   <span className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-primary" />
@@ -167,6 +197,16 @@ export function TaskForm({ task, trigger, onSuccess }: TaskFormProps) {
                   </span>
                 )}
               </DialogTitle>
+              {isEditing && task && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.15 }}
+                  className="text-sm text-muted-foreground font-normal truncate pl-7"
+                >
+                  {task.title}
+                </motion.p>
+              )}
             </motion.div>
             <DialogDescription className="text-muted-foreground">
               {isEditing

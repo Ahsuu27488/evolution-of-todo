@@ -79,14 +79,13 @@ export function TaskActions({ task }: TaskActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Dialog */}
-      {showEditDialog && (
-        <TaskForm
-          task={task}
-          trigger={<span />}
-          onSuccess={() => setShowEditDialog(false)}
-        />
-      )}
+      {/* Edit Dialog - controlled open state */}
+      <TaskForm
+        task={task}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onSuccess={() => setShowEditDialog(false)}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

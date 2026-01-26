@@ -112,8 +112,8 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
           className={cn(
             // Glassmorphism effect
             "glass transition-all duration-300 hover:scale-[1.01]",
-            // Priority border
-            "border-l-4",
+            // Priority border - thinner on mobile
+            "border-l-2 sm:border-l-4",
             priorityColors[task.priority],
             // Overdue indicator
             isOverdue && "border-destructive shadow-[0_0_20px_rgba(239,68,68,0.3)]",
@@ -174,7 +174,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
 
               {/* Tags */}
               {task.tags && task.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {task.tags.map((tag, idx) => (
                     <motion.span
                       key={idx}
@@ -199,7 +199,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {dueDate && (
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 text-xs mt-3 transition-colors",
+                    "flex items-center gap-2 text-xs mt-3 transition-colors",
                     isOverdue
                       ? "text-destructive"
                       : optimisticCompleted
@@ -219,7 +219,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {task.recurrence_pattern && (
                 <div
                   className={cn(
-                    "flex items-center gap-1.5 text-xs mt-2",
+                    "flex items-center gap-2 text-xs mt-2",
                     "text-secondary"
                   )}
                   title={`Repeats: ${task.recurrence_pattern.toLowerCase()}`}
