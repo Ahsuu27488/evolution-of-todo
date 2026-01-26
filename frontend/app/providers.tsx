@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "next-themes"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { AdBlockWarning } from "@/components/layout/adblock-warning"
 
 /**
  * React Query DevTools - only in development
@@ -39,6 +40,7 @@ export function Providers({ children }: ProvidersProps) {
       >
         {children}
         <Toaster position="bottom-right" richColors closeButton />
+        <AdBlockWarning />
       </ThemeProvider>
       {process.env.NODE_ENV === "development" && (
         <ReactQueryDevtools initialIsOpen={false} />

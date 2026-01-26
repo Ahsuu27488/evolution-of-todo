@@ -159,6 +159,47 @@ npm run dev
 | **API Docs** | http://localhost:8000/docs |
 | **Health Check** | http://localhost:8000/api/health |
 
+## Troubleshooting
+
+### Dropdown Menus Not Visible
+
+**Symptom:** Clicking dropdown menus (sort, filters, date picker) doesn't show any options.
+
+**Cause:** Ad blocker extensions (AdLock, uBlock Origin, AdBlock Plus, etc.) may mistakenly block Portal-rendered UI components, thinking they are popup advertisements.
+
+**Solutions:**
+
+1. **Disable Ad Blocker** (quickest test)
+   - Open your browser in incognito/private mode (extensions disabled by default)
+   - Or disable the ad blocker extension temporarily
+   - Test if dropdowns appear correctly
+
+2. **Whitelist localhost** (recommended)
+   - Add `localhost:3000` to your ad blocker's allowlist
+   - For AdLock: Settings → Whitelist → Add `localhost:3000`
+   - For uBlock Origin: Click the icon → Dashboard → Whitelist → `localhost:3000`
+
+3. **Production Deployment**
+   - If deploying to production, add your domain to the ad blocker's allowlist
+   - Document this in your user-facing help section
+
+**Why This Happens:**
+The app uses Radix UI's Portal component to render dropdowns, which places them in `document.body` for proper z-index layering. Ad blockers see this pattern and mistakenly identify these legitimate UI components as popup ads, since both use:
+- Portal rendering to `document.body`
+- `position: fixed` or `absolute` positioning
+- High z-index values
+- Overlay behavior
+
+**Affected Browsers:**
+- Chrome / Chromium-based browsers (Edge, Brave, Opera)
+- Mostly affects desktop browsers with extensions installed
+- Mobile browsers typically unaffected
+
+**Unaffected Browsers:**
+- Firefox (different extension architecture)
+- Safari (different ad blocking approach)
+- Mobile browsers (fewer extensions)
+
 ## Phase I: Console Application
 
 The foundation phase demonstrating clean architecture patterns that scale to the full-stack application.
