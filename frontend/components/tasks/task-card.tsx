@@ -36,9 +36,9 @@ interface TaskCardProps {
 }
 
 const priorityColors = {
-  HIGH: "border-destructive/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]",
-  MEDIUM: "border-secondary/50 shadow-[0_0_15px_rgba(168,85,247,0.2)]",
-  LOW: "border-muted-foreground/30",
+  HIGH: "border-destructive/60 shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.35),0_0_20px_rgba(239,68,68,0.25)]",
+  MEDIUM: "border-secondary/60 shadow-[inset_3px_0_8px_-2px_rgba(168,85,247,0.35),0_0_20px_rgba(168,85,247,0.25)]",
+  LOW: "border-muted-foreground/40",
 }
 
 const priorityLabels = {
@@ -115,8 +115,8 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
             // Priority border - thinner on mobile
             "border-l-2 sm:border-l-4",
             priorityColors[task.priority],
-            // Overdue indicator
-            isOverdue && "border-destructive shadow-[0_0_20px_rgba(239,68,68,0.3)]",
+            // Overdue indicator - enhanced glow with inset
+            isOverdue && "border-destructive shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.4),0_0_25px_rgba(239,68,68,0.3)]",
             optimisticCompleted && "opacity-75"
           )}
         >
@@ -133,7 +133,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 disabled={isUpdating}
                 className={cn(
                   "h-5 w-5 transition-all duration-300",
-                  optimisticCompleted && "border-primary shadow-[0_0_10px_rgba(0,245,255,0.5)]"
+                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(0,245,255,0.4),0_0_12px_rgba(0,245,255,0.5)]"
                 )}
                 aria-label={optimisticCompleted ? "Mark as incomplete" : "Mark as complete"}
               />

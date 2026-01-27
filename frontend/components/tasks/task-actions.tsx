@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -89,9 +89,12 @@ export function TaskActions({ task }: TaskActionsProps) {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent variant="destructive">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogTitle>
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Task?
+            </AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete &quot;{task.title}&quot;. This action
               cannot be undone.
@@ -102,7 +105,7 @@ export function TaskActions({ task }: TaskActionsProps) {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
