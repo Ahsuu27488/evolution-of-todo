@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
-import { AlertTriangle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -99,6 +98,7 @@ function AlertDialogFooter({
         "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-3",
         className
       )}
+      {...props}
     />
   )
 }
