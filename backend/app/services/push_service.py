@@ -209,6 +209,9 @@ class PushService:
 
         Returns:
             True if user has at least one valid subscription
+
+        [Fix]: Use .scalars().first() instead of scalar_one_or_none() to handle
+        multiple subscriptions gracefully (user may have multiple devices).
         """
         result = await session.execute(
             select(PushSubscription).where(
@@ -216,7 +219,9 @@ class PushService:
                 PushSubscription.is_valid == True,
             )
         )
-        return result.scalar_one_or_none() is not None
+        # Use .scalars().first() to handle multiple subscriptions gracefully
+        # Returns first valid subscription or None, without throwing on multiple rows
+        return result.scalars().first() is not None
 
     @staticmethod
     async def send_push(
@@ -385,6 +390,42 @@ class PushService:
             "total": len(subscriptions),
             "failed_subscriptions": failed_subscriptions,
         }
+
+    @staticmethod
+    async def cleanup_user_subscriptions(session: AsyncSession, user_id: str, keep_endpoint: str | None = None) -> int:
+        """Clean up old/stale subscriptions for a specific user.
+
+        [Fix]: Removes stale subscriptions for a user, keeping only the active one.
+        This prevents accumulation of stale subscriptions from multiple devices/browsers.
+
+        Args:
+            session: Database session
+            user_id: User ID to clean up subscriptions for
+            keep_endpoint: If provided, keep subscriptions with this endpoint
+
+        Returns:
+            Number of subscriptions removed
+        """
+        from sqlalchemy import and_
+
+        # Build the where clause
+        where_conditions = [PushSubscription.user_id == user_id]
+
+        if keep_endpoint:
+            # Keep the subscription with the matching endpoint, delete others
+            where_conditions.append(
+                PushSubscription.subscription["endpoint"].astext != keep_endpoint
+            )
+
+        stmt = delete(PushSubscription).where(and_(*where_conditions))
+        result = await session.execute(stmt)
+        await session.commit()
+
+        count = result.rowcount
+        if count > 0:
+            logger.info(f"Cleaned up {count} stale push subscriptions for user {user_id}")
+
+        return count
 
     @staticmethod
     async def cleanup_invalid_subscriptions(session: AsyncSession) -> int:

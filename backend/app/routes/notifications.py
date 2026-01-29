@@ -471,6 +471,9 @@ async def subscribe_push(
     Stores the PushSubscription JSON from the browser's PushManager.
     Supports multiple devices per user.
 
+    [Fix]: Cleans up stale subscriptions before adding new one to prevent
+    accumulation of old subscriptions from previous sessions.
+
     Args:
         subscription_data: Subscription data from browser
         session: Database session
@@ -480,6 +483,10 @@ async def subscribe_push(
         Created/updated subscription
     """
     try:
+        # Clean up stale subscriptions before adding new one
+        endpoint = subscription_data.subscription.get("endpoint", "")
+        await PushService.cleanup_user_subscriptions(session, user_id, keep_endpoint=endpoint)
+
         return await PushService.subscribe(
             session,
             user_id,

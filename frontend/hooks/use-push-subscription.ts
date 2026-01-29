@@ -11,6 +11,9 @@
  * - Unsubscribe from push notifications
  * - Get permission status
  * - Sync subscription with backend
+ *
+ * [Fix]: Added optimistic updates for instant UI feedback and proper
+ * mutation lifecycle handling with rollback on error.
  */
 
 import { useCallback, useEffect, useState } from "react"
@@ -35,6 +38,12 @@ export interface PushSubscription {
 export interface PushStatusResponse {
   status: "subscribed" | "not_subscribed" | "not_requested"
   subscription_count: number
+}
+
+// Type for cached query data
+type CachedPushStatus = {
+  success: boolean
+  data: PushStatusResponse
 }
 
 // =============================================================================
@@ -151,6 +160,92 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
     }
   }, [refreshPermission])
 
+  // =============================================================================
+  // Mutations with Optimistic Updates
+  // =============================================================================
+
+  // Subscribe mutation with optimistic update
+  const subscribeMutation = useMutation({
+    mutationFn: async (data: { subscription: PushSubscription; device_info: Record<string, string> }) => {
+      return await api.subscribePush(data)
+    },
+    onMutate: async () => {
+      // Cancel outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: pushKeys.status })
+
+      // Snapshot previous value for rollback
+      const previousStatus = queryClient.getQueryData<CachedPushStatus>(pushKeys.status)
+
+      // Optimistically update to "subscribed"
+      queryClient.setQueryData<CachedPushStatus>(pushKeys.status, {
+        success: true,
+        data: { status: "subscribed", subscription_count: 1 }
+      })
+
+      // Return context with previous value for rollback
+      return { previousStatus }
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousStatus) {
+        queryClient.setQueryData(pushKeys.status, context.previousStatus)
+      }
+    },
+    onSettled: () => {
+      // Always refetch to ensure sync with server
+      queryClient.invalidateQueries({ queryKey: pushKeys.status })
+    },
+  })
+
+  // Unsubscribe mutation with optimistic update
+  const unsubscribeMutation = useMutation({
+    mutationFn: async (subscriptionId?: number) => {
+      return await api.unsubscribePush(subscriptionId)
+    },
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: pushKeys.status })
+
+      // Snapshot previous value
+      const previousStatus = queryClient.getQueryData<CachedPushStatus>(pushKeys.status)
+
+      // Optimistically update to "not_subscribed"
+      queryClient.setQueryData<CachedPushStatus>(pushKeys.status, {
+        success: true,
+        data: { status: "not_subscribed", subscription_count: 0 }
+      })
+
+      return { previousStatus }
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousStatus) {
+        queryClient.setQueryData(pushKeys.status, context.previousStatus)
+      }
+    },
+    onSettled: async () => {
+      // Always refetch
+      queryClient.invalidateQueries({ queryKey: pushKeys.status })
+
+      // Also unsubscribe from browser (non-blocking)
+      try {
+        const registration = await navigator.serviceWorker.ready
+        const subscription = await registration.pushManager.getSubscription()
+        if (subscription) {
+          await subscription.unsubscribe()
+        }
+        setPushSubscription(null)
+      } catch {
+        // Browser cleanup failure shouldn't affect UI state
+        console.warn("Failed to unsubscribe from browser")
+      }
+    },
+  })
+
+  // =============================================================================
+  // Internal Functions
+  // =============================================================================
+
   // Request permission
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isPushSupported()) {
@@ -204,7 +299,7 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
       const subscriptionJson = subscription.toJSON() as unknown as PushSubscription
       setPushSubscription(subscriptionJson)
 
-      // Sync with backend
+      // Sync with backend (mutation handles optimistic update)
       if (autoSync) {
         await subscribeMutation.mutateAsync({
           subscription: subscriptionJson,
@@ -214,45 +309,19 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
           },
         })
       }
-
-      queryClient.invalidateQueries({ queryKey: pushKeys.status })
+      // Note: No manual invalidateQueries here - mutation's onSettled handles it
 
       return subscriptionJson
     } catch (error) {
       console.error("Error subscribing to push:", error)
       return null
     }
-  }, [autoSync, queryClient])
+  }, [autoSync, subscribeMutation])
 
-  // Subscribe mutation
-  const subscribeMutation = useMutation({
-    mutationFn: async (data: { subscription: PushSubscription; device_info: Record<string, string> }) => {
-      return await api.subscribePush(data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: pushKeys.status })
-    },
-  })
-
-  // Unsubscribe mutation
-  const unsubscribeMutation = useMutation({
-    mutationFn: async (subscriptionId?: number) => {
-      return await api.unsubscribePush(subscriptionId)
-    },
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: pushKeys.status })
-
-      // Also unsubscribe from browser
-      const registration = await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.getSubscription()
-      if (subscription) {
-        await subscription.unsubscribe()
-      }
-      setPushSubscription(null)
-    },
-  })
-
+  // =============================================================================
   // Public API
+  // =============================================================================
+
   const subscribe = useCallback(async () => {
     if (permissionStatus === "granted") {
       return await subscribeInternal()
