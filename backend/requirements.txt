@@ -3,7 +3,7 @@
 # REPAIR MODE: Fixed bcrypt/passlib incompatibility
 
 fastapi>=0.109.0
-uvicorn>=0.27.0
+uvicorn[standard]>=0.27.0
 sqlmodel>=0.0.14
 psycopg2-binary>=2.9.9
 python-dotenv>=1.0.0
@@ -17,3 +17,16 @@ bcrypt==3.2.2
 passlib>=1.7.4
 asyncpg>=0.29.0
 requests>=2.31.0
+
+# =============================================================================
+# Notification System Dependencies (011)
+# =============================================================================
+# Browser push notifications
+pywebpush>=2.2.0
+# Email delivery via Resend
+resend>=2.21.0
+# Server-Sent Events for real-time notifications
+sse-starlette>=3.2.0
+# Validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
