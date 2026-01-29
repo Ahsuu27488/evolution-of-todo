@@ -4,6 +4,8 @@ Replaces in-memory storage with database persistence to fix
 issues with data loss on server restart.
 
 Per contracts/backend-api.yaml specification.
+
+[Fix]: Create default notification preferences on signup
 """
 
 import logging
@@ -22,6 +24,12 @@ from app.models import (
     UserLogin,
     UserPublic,
     UserUpdate,
+)
+# Import notification models for default preference creation
+from app.models.notification import (
+    NotificationPreference,
+    NotificationType,
+    EmailFrequency,
 )
 from app.simple_auth import (
     create_access_token,
@@ -121,15 +129,58 @@ async def signup(
     await session.commit()
     await session.refresh(new_user)
 
+    # [Fix]: Create default notification preferences for new users
+    # This ensures email notifications work by default for task-related events
+    default_preferences = [
+        # Task events - email enabled by default
+        (NotificationType.TASK_DUE, True, False, True, EmailFrequency.IMMEDIATE),
+        (NotificationType.TASK_OVERDUE, True, True, True, EmailFrequency.IMMEDIATE),
+        (NotificationType.TASK_COMPLETED, True, False, True, EmailFrequency.IMMEDIATE),
+        (NotificationType.TASK_ASSIGNED, True, False, True, EmailFrequency.IMMEDIATE),
+        (NotificationType.TASK_REMINDER, True, False, True, EmailFrequency.IMMEDIATE),
+        # System updates - in-app only by default
+        (NotificationType.SYSTEM_UPDATE, True, False, False, EmailFrequency.NONE),
+    ]
+
+    for notif_type, in_app, push, email, frequency in default_preferences:
+        pref = NotificationPreference(
+            user_id=new_user.id,
+            notification_type=notif_type,
+            in_app_enabled=in_app,
+            push_enabled=push,
+            email_enabled=email,
+            frequency=frequency,
+        )
+        session.add(pref)
+
+    await session.commit()
+
+    # [Fix]: Send welcome email to newly registered user
+    try:
+        from app.services.email_service import EmailService
+
+        display_name = new_user.display_name if hasattr(new_user, 'display_name') else None
+        await EmailService.send_welcome_email(
+            session=session,
+            user_id=new_user.id,
+            to=new_user.email,
+            user_name=display_name,
+        )
+    except Exception as e:
+        # Log but don't fail registration if welcome email fails
+        logger.warning(f"Failed to send welcome email to {new_user.email}: {e}")
+
     logger.info(f"New user registered: {user_data.email}")
 
     # [T015] Return UserPublic with new name fields and display_name
+    # [Fix]: Include timezone field
     return UserPublic(
         id=new_user.id,
         email=new_user.email,
         first_name=new_user.first_name,
         last_name=new_user.last_name,
         display_name=new_user.display_name,  # Computed property
+        timezone=new_user.timezone,  # Added for notification scheduling
         created_at=new_user.created_at,
     )
 

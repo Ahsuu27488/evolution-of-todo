@@ -5,6 +5,7 @@ import { motion, useScroll, useMotionValueEvent } from "framer-motion"
 import { UserNav } from "./user-nav"
 import { ThemeToggle } from "./theme-toggle"
 import { BrandLogo } from "./brand-logo"
+import { NotificationsClient } from "@/components/notifications/notifications-client"
 import type { User } from "@/lib/auth-client"
 
 interface HeaderProps {
@@ -37,6 +38,7 @@ export function Header({ isAuthenticated, user }: HeaderProps) {
         <BrandLogo />
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4">
           <ThemeToggle />
+          {isAuthenticated && <NotificationsClient />}
           {isAuthenticated && user && <UserNav user={user} />}
         </div>
       </div>

@@ -14,6 +14,13 @@ from sqlalchemy.orm import sessionmaker
 
 from sqlmodel import SQLModel
 
+# Import all models to ensure they're registered with SQLModel.metadata
+# [Task]: T017 - Import notification models
+import app.models  # noqa: F401
+import app.models.notification  # noqa: F401
+import app.models.push_subscription  # noqa: F401
+import app.models.email_delivery_log  # noqa: F401
+
 load_dotenv()
 
 # Get database URL and convert to async format

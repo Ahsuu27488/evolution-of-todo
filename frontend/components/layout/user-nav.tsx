@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { LogOut, User as UserIcon, UserCircle } from "lucide-react"
+import { LogOut, User as UserIcon, UserCircle, Bell } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -69,6 +69,13 @@ export function UserNav({ user }: UserNavProps) {
         >
           <UserCircle className="mr-2 h-4 w-4" />
           <span>Edit Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push("/settings/notifications")}
+          className="cursor-pointer"
+        >
+          <Bell className="mr-2 h-4 w-4" />
+          <span>Notification Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">

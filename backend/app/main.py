@@ -22,7 +22,7 @@ from sqlalchemy import text
 
 from app.db import create_db_and_tables, engine
 from app.errors import setup_error_handling
-from app.routes import auth, tasks
+from app.routes import auth, tasks, notifications
 
 # =============================================================================
 # Configuration
@@ -57,8 +57,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     Startup:
     - Validate environment variables
     - Create database tables
+    - Start scheduler service
 
     Shutdown:
+    - Stop scheduler service
     - Cleanup resources if needed
     """
     logger.info("Starting Todo API...")
@@ -78,12 +80,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception(f"Failed to initialize database: {e}")
         raise
 
+    # Start scheduler service
+    try:
+        from app.services.scheduler_service import start_scheduler
+        await start_scheduler()
+        logger.info("Scheduler service started")
+    except Exception as e:
+        logger.exception(f"Failed to start scheduler: {e}")
+        # Don't fail startup if scheduler fails
+
     logger.info("Todo API started successfully")
 
     yield
 
     # Shutdown
     logger.info("Shutting down Todo API...")
+
+    # Stop scheduler service
+    try:
+        from app.services.scheduler_service import stop_scheduler
+        await stop_scheduler()
+        logger.info("Scheduler service stopped")
+    except Exception as e:
+        logger.exception(f"Error stopping scheduler: {e}")
 
 
 # =============================================================================
@@ -124,6 +143,7 @@ setup_error_handling(app)
 # Include API routes with /api prefix
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
+app.include_router(notifications.router, tags=["Notifications"])
 
 
 # =============================================================================
