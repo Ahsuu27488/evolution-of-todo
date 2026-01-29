@@ -33,6 +33,8 @@ from app.models import (
     TaskUpdate,
 )
 from app.simple_auth import get_current_user_id
+from app.services.notification_service import NotificationService
+from app.models.notification import NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +280,23 @@ async def create_task(
     )
     await session.commit()
 
+    # [Task]: T051 - Create notification for new task with due date
+    # Send notification if task has a due date
+    if task.due_date:
+        await NotificationService.dispatch(
+            session=session,
+            user_id=current_user_id,
+            type=NotificationType.TASK_DUE,
+            title=f"New Task: {task.title}",
+            message=f"You've created a new task due on {task.due_date.strftime('%Y-%m-%d')}",
+            data={
+                "task_id": task.id,
+                "task_title": task.title,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+            },
+            related_task_id=task.id,
+        )
+
     logger.info(f"Task created: id={task.id}, user={current_user_id}")
 
     return TaskPublic.model_validate(task)
@@ -486,6 +505,22 @@ async def toggle_task_complete(
         changed_fields={"completed": {"old": old_completed, "new": new_completed}},
     )
     await session.commit()
+
+    # [Task]: T052 - Create notification for task completion
+    # Send notification when task is marked complete
+    if new_completed:
+        await NotificationService.dispatch(
+            session=session,
+            user_id=current_user_id,
+            type=NotificationType.TASK_COMPLETED,
+            title=f"Task Completed: {task.title}",
+            message=f"Great job! You completed: {task.title}",
+            data={
+                "task_id": task.id,
+                "task_title": task.title,
+            },
+            related_task_id=task.id,
+        )
 
     # Handle recurring task auto-creation
     if new_completed and task.recurrence_pattern:

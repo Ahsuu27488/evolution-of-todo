@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
 import { ViewTransitions } from "next-view-transitions"
+import { ServiceWorkerRegistrar } from "./service-worker-registrar"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  // metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: {
     default: "Chronos | Evolution of Task Management",
     template: "%s | Chronos"
@@ -74,6 +75,8 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
         >
           <Providers>{children}</Providers>
+          {/* Register service worker for push notifications */}
+          <ServiceWorkerRegistrar />
         </body>
       </html>
     </ViewTransitions>

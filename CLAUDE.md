@@ -238,10 +238,8 @@ Dapr sidecar patterns (planned):
 - Service discovery for microservices
 
 ## Recent Changes
+- 011-notification-system: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 010-loading-states-user-profile: Added Python 3.13+ (backend), TypeScript 5+ (frontend)
 - 009-light-mode-theme: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 008-dashboard-ui-overhaul: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 ## Active Technologies
-- Python 3.13+ (backend), TypeScript 5+ (frontend) (010-loading-states-user-profile)
-- Neon Serverless PostgreSQL (PostgreSQL 16+) (010-loading-states-user-profile)

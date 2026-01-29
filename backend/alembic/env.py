@@ -16,8 +16,9 @@ from sqlmodel import SQLModel
 # Load environment variables from .env file
 load_dotenv()
 
-# Import models for autogenerate support
-from app.models import SQLModel as ModelSQLModel  # Import the SQLModel metadata
+# Import all models from the app.models package
+# This registers all models with SQLModel.metadata for autogenerate support
+import app.models  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -47,7 +48,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Add your model's MetaData object here for 'autogenerate' support
-target_metadata = ModelSQLModel.metadata
+target_metadata = SQLModel.metadata
 
 
 def run_migrations_offline() -> None:

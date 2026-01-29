@@ -392,6 +392,288 @@ class ApiClient {
     return ok(result.data.data)
   }
 
+  // ===========================================================================
+  // Notification API Methods
+  //
+  // [Task]: T025 - Add notification endpoints to API client
+  // ===========================================================================
+
+  /**
+   * Get notifications for the current user.
+   *
+   * [From]: spec.md FR-001, FR-009, contracts/api.yaml §1.1
+   */
+  async getNotifications(filters?: {
+    limit?: number
+    offset?: number
+    unread_only?: boolean
+  }): Promise<Result<{
+    items: Array<{
+      id: number
+      user_id: string
+      type: string
+      title: string
+      message: string
+      data: Record<string, unknown>
+      related_task_id: number | null
+      read_status: boolean
+      created_at: string
+      sent_channels: string[]
+    }>
+    total: number
+    unread_count: number
+    limit: number
+    offset: number
+  }>> {
+    const params = new URLSearchParams()
+    if (filters?.limit) params.set("limit", String(filters.limit))
+    if (filters?.offset) params.set("offset", String(filters.offset))
+    if (filters?.unread_only) params.set("unread_only", String(filters.unread_only))
+
+    const query = params.toString()
+    const endpoint = `/api/notifications${query ? `?${query}` : ""}`
+
+    const result = await this.request(endpoint)
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any) // Backend validates the response structure
+  }
+
+  /**
+   * Mark a notification as read.
+   *
+   * [From]: spec.md FR-005, contracts/api.yaml §1.2
+   */
+  async markNotificationAsRead(
+    notificationId: number
+  ): Promise<Result<{
+    id: number
+    read_status: boolean
+  }>> {
+    const result = await this.request(`/api/notifications/${notificationId}/read`, {
+      method: "PUT",
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any) // Backend validates the response structure
+  }
+
+  /**
+   * Mark all notifications as read.
+   *
+   * [From]: spec.md FR-008, contracts/api.yaml §1.3
+   */
+  async markAllNotificationsAsRead(): Promise<Result<{ updated_count: number }>> {
+    const result = await this.request("/api/notifications/mark-all-read", {
+      method: "POST",
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any) // Backend validates the response structure
+  }
+
+  /**
+   * Delete a notification.
+   *
+   * [From]: spec.md FR-006, contracts/api.yaml §1.4
+   */
+  async deleteNotification(notificationId: number): Promise<Result<void>> {
+    const result = await this.request(`/api/notifications/${notificationId}`, {
+      method: "DELETE",
+    })
+    if (!result.success) return result
+    return ok(undefined)
+  }
+
+  /**
+   * Get notification settings.
+   *
+   * [From]: spec.md FR-033, contracts/api.yaml §4.1
+   */
+  async getNotificationSettings(): Promise<Result<Record<string, unknown>>> {
+    const result = await this.request("/api/notifications/settings")
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any) // Backend validates the response structure
+  }
+
+  /**
+   * Update notification settings.
+   *
+   * [From]: spec.md FR-033, contracts/api.yaml §4.2
+   */
+  async updateNotificationSettings(
+    settings: Partial<Record<string, unknown>>
+  ): Promise<Result<Record<string, unknown>>> {
+    const result = await this.request("/api/notifications/settings", {
+      method: "PUT",
+      body: settings,
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any) // Backend validates the response structure
+  }
+
+  // =============================================================================
+  // Push Notification Methods
+  // =============================================================================
+
+  /**
+   * Subscribe to push notifications.
+   *
+   * [Task]: T035
+   * [From]: spec.md FR-018, contracts/api.yaml §2.1
+   */
+  async subscribePush(
+    subscriptionData: {
+      subscription: {
+        endpoint: string
+        keys: { p256dh: string; auth: string }
+      }
+      device_info: Record<string, string>
+    }
+  ): Promise<Result<{
+    id: number
+    user_id: string
+    device_info: Record<string, string>
+    created_at: string
+    last_used_at: string
+    is_valid: boolean
+  }>> {
+    const result = await this.request("/api/notifications/push/subscribe", {
+      method: "POST",
+      body: subscriptionData,
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  /**
+   * Unsubscribe from push notifications.
+   *
+   * [Task]: T035
+   * [From]: spec.md FR-019, contracts/api.yaml §2.2
+   */
+  async unsubscribePush(
+    subscriptionId?: number
+  ): Promise<Result<{ unsubscribed: boolean }>> {
+    const url = subscriptionId
+      ? `/api/notifications/push/unsubscribe?subscription_id=${subscriptionId}`
+      : "/api/notifications/push/unsubscribe"
+
+    const result = await this.request(url, {
+      method: "DELETE",
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  /**
+   * Get push notification status.
+   *
+   * [Task]: T035
+   * [From]: spec.md FR-013, contracts/api.yaml §2.3
+   */
+  async getPushStatus(): Promise<Result<{
+    status: "subscribed" | "not_subscribed"
+    subscription_count: number
+  }>> {
+    const result = await this.request("/api/notifications/push/status")
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  /**
+   * Send a test push notification.
+   *
+   * Debug helper to verify push notification setup.
+   */
+  async testPushNotification(): Promise<Result<{
+    success: boolean
+    sent?: number
+    total?: number
+    error?: string
+  }>> {
+    const result = await this.request("/api/notifications/push/test", {
+      method: "POST",
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  /**
+   * Send a test email notification.
+   *
+   * Debug helper to verify email configuration.
+   */
+  async testEmailNotification(): Promise<Result<{
+    success: boolean
+    message?: string
+    error?: string
+  }>> {
+    const result = await this.request("/api/notifications/email/test", {
+      method: "POST",
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  // =============================================================================
+  // Email Preferences Methods
+  // =============================================================================
+
+  /**
+   * Get email notification preferences.
+   *
+   * [Task]: T047
+   * [From]: spec.md FR-026, FR-033, contracts/api.yaml §3.1
+   */
+  async getEmailPreferences(): Promise<Result<{
+    preferences: Array<{
+      notification_type: string
+      enabled: boolean
+      frequency: "immediate" | "daily" | "weekly" | "none"
+    }>
+    email_address: string | null
+    bounced: boolean
+  }>> {
+    const result = await this.request("/api/notifications/email/preferences")
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  /**
+   * Update email notification preferences.
+   *
+   * [Task]: T047
+   * [From]: spec.md FR-026, contracts/api.yaml §3.2
+   */
+  async updateEmailPreferences(
+    preferences: Array<{
+      notification_type: string
+      enabled: boolean
+      frequency: "immediate" | "daily" | "weekly" | "none"
+    }>
+  ): Promise<Result<{ updated: boolean }>> {
+    const result = await this.request("/api/notifications/email/preferences", {
+      method: "PUT",
+      body: { preferences },
+    })
+    if (!result.success) return result
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return ok(result.data.data as any)
+  }
+
+  // =============================================================================
+  // Health Check
+  // =============================================================================
+
   /**
    * Health check endpoint.
    *

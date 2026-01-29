@@ -142,6 +142,8 @@ class Task(TaskBase, table=True):
 
     # Relationships
     logs: list["TaskLog"] = Relationship(back_populates="task")
+    # Note: Notification relationship omitted to avoid circular import.
+    # Notifications link to tasks via related_task_id foreign key.
 
 
 # =============================================================================
@@ -237,6 +239,28 @@ class User(SQLModel, table=True):
         default_factory=datetime.utcnow,
         description="Account creation timestamp",
     )
+
+    # [Fix]: Timezone support for scheduled notifications
+    # Stores IANA timezone identifier (e.g., 'America/New_York', 'Europe/London')
+    # Used by scheduler to send digest emails at user's local time
+    timezone: str = SQLField(
+        default="UTC",
+        max_length=50,
+        description="User timezone for scheduled notifications (IANA format)",
+    )
+
+    # [Task]: T017 - Notification system relationships
+    # Added for notification system feature
+    # notification_preferences: list["NotificationPreference"] = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"cascade_delete": True},
+    # )
+    # push_subscriptions: list["PushSubscription"] = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"cascade_delete": True},
+    # )
+    # Note: Direct relationships disabled to avoid circular imports.
+    # These are managed through the models package.
 
     @property
     def display_name(self) -> str:
@@ -378,6 +402,7 @@ class UserPublic(SQLModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     display_name: str
+    timezone: str = "UTC"
     created_at: Optional[datetime] = None
 
 
@@ -454,6 +479,33 @@ class UserUpdate(SQLModel):
         max_length=50,
         description="User's family name"
     )
+    timezone: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="User's timezone (IANA format, e.g., America/New_York)",
+    )
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: Optional[str]) -> Optional[str]:
+        """Validate timezone is a valid IANA identifier.
+
+        Uses zoneinfo to validate the timezone string.
+        Returns 'UTC' as fallback if invalid or None.
+        """
+        if v is None or v == "":
+            return None
+
+        try:
+            from zoneinfo import ZoneInfo
+            # Validate by attempting to create ZoneInfo
+            ZoneInfo(v)
+            return v
+        except Exception:
+            raise ValueError(
+                f"Invalid timezone '{v}'. Must be a valid IANA timezone "
+                f"identifier (e.g., 'America/New_York', 'Europe/London', 'UTC')"
+            )
 
     @field_validator("first_name", "last_name")
     @classmethod

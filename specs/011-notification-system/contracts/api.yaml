@@ -1,0 +1,538 @@
+# API Contracts: Notification System
+
+**Feature**: 011-notification-system
+**Date**: 2026-01-27
+**Source**: spec.md Functional Requirements
+
+## Base URL
+
+```
+https://api.example.com/api/notifications
+```
+
+---
+
+## 1. In-App Notifications API
+
+### 1.1 List Notifications
+
+**From**: FR-001, FR-009, FR-011
+
+```http
+GET /api/notifications
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Query Parameters**:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 10 | Items per page (max 100) |
+| `offset` | integer | 0 | Pagination offset |
+| `unread_only` | boolean | false | Filter by unread status |
+
+**Response** (200 OK):
+
+```json
+{
+  "items": [
+    {
+      "id": "notif_123",
+      "type": "task_due",
+      "title": "Task Due Soon",
+      "message": "Complete 'Buy groceries' within 1 hour",
+      "data": {
+        "task_id": "task_456",
+        "due_at": "2026-01-27T14:00:00Z"
+      },
+      "read_status": false,
+      "created_at": "2026-01-27T13:00:00Z",
+      "related_task_id": "task_456"
+    }
+  ],
+  "total": 25,
+  "unread_count": 3
+}
+```
+
+---
+
+### 1.2 Mark Notification as Read
+
+**From**: FR-005
+
+```http
+PUT /api/notifications/{notification_id}/read
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "id": "notif_123",
+  "read_status": true
+}
+```
+
+**Error** (404 Not Found):
+
+```json
+{
+  "error": "Notification not found"
+}
+```
+
+---
+
+### 1.3 Mark All as Read
+
+**From**: FR-008
+
+```http
+POST /api/notifications/mark-all-read
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "updated_count": 5
+}
+```
+
+---
+
+### 1.4 Delete Notification
+
+**From**: FR-006
+
+```http
+DELETE /api/notifications/{notification_id}
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (204 No Content)
+
+---
+
+### 1.5 Notification Stream (SSE)
+
+**From**: SC-001, SC-005
+
+```http
+GET /api/notifications/stream
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response**: `text/event-stream`
+
+```
+event: notification
+data: {"id":"notif_123","type":"task_overdue","title":"Task Overdue","message":"Buy groceries is overdue","data":{"task_id":"task_456"}}
+id: evt_001
+
+event: notification_read_count
+data: {"unread_count":2}
+id: evt_002
+
+: ping
+```
+
+---
+
+## 2. Push Notifications API
+
+### 2.1 Subscribe to Push
+
+**From**: FR-012, FR-018
+
+```http
+POST /api/notifications/push/subscribe
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "subscription": {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+    "keys": {
+      "p256dh": "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcx...",
+      "auth": "juarI8x__VnHvsOgfeAPHg"
+    }
+  },
+  "device_info": {
+    "user_agent": "Mozilla/5.0...",
+    "platform": "web"
+  }
+}
+```
+
+**Response** (201 Created):
+
+```json
+{
+  "id": "push_sub_123",
+  "status": "subscribed"
+}
+```
+
+---
+
+### 2.2 Unsubscribe from Push
+
+```http
+DELETE /api/notifications/push/unsubscribe
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/..."
+}
+```
+
+**Response** (204 No Content)
+
+---
+
+### 2.3 Get Push Permission Status
+
+**From**: FR-013
+
+```http
+GET /api/notifications/push/status
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "status": "granted",
+  "subscription_count": 2
+}
+```
+
+**Status values**: `granted` | `denied` | `not_requested`
+
+---
+
+## 3. Email Notifications API
+
+### 3.1 Get Email Preferences
+
+**From**: FR-026, FR-033
+
+```http
+GET /api/notifications/email/preferences
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "preferences": [
+    {
+      "notification_type": "task_due",
+      "enabled": true,
+      "frequency": "daily"
+    },
+    {
+      "notification_type": "task_overdue",
+      "enabled": true,
+      "frequency": "immediate"
+    }
+  ],
+  "email_address": "user@example.com",
+  "bounced": false
+}
+```
+
+---
+
+### 3.2 Update Email Preferences
+
+```http
+PUT /api/notifications/email/preferences
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "preferences": [
+    {
+      "notification_type": "task_due",
+      "enabled": true,
+      "frequency": "daily"
+    },
+    {
+      "notification_type": "task_overdue",
+      "enabled": true,
+      "frequency": "immediate"
+    }
+  ]
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "updated": true
+}
+```
+
+---
+
+## 4. Notification Settings API
+
+### 4.1 Get Notification Settings
+
+**From**: FR-033
+
+```http
+GET /api/notifications/settings
+Authorization: Bearer <JWT_TOKEN>
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "channels": {
+    "in_app": {
+      "enabled": true
+    },
+    "push": {
+      "enabled": true,
+      "status": "granted"
+    },
+    "email": {
+      "enabled": true,
+      "address": "u***@example.com"
+    }
+  },
+  "types": {
+    "task_due": {
+      "in_app": true,
+      "push": true,
+      "email": "immediate"
+    },
+    "task_overdue": {
+      "in_app": true,
+      "push": true,
+      "email": "immediate"
+    },
+    "task_reminder": {
+      "in_app": true,
+      "push": false,
+      "email": "none"
+    }
+  },
+  "do_not_disturb": {
+    "enabled": false,
+    "start": "22:00",
+    "end": "08:00"
+  }
+}
+```
+
+---
+
+### 4.2 Update Notification Settings
+
+```http
+PUT /api/notifications/settings
+Authorization: Bearer <JWT_TOKEN>
+Content-Type: application/json
+```
+
+**Request Body**:
+
+```json
+{
+  "channels": {
+    "push": {
+      "enabled": true
+    },
+    "email": {
+      "enabled": true,
+      "frequency": "daily"
+    }
+  },
+  "types": {
+    "task_due": {
+      "push": true,
+      "email": "immediate"
+    }
+  },
+  "do_not_disturb": {
+    "enabled": true,
+    "start": "22:00",
+    "end": "08:00"
+  }
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "updated": true
+}
+```
+
+---
+
+## 5. Webhook (Resend)
+
+### 5.1 Email Delivery Webhook
+
+**From**: FR-025, FR-034
+
+```http
+POST /api/notifications/webhooks/resend
+```
+
+**Headers**:
+```
+svix-id: msg_123...
+svix-timestamp: 1643723400
+svix-signature: v1,abc123...
+```
+
+**Request Body** (examples):
+
+```json
+{
+  "type": "email.bounced",
+  "data": {
+    "id": "email_123",
+    "email": "user@example.com",
+    "error": {
+      "name": "invalid_domain",
+      "message": "Domain does not exist"
+    }
+  }
+}
+```
+
+**Response** (200 OK):
+
+```json
+{
+  "received": true
+}
+```
+
+**Actions on bounce**:
+1. Mark email as invalid in user preferences
+2. Disable email notifications for that user
+3. Log bounce in `email_delivery_logs`
+
+---
+
+## 6. Notification Triggers (Internal)
+
+These are called internally by the task system:
+
+| Event | Type | Trigger |
+|-------|------|---------|
+| Task created | `task_assigned` | On task creation |
+| Task due within 1 hour | `task_due` | Scheduled check |
+| Task overdue | `task_overdue` | Scheduled check |
+| Task completed | `task_completed` | On task completion |
+| User reminder | `task_reminder` | User-scheduled time |
+
+---
+
+## Error Responses
+
+All endpoints may return these error responses:
+
+### 401 Unauthorized
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "Invalid or expired token"
+}
+```
+
+### 403 Forbidden
+
+```json
+{
+  "error": "Forbidden",
+  "message": "You do not have permission to access this resource"
+}
+```
+
+### 404 Not Found
+
+```json
+{
+  "error": "Not Found",
+  "message": "Notification not found"
+}
+```
+
+### 429 Too Many Requests
+
+```json
+{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Please try again later.",
+  "retry_after": 60
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred",
+  "request_id": "req_abc123"
+}
+```
+
+---
+
+## Rate Limits
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| GET /notifications | 100/minute | Per user |
+| PUT /notifications/*/read | 60/minute | Per user |
+| POST /notifications/push/subscribe | 10/hour | Per user |
+| Send push notification | 3/hour | Per user (urgent exempt) |
+| Send email | 10/hour | Per user |
+
+---
+
+## OpenAPI Specification
+
+The full OpenAPI 3.1 spec is available at:
+
+```
+https://api.example.com/docs/openapi.json
+```
+
+Interactive API documentation:
+
+```
+https://api.example.com/docs (Swagger UI)
+```
