@@ -60,13 +60,13 @@ function InAppSettings() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="p-6 border-border/50">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <MessageSquare className="h-6 w-6 text-primary" />
+      <Card className="p-4 sm:p-6 border-border/50">
+        <div className="flex items-center gap-3 sm:gap-4 mb-4">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
+            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">In-App Notifications</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">In-App Notifications</h3>
             <p className="text-sm text-muted-foreground">
               Real-time notifications in the app
             </p>
@@ -126,27 +126,27 @@ export function NotificationTabs() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="w-full justify-start mb-6 bg-muted/50 p-1">
+      <TabsList className="w-full justify-start mb-4 sm:mb-6 bg-muted/50 p-1 overflow-x-auto">
         <TabsTrigger
           value="push"
-          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2"
+          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1.5 sm:gap-2 flex-1 min-w-0 text-xs sm:text-sm"
         >
-          <Bell className="h-4 w-4" />
-          Push
+          <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <span className="truncate">Push</span>
         </TabsTrigger>
         <TabsTrigger
           value="email"
-          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2"
+          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1.5 sm:gap-2 flex-1 min-w-0 text-xs sm:text-sm"
         >
-          <Mail className="h-4 w-4" />
-          Email
+          <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <span className="truncate">Email</span>
         </TabsTrigger>
         <TabsTrigger
           value="in-app"
-          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-2"
+          className="data-[state=active]:bg-background data-[state=active]:shadow-sm gap-1.5 sm:gap-2 flex-1 min-w-0 text-xs sm:text-sm"
         >
-          <MessageSquare className="h-4 w-4" />
-          In-App
+          <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+          <span className="truncate">In-App</span>
         </TabsTrigger>
       </TabsList>
 

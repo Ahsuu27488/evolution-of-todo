@@ -41,13 +41,13 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
           <motion.button
             ref={ref}
             type="button"
-            className="relative p-2 rounded-md hover:bg-muted/50 transition-colors"
+            className="relative p-2 sm:p-2.5 rounded-md hover:bg-muted/50 transition-colors touch-manipulation"
             onClick={onBellClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             aria-label="Notifications"
           >
-            <Bell className="h-5 w-5 text-foreground/80" />
+            <Bell className="h-5 w-5 sm:h-5 sm:w-5 text-foreground/80" />
 
             <AnimatePresence>
               {unreadCount && unreadCount > 0 && (
@@ -59,7 +59,7 @@ export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellPr
                 >
                   <Badge
                     variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-rose-500 hover:bg-rose-600"
+                    className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-rose-500 hover:bg-rose-600"
                   >
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </Badge>

@@ -228,10 +228,10 @@ export function PushSettings() {
 
       {/* Main Settings Card */}
       <Card className="border-border/50 shadow-lg overflow-hidden">
-        <div className="p-4 border-b border-border/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-foreground">Push Notifications</h3>
+        <div className="p-3 sm:p-4 border-b border-border/50">
+          <div className="flex items-start sm:items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-foreground text-base sm:text-lg">Push Notifications</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Receive notifications even when your browser is closed
               </p>
@@ -240,19 +240,19 @@ export function PushSettings() {
           </div>
         </div>
 
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {/* Toggle */}
-          <div className="flex items-center justify-between py-3 border-b border-border/50">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+          <div className="flex items-start sm:items-center justify-between py-3 sm:py-4 border-b border-border/50 gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
                 {isSubscribed ? (
                   <Bell className="h-5 w-5 text-primary" />
                 ) : (
                   <BellOff className="h-5 w-5 text-muted-foreground" />
                 )}
               </div>
-              <div>
-                <p className="font-medium text-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-foreground text-sm sm:text-base">
                   {isSubscribed ? "Push Notifications Enabled" : "Push Notifications Disabled"}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -266,6 +266,7 @@ export function PushSettings() {
               checked={isSubscribed}
               onCheckedChange={handleToggle}
               disabled={!isSupported || permissionStatus === "denied" || isLoading}
+              className="shrink-0"
             />
           </div>
 
@@ -300,23 +301,23 @@ export function PushSettings() {
           )}
 
           {/* Refresh Button */}
-          <div className="mt-4 flex items-center justify-end gap-2">
+          <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground w-full sm:w-auto"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Status
             </Button>
             {isSubscribed && (
-              <>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleReset}
-                  className="text-muted-foreground"
+                  className="text-muted-foreground w-full sm:w-auto"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset
@@ -326,6 +327,7 @@ export function PushSettings() {
                   size="sm"
                   onClick={handleTest}
                   disabled={isTestLoading || isLoading}
+                  className="w-full sm:w-auto"
                 >
                   {isTestLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -334,19 +336,19 @@ export function PushSettings() {
                   )}
                   Send Test
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
       </Card>
 
       {/* Info Card */}
-      <Card className="mt-4 p-4 border-border/50 bg-muted/20">
+      <Card className="mt-4 p-3 sm:p-4 border-border/50 bg-muted/20">
         <div className="flex items-start gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
             <Bell className="h-4 w-4 text-primary" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">About Push Notifications</p>
             <ul className="text-xs text-muted-foreground mt-2 space-y-1">
               <li>• Works even when the browser is minimized or closed</li>

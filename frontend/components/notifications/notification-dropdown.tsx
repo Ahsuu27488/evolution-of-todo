@@ -118,7 +118,7 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
         align="end"
         className={cn(
           // Glassmorphism styling per Deep Space theme
-          "glass-modal z-[100] w-80 md:w-96",
+          "glass-modal z-[100] w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-sm",
           "backdrop-blur-md bg-background/80",
           "border border-border/50 shadow-2xl",
           "rounded-lg p-0",
@@ -131,10 +131,10 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
         )}
       >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-foreground" />
-          <span className="font-semibold text-foreground">Notifications</span>
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <Bell className="h-4 w-4 text-foreground shrink-0" />
+          <span className="font-semibold text-foreground text-sm sm:text-base truncate">Notifications</span>
         </div>
 
         {unreadCount > 0 && (
@@ -144,10 +144,11 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
               e.stopPropagation()
               handleMarkAllAsRead()
             }}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50 whitespace-nowrap"
           >
             <CheckCheck className="h-3 w-3" />
-            Mark all read
+            <span className="hidden sm:inline">Mark all read</span>
+            <span className="sm:hidden">All read</span>
           </button>
         )}
       </div>
@@ -155,7 +156,7 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
       {/* Notification List */}
       <div
         ref={scrollRef}
-        className="max-h-96 overflow-y-auto custom-scrollbar"
+        className="max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar"
       >
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -196,10 +197,10 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
 
       {/* Footer */}
       {total > 0 && (
-        <div className="px-4 py-2 border-t border-border/50 flex items-center justify-between">
+        <div className="px-3 sm:px-4 py-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
           <a
             href="/settings/notifications"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center sm:text-left"
           >
             Notification Settings
           </a>
@@ -210,7 +211,7 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
                 e.stopPropagation()
                 onOpenPushSettings()
               }}
-              className="text-xs text-[oklch(0.91_0.17_195)] hover:text-[oklch(0.8_0.2_195)] transition-colors"
+              className="text-xs text-[oklch(0.91_0.17_195)] hover:text-[oklch(0.8_0.2_195)] transition-colors text-center sm:text-left"
             >
               Push Settings
             </button>

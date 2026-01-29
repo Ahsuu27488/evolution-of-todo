@@ -260,15 +260,15 @@ export function EmailPreferences() {
       )}
 
       {/* Email Address Display */}
-      <Card className="mb-4 p-4 border-border/50">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+      <Card className="mb-4 p-3 sm:p-4 border-border/50">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
               <Mail className="h-5 w-5 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">Email Address</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground truncate">
                 {emailAddress || "No email address set"}
               </p>
             </div>
@@ -279,6 +279,7 @@ export function EmailPreferences() {
               size="sm"
               onClick={handleTestEmail}
               disabled={isTestLoading}
+              className="w-full sm:w-auto shrink-0"
             >
               {isTestLoading ? (
                 <>
@@ -298,8 +299,8 @@ export function EmailPreferences() {
 
       {/* Email Preferences List */}
       <Card className="border-border/50 shadow-lg overflow-hidden">
-        <div className="p-4 border-b border-border/50">
-          <h3 className="font-semibold text-foreground">Email Notification Preferences</h3>
+        <div className="p-3 sm:p-4 border-b border-border/50">
+          <h3 className="font-semibold text-foreground text-base sm:text-lg">Email Notification Preferences</h3>
           <p className="text-sm text-muted-foreground mt-1">
             Choose which notifications you want to receive via email
           </p>
@@ -316,9 +317,9 @@ export function EmailPreferences() {
                 key={item.type}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="p-4 hover:bg-muted/30 transition-colors"
+                className="p-3 sm:p-4 hover:bg-muted/30 transition-colors"
               >
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                   {/* Icon */}
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/50">
                     {item.icon}
@@ -326,7 +327,7 @@ export function EmailPreferences() {
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <p className="font-medium text-foreground">{item.label}</p>
                       {frequency === EmailFrequency.IMMEDIATE && isEnabled && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
@@ -337,7 +338,7 @@ export function EmailPreferences() {
                     <p className="text-sm text-muted-foreground mb-3">{item.description}</p>
 
                     {/* Controls */}
-                    <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                       {/* Toggle */}
                       <div className="flex items-center gap-2">
                         <Switch
@@ -352,14 +353,14 @@ export function EmailPreferences() {
 
                       {/* Frequency Selector */}
                       {isEnabled && frequency !== EmailFrequency.NONE && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Frequency:</span>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <span className="text-sm text-muted-foreground hidden sm:inline">Frequency:</span>
                           <Select
                             value={frequency}
                             onValueChange={(value) => handleFrequencyChange(item.type, value)}
                             disabled={updatePreferences.isPending}
                           >
-                            <SelectTrigger className="w-[140px] h-8">
+                            <SelectTrigger className="w-full sm:w-[140px] h-8">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -390,7 +391,7 @@ export function EmailPreferences() {
                           }}
                           disabled={updatePreferences.isPending}
                         >
-                          <SelectTrigger className="w-[140px] h-8">
+                          <SelectTrigger className="w-full sm:w-[140px] h-8">
                             <SelectValue placeholder="Enable..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -417,12 +418,13 @@ export function EmailPreferences() {
 
         {/* Save/Reset Buttons */}
         {hasChanges && (
-          <div className="p-4 border-t border-border/50 bg-muted/30 flex items-center justify-end gap-3">
+          <div className="p-3 sm:p-4 border-t border-border/50 bg-muted/30 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handleReset}
               disabled={updatePreferences.isPending}
+              className="w-full sm:w-auto"
             >
               Reset
             </Button>
@@ -430,7 +432,7 @@ export function EmailPreferences() {
               size="sm"
               onClick={handleSave}
               disabled={updatePreferences.isPending}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
             >
               {updatePreferences.isPending ? (
                 <>

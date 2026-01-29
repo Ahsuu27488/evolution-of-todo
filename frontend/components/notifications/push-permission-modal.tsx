@@ -134,7 +134,7 @@ export function PushPermissionModal({
               />
             </Dialog.Overlay>
 
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
               <Dialog.Content asChild>
                 <motion.div
                   variants={modalVariants}
@@ -145,7 +145,7 @@ export function PushPermissionModal({
                     "glass-modal w-full max-w-md",
                     "backdrop-blur-md bg-background/90",
                     "border border-border/50 shadow-2xl",
-                    "rounded-2xl p-6 relative",
+                    "rounded-2xl p-5 sm:p-6 relative mx-4",
                     "data-[state=open]:animate-in",
                     "data-[state=closed]:animate-out",
                     "data-[state=closed]:fade-out-0",
@@ -155,7 +155,7 @@ export function PushPermissionModal({
                   {/* Close button */}
                   <button
                     onClick={handleClose}
-                    className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted/50 transition-colors"
+                    className="absolute top-3 sm:top-4 right-3 sm:right-4 p-1.5 rounded-full hover:bg-muted/50 transition-colors touch-manipulation"
                     aria-label="Close"
                   >
                     <X className="h-4 w-4 text-muted-foreground" />
@@ -165,19 +165,19 @@ export function PushPermissionModal({
                   <div className="flex justify-center mb-4">
                     <div className="relative">
                       <div className="absolute inset-0 bg-[oklch(0.91_0.17_195/0.3)] rounded-full blur-xl" />
-                      <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-[oklch(0.91_0.17_195)] to-[oklch(0.7_0.2_260)] flex items-center justify-center">
-                        <Bell className="h-8 w-8 text-white" />
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[oklch(0.91_0.17_195)] to-[oklch(0.7_0.2_260)] flex items-center justify-center">
+                        <Bell className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
                       </div>
                     </div>
                   </div>
 
                   {/* Title */}
-                  <Dialog.Title className="text-xl font-semibold text-center text-foreground mb-2">
+                  <Dialog.Title className="text-lg sm:text-xl font-semibold text-center text-foreground mb-2 px-2">
                     Enable Push Notifications
                   </Dialog.Title>
 
                   {/* Description */}
-                  <Dialog.Description className="text-sm text-muted-foreground text-center mb-6">
+                  <Dialog.Description className="text-sm text-muted-foreground text-center mb-6 px-2">
                     Stay updated with your tasks even when the browser is closed.
                     We&apos;ll notify you about due dates, reminders, and task assignments.
                   </Dialog.Description>
@@ -205,11 +205,11 @@ export function PushPermissionModal({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <button
                       onClick={handleDeny}
                       className={cn(
-                        "flex-1 px-4 py-2.5 rounded-lg",
+                        "flex-1 px-4 py-2.5 rounded-lg touch-manipulation",
                         "border border-border/50",
                         "hover:bg-muted/50 transition-colors",
                         "text-sm font-medium text-foreground"
@@ -221,7 +221,7 @@ export function PushPermissionModal({
                     <button
                       onClick={handleAllow}
                       className={cn(
-                        "flex-1 px-4 py-2.5 rounded-lg",
+                        "flex-1 px-4 py-2.5 rounded-lg touch-manipulation",
                         "bg-gradient-to-r from-[oklch(0.91_0.17_195)] to-[oklch(0.7_0.2_260)]",
                         "hover:opacity-90 transition-opacity",
                         "text-sm font-medium text-white shadow-lg",
@@ -234,7 +234,7 @@ export function PushPermissionModal({
                   </div>
 
                   {/* Privacy note */}
-                  <p className="text-xs text-muted-foreground/60 text-center mt-4">
+                  <p className="text-xs text-muted-foreground/60 text-center mt-4 px-2">
                     You can change this anytime in notification settings
                   </p>
                 </motion.div>

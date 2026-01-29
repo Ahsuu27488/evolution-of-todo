@@ -26,14 +26,14 @@ export default async function NotificationSettingsPage() {
         user={session.user}
       />
 
-      <main className="container px-6 pt-24 pb-6 md:pt-28 md:pb-10">
+      <main className="container px-4 sm:px-6 pt-20 pb-6 sm:pt-24 sm:pb-10">
         <div className="max-w-3xl mx-auto">
           {/* Page Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+          <div className="mb-6 sm:mb-8 text-center">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
               Notification Settings
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground px-2">
               Manage how and when you receive notifications
             </p>
           </div>

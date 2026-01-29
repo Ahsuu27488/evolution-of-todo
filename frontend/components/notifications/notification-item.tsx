@@ -103,15 +103,15 @@ export function NotificationItem({
         }}
         className={cn(
           // Glassmorphism card styling
-          "w-full text-left p-3 rounded-lg cursor-pointer",
+          "w-full text-left p-2.5 sm:p-3 rounded-lg cursor-pointer touch-manipulation",
           "backdrop-blur-sm bg-background/60",
           "border border-border/50",
-          "hover:bg-background/80 transition-colors",
+          "hover:bg-background/80 active:bg-background/90 transition-colors",
           // Unread glow indicator
           notification.read_status
             ? "opacity-70"
             : "border-l-2 border-l-[oklch(0.91_0.17_195)]", // Cyan glow per FR-003
-          "flex items-start gap-3"
+          "flex items-start gap-2.5 sm:gap-3 min-h-[3.5rem] sm:min-h-[4rem]"
         )}
       >
         {/* Icon */}
@@ -140,17 +140,17 @@ export function NotificationItem({
           )}
           <p className="text-xs text-muted-foreground/60 mt-1 flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            {relativeTime}
+            <span className="truncate">{relativeTime}</span>
           </p>
         </div>
 
         {/* Delete button */}
         <button
           onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 hover:text-destructive rounded"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-destructive/10 hover:text-destructive rounded touch-manipulation"
           aria-label="Delete notification"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
     </motion.div>
