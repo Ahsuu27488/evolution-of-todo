@@ -16,8 +16,14 @@ import { Header } from "@/components/layout/header"
 import { requireAuth } from "@/app/actions/auth"
 import { NotificationTabs } from "@/components/notifications/notification-tabs"
 
-export default async function NotificationSettingsPage() {
+export default async function NotificationSettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
   const session = await requireAuth()
+  const params = await searchParams
+  const initialTab = params.tab || "push"
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,7 +45,7 @@ export default async function NotificationSettingsPage() {
           </div>
 
           {/* Settings Tabs */}
-          <NotificationTabs />
+          <NotificationTabs defaultTab={initialTab} />
         </div>
       </main>
     </div>

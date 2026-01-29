@@ -37,19 +37,10 @@ import { NotificationEmptyState } from "./notification-empty-state"
 import { cn } from "@/lib/utils"
 
 // =============================================================================
-// Props
-// =============================================================================
-
-export interface NotificationDropdownProps {
-  /** Callback when user wants to open push settings */
-  onOpenPushSettings?: () => void
-}
-
-// =============================================================================
 // Notification Dropdown Component
 // =============================================================================
 
-export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdownProps) {
+export function NotificationDropdown() {
   const [isLoading, setIsLoading] = useState(true)
   const [offset, setOffset] = useState(0)
   const limit = 10
@@ -204,18 +195,12 @@ export function NotificationDropdown({ onOpenPushSettings }: NotificationDropdow
           >
             Notification Settings
           </a>
-          {onOpenPushSettings && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onOpenPushSettings()
-              }}
-              className="text-xs text-[oklch(0.91_0.17_195)] hover:text-[oklch(0.8_0.2_195)] transition-colors text-center sm:text-left"
-            >
-              Push Settings
-            </button>
-          )}
+          <a
+            href="/settings/notifications?tab=push"
+            className="text-xs text-[oklch(0.91_0.17_195)] hover:text-[oklch(0.8_0.2_195)] transition-colors text-center sm:text-left"
+          >
+            Push Settings
+          </a>
         </div>
       )}
     </DropdownMenu.Content>

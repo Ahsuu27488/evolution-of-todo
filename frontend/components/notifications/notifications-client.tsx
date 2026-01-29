@@ -72,7 +72,7 @@ export function NotificationsClient() {
             </span>
           )}
         </DropdownMenu.Trigger>
-        <NotificationDropdown onOpenPushSettings={() => setShowPushModal(true)} />
+        <NotificationDropdown />
         {/* SSE streaming for real-time updates - client only */}
         <SSEStreamProvider />
       </DropdownMenu.Root>

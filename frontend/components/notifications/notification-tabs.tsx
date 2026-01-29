@@ -121,8 +121,13 @@ function InAppSettings() {
 // Component
 // =============================================================================
 
-export function NotificationTabs() {
-  const [activeTab, setActiveTab] = useState("push")
+export interface NotificationTabsProps {
+  /** Initial tab to display (default: "push") */
+  defaultTab?: string
+}
+
+export function NotificationTabs({ defaultTab = "push" }: NotificationTabsProps) {
+  const [activeTab, setActiveTab] = useState(defaultTab)
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
