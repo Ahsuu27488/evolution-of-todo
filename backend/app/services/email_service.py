@@ -40,7 +40,7 @@ resend.api_key = os.getenv("RESEND_API_KEY", "")
 # Set EMAIL_FROM in .env to use your verified domain (e.g., noreply@ahsandev.site)
 DEFAULT_SENDER = os.getenv(
     "EMAIL_FROM",
-    "Chronos Todo <onboarding@resend.dev>"  # Fallback for development
+    "Chronos <noreply@mail.ahsandev.site>"  # Production fallback
 )
 BASE_URL = os.getenv("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
 
@@ -59,11 +59,35 @@ _email_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="resend_e
 
 
 class EmailTemplates:
-    """HTML email templates for different notification types.
+    """Production HTML email templates with dark/light mode support.
 
     [Task]: T038
     [From]: spec.md FR-004 notification types
+    [Updated]: Production-ready with responsive design and dark mode support
     """
+
+    # Color constants matching the Deep Space theme
+    # Light mode colors (default)
+    LM_BG = "#f8f8fa"
+    LM_CARD = "#ffffff"
+    LM_TEXT = "#1e1e23"
+    LM_TEXT_MUTED = "#6b7280"
+    LM_BORDER = "#e5e7eb"
+    LM_PRIMARY = "#00f5ff"
+    LM_PRIMARY_DARK = "#0891b2"
+    LM_SECONDARY = "#a855f7"
+    LM_SUCCESS = "#22c55e"
+    LM_WARNING = "#fbbf24"
+    LM_ERROR = "#ef4444"
+
+    # Dark mode colors
+    DM_BG = "#0a0a0f"
+    DM_CARD = "#14141e"
+    DM_TEXT = "#f5f5fa"
+    DM_TEXT_MUTED = "#9696aa"
+    DM_BORDER = "rgba(255, 255, 255, 0.1)"
+    DM_PRIMARY = "#00f5ff"
+    DM_SECONDARY = "#a855f7"
 
     @staticmethod
     def base_template(
@@ -71,10 +95,11 @@ class EmailTemplates:
         preview_text: str = "",
         unsubscribe_token: str | None = None,
     ) -> str:
-        """Base email template with Deep Space themed styling.
+        """Production base email template with dark/light mode support.
 
         [Task]: T046 - Add unsubscribe link to emails
         [From]: spec.md FR-023 - One-click unsubscribe
+        [Updated]: Dark mode via @media (prefers-color-scheme: dark)
 
         Args:
             content: HTML content for the email body
@@ -82,44 +107,163 @@ class EmailTemplates:
             unsubscribe_token: Optional token for unsubscribe link
 
         Returns:
-            Complete HTML email with styles
+            Complete HTML email with responsive styles and dark mode support
         """
         # Build unsubscribe link if token provided
         unsubscribe_link = f"{BASE_URL}/api/notifications/email/unsubscribe?token={unsubscribe_token}" if unsubscribe_token else f"{BASE_URL}/settings/notifications"
-        unsubscribe_html = f'<p style="margin: 5px 0;"><a href="{unsubscribe_link}" style="color: #71717a; text-decoration: underline;">Unsubscribe</a></p>' if unsubscribe_token else ""
+        unsubscribe_html = f'<p style="margin: 8px 0 0 0;"><a href="{unsubscribe_link}" style="color: #6b7280; text-decoration: underline;">Unsubscribe from these emails</a></p>' if unsubscribe_token else ""
 
-        return f"""<!DOCTYPE html>
-<html lang="en">
+        return f'''<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chronos Todo</title>
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>Chronos</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset styles */
+        .email-body {{ margin: 0; padding: 0; width: 100% !important; }}
+        .email-wrapper {{ width: 100%; table-layout: fixed; background-color: #f8f8fa; }}
+        .email-container {{ max-width: 600px; margin: 0 auto; }}
+        .email-card {{ background-color: #ffffff; border-radius: 16px; overflow: hidden; }}
+        .email-header {{ text-align: center; padding: 32px 24px 24px; border-bottom: 1px solid #e5e7eb; }}
+        .email-content {{ padding: 32px 24px; color: #1e1e23; }}
+        .email-footer {{ padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 13px; }}
+        .email-footer a {{ color: #6b7280; text-decoration: none; }}
+        .email-footer a:hover {{ text-decoration: underline; }}
+
+        /* Logo gradient animation effect (static fallback for email) */
+        .logo-text {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }}
+        .logo-dot {{ color: #00f5ff; }}
+
+        /* Button styles */
+        .btn-primary {{ display: inline-block; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); color: #0a0a0f; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }}
+        .btn-secondary {{ display: inline-block; background-color: #1e1e23; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }}
+        .btn-outline {{ display: inline-block; background-color: transparent; border: 1px solid #e5e7eb; color: #1e1e23; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }}
+
+        /* Card styles */
+        .info-card {{ background-color: #f3f4f6; border-left: 4px solid #00f5ff; border-radius: 8px; padding: 20px; margin: 24px 0; }}
+        .warning-card {{ background-color: #fef3c7; border-left: 4px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 24px 0; }}
+        .error-card {{ background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; padding: 20px; margin: 24px 0; }}
+        .success-card {{ background-color: #d1fae5; border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin: 24px 0; }}
+
+        /* Typography */
+        h1 {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #1e1e23; }}
+        h2 {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 600; margin: 0 0 12px 0; color: #1e1e23; }}
+        h3 {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 600; margin: 0 0 8px 0; color: #1e1e23; }}
+        p {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0; color: #374151; }}
+
+        /* Stats cards */
+        .stats-container {{ display: flex; gap: 12px; margin: 24px 0; }}
+        .stat-card {{ flex: 1; background-color: #f3f4f6; padding: 20px; border-radius: 12px; text-align: center; }}
+        .stat-number {{ font-size: 32px; font-weight: 700; }}
+        .stat-label {{ font-size: 13px; color: #6b7280; margin-top: 4px; }}
+
+        /* Table styles */
+        .email-table {{ width: 100%; border-collapse: collapse; margin: 24px 0; }}
+        .email-table th {{ padding: 12px 8px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }}
+        .email-table td {{ padding: 12px 8px; border-bottom: 1px solid #f3f4f6; }}
+        .email-table tr:last-child td {{ border-bottom: none; }}
+
+        /* Dark mode support via media query */
+        @media (prefers-color-scheme: dark) {{
+            .email-wrapper {{ background-color: #0a0a0f !important; }}
+            .email-card {{ background-color: #14141e !important; }}
+            .email-header {{ border-bottom-color: rgba(255,255,255,0.1) !important; }}
+            .email-content {{ color: #f5f5fa !important; }}
+            .email-footer {{ border-top-color: rgba(255,255,255,0.1) !important; color: #6b7280 !important; }}
+            .email-footer a {{ color: #6b7280 !important; }}
+
+            h1, h2, h3 {{ color: #f5f5fa !important; }}
+            p {{ color: #d1d5db !important; }}
+
+            .btn-secondary {{ background-color: #27272a !important; border-color: rgba(255,255,255,0.1) !important; }}
+            .btn-outline {{ background-color: transparent !important; border-color: rgba(255,255,255,0.2) !important; color: #f5f5fa !important; }}
+
+            .info-card {{ background-color: rgba(0, 245, 255, 0.1) !important; border-left-color: #00f5ff !important; }}
+            .warning-card {{ background-color: rgba(251, 191, 36, 0.15) !important; border-left-color: #fbbf24 !important; }}
+            .error-card {{ background-color: rgba(239, 68, 68, 0.15) !important; border-left-color: #ef4444 !important; }}
+            .success-card {{ background-color: rgba(34, 197, 94, 0.15) !important; border-left-color: #22c55e !important; }}
+
+            .stats-container {{ gap: 12px; }}
+            .stat-card {{ background-color: #1e1e2e !important; }}
+            .stat-label {{ color: #9696aa !important; }}
+
+            .email-table th {{ color: #9696aa !important; border-bottom-color: rgba(255,255,255,0.1) !important; }}
+            .email-table td {{ border-bottom-color: rgba(255,255,255,0.05) !important; color: #f5f5fa !important; }}
+        }}
+
+        /* Responsive styles */
+        @media screen and (max-width: 620px) {{
+            .email-container {{ max-width: 100% !important; }}
+            .email-header, .email-content, .email-footer {{ padding: 20px 16px !important; }}
+            .stats-container {{ flex-direction: column; }}
+            .stat-card {{ margin-bottom: 8px; }}
+            .btn-primary, .btn-secondary, .btn-outline {{ display: block !important; width: 100% !important; box-sizing: border-box; }}
+        }}
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <!-- Logo/Header -->
-        <div style="text-align: center; padding: 20px 0; border-bottom: 1px solid #1e1e2e;">
-            <h1 style="color: #e8e8ed; margin: 0; font-size: 24px; font-weight: 600;">
-                <span style="color: #5eead4;">◈</span> Chronos Todo
-            </h1>
-        </div>
+<body style="margin: 0; padding: 0; width: 100%; background-color: #f8f8fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Preview text for inbox preview -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        {preview_text} ‎
+    </div>
 
-        <!-- Content -->
-        <div style="padding: 30px 0; color: #e8e8ed;">
-            {content}
-        </div>
+    <div class="email-wrapper">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+            <tr>
+                <td align="center" style="padding: 20px 0;">
+                    <table class="email-container" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                        <!-- Main Card -->
+                        <tr>
+                            <td class="email-card">
+                                <!-- Logo/Header -->
+                                <div class="email-header">
+                                    <a href="{BASE_URL}" style="text-decoration: none;">
+                                        <span class="logo-text">
+                                            Chronos<span class="logo-dot">.</span>
+                                        </span>
+                                    </a>
+                                </div>
 
-        <!-- Footer -->
-        <div style="padding-top: 20px; border-top: 1px solid #1e1e2e; text-align: center; font-size: 12px; color: #71717a;">
-            <p style="margin: 0;">You received this email because you have notifications enabled in Chronos Todo.</p>
-            <p style="margin: 10px 0;">
-                <a href="{BASE_URL}/settings/notifications" style="color: #5eead4; text-decoration: none;">Manage Notification Settings</a>
-            </p>
-            {unsubscribe_html}
-        </div>
+                                <!-- Content -->
+                                <div class="email-content">
+                                    {content}
+                                </div>
+
+                                <!-- Footer -->
+                                <div class="email-footer">
+                                    <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">
+                                        You received this email because you have notifications enabled in Chronos.
+                                    </p>
+                                    <p style="margin: 8px 0;">
+                                        <a href="{BASE_URL}/settings/notifications" style="color: #6b7280;">Manage Notification Settings</a>
+                                    </p>
+                                    {unsubscribe_html}
+                                    <p style="margin: 16px 0 0 0; color: #9ca3af; font-size: 11px;">
+                                        © {datetime.now().year} Chronos. All rights reserved.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
     </div>
 </body>
-</html>"""
+</html>'''
 
     @staticmethod
     def task_due(
@@ -128,27 +272,45 @@ class EmailTemplates:
         task_url: str,
         unsubscribe_token: str | None = None,
     ) -> str:
-        """Email template for task due reminder.
+        """Email template for task due reminder with production design.
 
         [From]: spec.md FR-004 - TASK_DUE notification
         [Task]: T046 - Add unsubscribe token
+        [Updated]: Production design with warning card styling
         """
-        content = f"""
-            <h2 style="color: #fbbf24; margin-top: 0;">⏰ Task Due Soon</h2>
-            <p style="font-size: 16px; line-height: 1.6;">Your task is due soon:</p>
+        content = f'''
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">⏰</span>
+                        <h2 style="margin: 12px 0 8px 0; color: #fbbf24;">Task Due Soon</h2>
+                        <p style="margin: 0; color: #374151;">Your task is coming up. Here are the details:</p>
+                    </td>
+                </tr>
+            </table>
 
-            <div style="background-color: #1e1e2e; border-left: 4px solid #5eead4; padding: 20px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 10px 0; color: #e8e8ed;">{task_title}</h3>
-                <p style="margin: 0; color: #a1a1aa;">Due: {due_date}</p>
+            <div class="warning-card">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td>
+                            <h3 style="margin: 0 0 8px 0; color: #1e1e23;">{task_title}</h3>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">Due: {due_date}</p>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}{task_url}" style="display: inline-block; background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); color: #0a0a0f; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                    View Task
-                </a>
-            </div>
-        """
-        return EmailTemplates.base_template(content, f"Task due: {task_title}", unsubscribe_token)
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}{task_url}" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View Task →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"⏰ Task due: {task_title}", unsubscribe_token)
 
     @staticmethod
     def task_overdue(
@@ -157,27 +319,45 @@ class EmailTemplates:
         task_url: str,
         unsubscribe_token: str | None = None,
     ) -> str:
-        """Email template for overdue task.
+        """Email template for overdue task with production design.
 
         [From]: spec.md FR-004 - TASK_OVERDUE notification
         [Task]: T046 - Add unsubscribe token
+        [Updated]: Production design with error card styling
         """
-        content = f"""
-            <h2 style="color: #f87171; margin-top: 0;">⚠️ Task Overdue</h2>
-            <p style="font-size: 16px; line-height: 1.6;">The following task is now overdue:</p>
+        content = f'''
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">⚠️</span>
+                        <h2 style="margin: 12px 0 8px 0; color: #ef4444;">Task Overdue</h2>
+                        <p style="margin: 0; color: #374151;">This task is now overdue. Please take action:</p>
+                    </td>
+                </tr>
+            </table>
 
-            <div style="background-color: #1e1e2e; border-left: 4px solid #f87171; padding: 20px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 10px 0; color: #e8e8ed;">{task_title}</h3>
-                <p style="margin: 0; color: #a1a1aa;">Was due: {due_date}</p>
+            <div class="error-card">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td>
+                            <h3 style="margin: 0 0 8px 0; color: #1e1e23;">{task_title}</h3>
+                            <p style="margin: 0; color: #6b7280; font-size: 14px;">Was due: {due_date}</p>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}{task_url}" style="display: inline-block; background: linear-gradient(135deg, #f87171 0%, #ef4444 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                    View Task
-                </a>
-            </div>
-        """
-        return EmailTemplates.base_template(content, f"Overdue: {task_title}", unsubscribe_token)
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}{task_url}" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View Task →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"⚠️ Overdue: {task_title}", unsubscribe_token)
 
     @staticmethod
     def task_assigned(
@@ -186,56 +366,84 @@ class EmailTemplates:
         task_url: str,
         unsubscribe_token: str | None = None,
     ) -> str:
-        """Email template for task assignment.
+        """Email template for task assignment with production design.
 
         [From]: spec.md FR-004 - TASK_ASSIGNED notification
         [Task]: T046 - Add unsubscribe token
+        [Updated]: Production design with success/info card styling
         """
-        content = f"""
-            <h2 style="color: #5eead4; margin-top: 0;">✨ New Task Assigned</h2>
-            <p style="font-size: 16px; line-height: 1.6;">
-                You have been assigned a new task by <strong>{assigned_by}</strong>:
-            </p>
+        content = f'''
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">✨</span>
+                        <h2 style="margin: 12px 0 8px 0; color: #00f5ff;">New Task Assigned</h2>
+                        <p style="margin: 0; color: #374151;">
+                            <strong>{assigned_by}</strong> assigned you a new task:
+                        </p>
+                    </td>
+                </tr>
+            </table>
 
-            <div style="background-color: #1e1e2e; border-left: 4px solid #5eead4; padding: 20px; margin: 20px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 10px 0; color: #e8e8ed;">{task_title}</h3>
+            <div class="info-card">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td>
+                            <h3 style="margin: 0; color: #1e1e23;">{task_title}</h3>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}{task_url}" style="display: inline-block; background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); color: #0a0a0f; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                    View Task
-                </a>
-            </div>
-        """
-        return EmailTemplates.base_template(content, f"Assigned: {task_title}", unsubscribe_token)
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}{task_url}" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View Task →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"✨ Assigned: {task_title}", unsubscribe_token)
 
     @staticmethod
     def daily_digest(tasks: list[dict[str, Any]]) -> str:
-        """Email template for daily task digest.
+        """Email template for daily task digest with production design.
 
         [From]: spec.md FR-022 - Email digest frequency
+        [Updated]: Production design with styled table
         """
         task_rows = ""
         for task in tasks[:10]:  # Limit to 10 tasks
             status_emoji = "✓" if task.get("completed") else "○"
+            status_color = "#22c55e" if task.get("completed") else "#6b7280"
             task_rows += f"""
-                <tr style="border-bottom: 1px solid #1e1e2e;">
-                    <td style="padding: 12px 8px;">{status_emoji}</td>
-                    <td style="padding: 12px 8px; color: #e8e8ed;">{task.get('title', 'Untitled')}</td>
-                    <td style="padding: 12px 8px; color: #a1a1aa; font-size: 14px;">{task.get('due_date', 'No due date')}</td>
+                <tr>
+                    <td style="padding: 12px 8px; text-align: center;">{status_emoji}</td>
+                    <td style="padding: 12px 8px;">{task.get('title', 'Untitled')}</td>
+                    <td style="padding: 12px 8px; color: #6b7280; font-size: 14px;">{task.get('due_date', 'No due date')}</td>
                 </tr>
             """
 
-        content = f"""
-            <h2 style="margin-top: 0;">📋 Your Daily Task Digest</h2>
-            <p style="color: #a1a1aa; font-size: 16px; line-height: 1.6;">Here's what you have due today:</p>
+        task_count = len(tasks)
+        content = f'''
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">📋</span>
+                        <h2 style="margin: 12px 0 8px 0;">Your Daily Task Digest</h2>
+                        <p style="margin: 0; color: #374151;">You have <strong>{task_count} task{'' if task_count == 1 else 's'}</strong> for today. Here's your overview:</p>
+                    </td>
+                </tr>
+            </table>
 
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <table class="email-table" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
                 <thead>
-                    <tr style="border-bottom: 2px solid #1e1e2e; text-align: left;">
-                        <th style="padding: 12px 8px; color: #71717a; font-size: 12px; text-transform: uppercase;">Status</th>
-                        <th style="padding: 12px 8px; color: #71717a; font-size: 12px; text-transform: uppercase;">Task</th>
-                        <th style="padding: 12px 8px; color: #71717a; font-size: 12px; text-transform: uppercase;">Due Date</th>
+                    <tr>
+                        <th style="text-align: center; width: 40px;">Status</th>
+                        <th>Task</th>
+                        <th style="width: 100px;">Due Date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -243,46 +451,78 @@ class EmailTemplates:
                 </tbody>
             </table>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}/dashboard" style="display: inline-block; background: #1e1e2e; color: #e8e8ed; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; border: 1px solid #27272a;">
-                    View All Tasks
-                </a>
-            </div>
-        """
-        return EmailTemplates.base_template(content, "Your daily task digest")
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}/dashboard" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View All Tasks →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"📋 Your daily digest - {task_count} tasks")
 
     @staticmethod
     def weekly_summary(stats: dict[str, Any]) -> str:
-        """Email template for weekly summary.
+        """Email template for weekly summary with production design.
 
         [From]: spec.md FR-022 - Email digest frequency
+        [Updated]: Production design with stat cards
         """
-        content = f"""
-            <h2 style="margin-top: 0;">📊 Your Weekly Summary</h2>
-            <p style="color: #a1a1aa; font-size: 16px; line-height: 1.6;">Here's how you did this week:</p>
+        completed = stats.get('completed', 0)
+        pending = stats.get('pending', 0)
+        overdue = stats.get('overdue', 0)
 
-            <div style="display: flex; gap: 20px; margin: 30px 0;">
-                <div style="flex: 1; background-color: #1e1e2e; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 36px; font-weight: 700; color: #5eead4;">{stats.get('completed', 0)}</div>
-                    <div style="color: #71717a; font-size: 14px; margin-top: 8px;">Completed</div>
-                </div>
-                <div style="flex: 1; background-color: #1e1e2e; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 36px; font-weight: 700; color: #fbbf24;">{stats.get('pending', 0)}</div>
-                    <div style="color: #71717a; font-size: 14px; margin-top: 8px;">Still Pending</div>
-                </div>
-                <div style="flex: 1; background-color: #1e1e2e; padding: 20px; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 36px; font-weight: 700; color: #f87171;">{stats.get('overdue', 0)}</div>
-                    <div style="color: #71717a; font-size: 14px; margin-top: 8px;">Overdue</div>
-                </div>
+        content = f'''
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">📊</span>
+                        <h2 style="margin: 12px 0 8px 0;">Your Weekly Summary</h2>
+                        <p style="margin: 0; color: #374151;">Here's how you did this week:</p>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="stats-container">
+                <table class="stat-card" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td align="center">
+                            <div class="stat-number" style="color: #22c55e;">{completed}</div>
+                            <div class="stat-label">Completed</div>
+                        </td>
+                    </tr>
+                </table>
+                <table class="stat-card" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td align="center">
+                            <div class="stat-number" style="color: #fbbf24;">{pending}</div>
+                            <div class="stat-label">Still Pending</div>
+                        </td>
+                    </tr>
+                </table>
+                <table class="stat-card" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td align="center">
+                            <div class="stat-number" style="color: #ef4444;">{overdue}</div>
+                            <div class="stat-label">Overdue</div>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{BASE_URL}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); color: #0a0a0f; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">
-                    View Dashboard
-                </a>
-            </div>
-        """
-        return EmailTemplates.base_template(content, "Your weekly summary")
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}/dashboard" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View Dashboard →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"📊 Your weekly summary - {completed} completed")
 
     @staticmethod
     def welcome(
@@ -290,71 +530,128 @@ class EmailTemplates:
         user_name: str | None = None,
         unsubscribe_token: str | None = None,
     ) -> str:
-        """Email template for new user welcome.
+        """Production welcome email template with onboarding content.
 
         [Task]: Welcome email for new users
+        [Updated]: Production design with feature showcase
         """
         display_name = user_name or user_email.split('@')[0]
-        greeting = f"Hi {display_name}" if user_name else f"Welcome to Chronos Todo"
 
-        content = f"""
-            <div style="text-align: center; padding: 30px 0;">
-                <div style="font-size: 64px; margin-bottom: 20px;">◈</div>
-                <h2 style="margin-top: 0; color: #5eead4;">{greeting}!</h2>
-                <p style="color: #a1a1aa; font-size: 18px; line-height: 1.6;">
-                    You've successfully joined Chronos Todo – your personal task management companion.
-                </p>
+        content = f'''
+            <!-- Hero Section -->
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="text-align: center; padding: 20px 0;">
+                <tr>
+                    <td>
+                        <span style="font-size: 48px;">◈</span>
+                        <h1 style="margin: 16px 0 8px 0;">Welcome to Chronos<span style="color: #00f5ff;">.</span></h1>
+                        <p style="margin: 0; color: #374151; font-size: 17px;">
+                            Hi <strong>{display_name}</strong> — your personal task management companion awaits.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Feature Card -->
+            <div class="info-card" style="background-color: #f3f4f6; border-left: none; border-radius: 12px; padding: 28px;">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                    <tr>
+                        <td>
+                            <h3 style="margin: 0 0 12px 0; color: #1e1e23; text-align: center;">✨ Get Started with Chronos</h3>
+                            <p style="margin: 0 0 24px 0; color: #6b7280; text-align: center;">
+                                Organize your life with powerful task management features designed for productivity.
+                            </p>
+
+                            <!-- Feature List -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                                <tr>
+                                    <td style="padding: 12px 0;">
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                                            <tr>
+                                                <td style="width: 40px; vertical-align: top;">
+                                                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); border-radius: 8px; text-align: center; line-height: 36px; font-size: 18px;">✓</div>
+                                                </td>
+                                                <td style="vertical-align: top; padding-left: 12px;">
+                                                    <h4 style="margin: 0 0 4px 0; color: #1e1e23;">Create Tasks</h4>
+                                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">Add tasks with due dates, priorities, and custom tags</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0;">
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                                            <tr>
+                                                <td style="width: 40px; vertical-align: top;">
+                                                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); border-radius: 8px; text-align: center; line-height: 36px; font-size: 18px;">⏰</div>
+                                                </td>
+                                                <td style="vertical-align: top; padding-left: 12px;">
+                                                    <h4 style="margin: 0 0 4px 0; color: #1e1e23;">Smart Reminders</h4>
+                                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">Get email and push notifications for due tasks</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0;">
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                                            <tr>
+                                                <td style="width: 40px; vertical-align: top;">
+                                                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); border-radius: 8px; text-align: center; line-height: 36px; font-size: 18px;">📊</div>
+                                                </td>
+                                                <td style="vertical-align: top; padding-left: 12px;">
+                                                    <h4 style="margin: 0 0 4px 0; color: #1e1e23;">Track Progress</h4>
+                                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">View daily digests and weekly summaries</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 12px 0 0 0;">
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                                            <tr>
+                                                <td style="width: 40px; vertical-align: top;">
+                                                    <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); border-radius: 8px; text-align: center; line-height: 36px; font-size: 18px;">🔔</div>
+                                                </td>
+                                                <td style="vertical-align: top; padding-left: 12px;">
+                                                    <h4 style="margin: 0 0 4px 0; color: #1e1e23;">Stay Notified</h4>
+                                                    <p style="margin: 0; font-size: 14px; color: #6b7280;">Real-time updates via push and email notifications</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
-            <div style="background-color: #1e1e2e; border-radius: 12px; padding: 30px; margin: 30px 0;">
-                <h3 style="margin-top: 0; color: #e8e8ed;">Get Started with Chronos Todo</h3>
-                <p style="color: #a1a1aa; line-height: 1.6;">
-                    Chronos Todo helps you stay organized and productive with powerful task management features.
-                </p>
+            <!-- CTA Button -->
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="{BASE_URL}/dashboard" class="btn-primary" style="color: #0a0a0f; text-decoration: none; padding: 16px 32px; font-size: 16px;">
+                            Create Your First Task →
+                        </a>
+                    </td>
+                </tr>
+            </table>
 
-                <div style="margin: 30px 0;">
-                    <div style="display: flex; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">✓</div>
-                        <div>
-                            <h4 style="margin: 0 0 4px 0; color: #e8e8ed;">Create Tasks</h4>
-                            <p style="margin: 0; color: #71717a; font-size: 14px;">Add tasks with due dates, priorities, and tags</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">⏰</div>
-                        <div>
-                            <h4 style="margin: 0 0 4px 0; color: #e8e8ed;">Set Reminders</h4>
-                            <p style="margin: 0; color: #71717a; font-size: 14px;">Get email and push notifications for due tasks</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: flex-start; margin-bottom: 20px;">
-                        <div style="background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">📊</div>
-                        <div>
-                            <h4 style="margin: 0 0 4px 0; color: #e8e8ed;">Track Progress</h4>
-                            <p style="margin: 0; color: #71717a; font-size: 14px;">View daily digests and weekly summaries</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: flex-start;">
-                        <div style="background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 16px; flex-shrink: 0;">🔔</div>
-                        <div>
-                            <h4 style="margin: 0 0 4px 0; color: #e8e8ed;">Stay Notified</h4>
-                            <p style="margin: 0; color: #71717a; font-size: 14px;">Real-time updates via push and email notifications</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin: 40px 0;">
-                <a href="{BASE_URL}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%); color: #0a0a0f; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                    Create Your First Task →
-                </a>
-            </div>
-
-            <p style="text-align: center; color: #71717a; font-size: 14px;">
-                Questions or feedback? <a href="mailto:support@chronostodo.com" style="color: #5eead4; text-decoration: none;">Contact Support</a>
-            </p>
-        """
-        return EmailTemplates.base_template(content, f"Welcome to Chronos Todo, {display_name}!", unsubscribe_token)
+            <!-- Support Link -->
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px; text-align: center;">
+                <tr>
+                    <td>
+                        <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                            Questions or feedback? <a href="mailto:support@chronostodo.com" style="color: #00f5ff; text-decoration: none;">Contact Support</a>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        '''
+        return EmailTemplates.base_template(content, f"Welcome to Chronos, {display_name}!", unsubscribe_token)
 
 
 # =============================================================================

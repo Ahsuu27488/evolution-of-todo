@@ -277,12 +277,14 @@ class PushService:
                 "message": "No valid push subscriptions found",
             }
 
-        # Prepare payload
+        # Prepare payload with favicon as icon
+        # Icon path is relative to frontend public directory
+        # The favicon is at /frontend/public/favicon.png
         payload = json.dumps({
             "title": title,
             "body": body,
-            "icon": icon or "/icon.png",
-            "badge": badge or "/badge.png",
+            "icon": icon or "/favicon.png",  # Use favicon as the notification icon
+            "badge": badge or "/favicon.png",  # Also use favicon for badge (monochrome)
             "data": data or {},
         })
 
