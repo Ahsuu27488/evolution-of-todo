@@ -3,6 +3,7 @@
 [Task]: T037
 [From]: spec.md FR-024, FR-025, FR-026
 [From]: Context7 /resend/resend-python
+[From]: Context7 /websites/resend - Svix webhook verification
 """
 
 import asyncio
@@ -22,8 +23,7 @@ from resend.exceptions import (
 )
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-import hmac
-import hashlib
+from svix.webhooks import Webhook as SvixWebhook
 
 from app.models.notification import Notification, NotificationType
 from app.models.email_delivery_log import (
@@ -45,7 +45,8 @@ DEFAULT_SENDER = os.getenv(
 BASE_URL = os.getenv("NEXT_PUBLIC_APP_URL", "http://localhost:3000")
 
 # Webhook secret for verifying Resend webhook signatures
-# Set RESEND_WEBHOOK_SECRET in .env (get from Resend dashboard -> API Keys -> Webhook Signing)
+# Resend uses Svix for webhooks - get this from Resend dashboard -> Webhooks
+# Format: whsec_xxxxxxxxxxxxxxxx
 WEBHOOK_SECRET = os.getenv("RESEND_WEBHOOK_SECRET", "")
 
 # Thread pool for running blocking Resend API calls
@@ -1056,18 +1057,28 @@ class EmailService:
         logger.info(f"Disabled email for user {user_id} due to bounce at {email}")
 
     @staticmethod
-    def verify_webhook_signature(payload: bytes, signature: str) -> bool:
-        """Verify Resend webhook signature for security.
+    def verify_webhook_signature(
+        payload: str,
+        svix_id: str,
+        svix_timestamp: str,
+        svix_signature: str,
+    ) -> bool:
+        """Verify Resend webhook signature using Svix.
 
-        [From]: Resend webhook documentation
-        https://resend.com/docs/api-reference/webhooks/create#webhook-signatures
+        [From]: Resend webhook documentation with Svix
+        https://resend.com/docs/dashboard/webhooks/verify-webhooks-requests
 
-        Resend signs webhook requests with HMAC using the webhook secret.
-        The signature is in the format: t={timestamp},v1={signature}
+        Resend now uses Svix for webhook signature verification.
+        Svix sends three headers that must be verified together:
+        - svix-id: Unique identifier for this webhook delivery
+        - svix-timestamp: Unix timestamp of when the webhook was sent
+        - svix-signature: The actual signature to verify
 
         Args:
-            payload: Raw request body as bytes
-            signature: Value from resend-signature header
+            payload: Raw request body as string (not bytes!)
+            svix_id: Value from svix-id header
+            svix_timestamp: Value from svix-timestamp header
+            svix_signature: Value from svix-signature header
 
         Returns:
             True if signature is valid, False otherwise
@@ -1077,51 +1088,34 @@ class EmailService:
             logger.warning("WEBHOOK_SECRET not configured - skipping webhook signature verification")
             return True
 
-        if not signature:
-            logger.warning("Missing resend-signature header")
+        if not all([svix_id, svix_timestamp, svix_signature]):
+            logger.warning(
+                f"Missing Svix headers - svix-id: {bool(svix_id)}, "
+                f"svix-timestamp: {bool(svix_timestamp)}, "
+                f"svix-signature: {bool(svix_signature)}"
+            )
             return False
 
         try:
-            # Parse signature: format is "t={timestamp},v1={signature}"
-            parts = signature.split(",")
-            timestamp_part = None
-            signature_part = None
+            # Initialize Svix Webhook with the secret
+            wh = SvixWebhook(WEBHOOK_SECRET)
 
-            for part in parts:
-                if part.startswith("t="):
-                    timestamp_part = part.split("=")[1]
-                elif part.startswith("v1="):
-                    signature_part = part.split("=")[1]
+            # Verify the webhook signature
+            # Svix expects headers as a dict
+            headers = {
+                "svix-id": svix_id,
+                "svix-timestamp": svix_timestamp,
+                "svix-signature": svix_signature,
+            }
 
-            if not timestamp_part or not signature_part:
-                logger.warning(f"Invalid signature format: {signature}")
-                return False
+            # This will raise an exception if verification fails
+            wh.verify(payload, headers)
 
-            # Check timestamp - reject if older than 5 minutes to prevent replay attacks
-            import time
-            current_time = int(time.time())
-            webhook_time = int(timestamp_part)
-            if current_time - webhook_time > 300:  # 5 minutes
-                logger.warning(f"Webhook timestamp too old: {webhook_time}")
-                return False
-
-            # Verify HMAC signature
-            expected_signature = hmac.new(
-                WEBHOOK_SECRET.encode(),
-                payload,
-                hashlib.sha256
-            ).hexdigest()
-
-            # Constant-time comparison to prevent timing attacks
-            is_valid = hmac.compare_digest(expected_signature, signature_part)
-
-            if not is_valid:
-                logger.warning("Invalid webhook signature")
-
-            return is_valid
+            logger.info("Webhook signature verified successfully")
+            return True
 
         except Exception as e:
-            logger.exception(f"Error verifying webhook signature: {e}")
+            logger.warning(f"Webhook signature verification failed: {e}")
             return False
 
     @staticmethod

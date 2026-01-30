@@ -236,30 +236,50 @@ A modern, multi-user todo application with authentication and persistent storage
 
 ### Features
 
+#### Core Task Management
 - ✅ User registration and email/password authentication
 - ✅ User profile with first name and last name fields (supports mononyms)
-- ✅ Edit profile functionality for existing users
+- ✅ Edit profile functionality with timezone support
 - ✅ JWT-based session management
 - ✅ Task CRUD with optimistic UI updates
 - ✅ Task filtering by status, priority, tags
 - ✅ Task search and sorting
 - ✅ Data isolation between users
+- ✅ Recurring tasks (daily/weekly/monthly)
+- ✅ Audit trail for task modifications
+- ✅ Zero-downtime database migrations
+
+#### User Experience
 - ✅ Responsive design (mobile, tablet, desktop)
-- ✅ Dark mode support
+- ✅ Dark mode support with Deep Space theme
 - ✅ Enhanced loading states with dual-ring spinner animation
 - ✅ Inline error handling with retry functionality
-- ✅ Toast notifications
-- ✅ Audit trail for task modifications
-- ✅ Zero-downtime database migrations with Alembic
+- ✅ Toast notifications via sonner
+
+#### Notification System
+- ✅ **In-App Notifications** — Real-time notification center with SSE streaming
+- ✅ **Push Notifications** — Web Push API with browser notifications
+- ✅ **Email Notifications** — Transactional emails via Resend
+- ✅ **Digest Emails** — Daily (8 AM) and weekly (Monday 9 AM) digests with timezone support
+- ✅ **Notification Preferences** — Per-channel enable/disable settings
+- ✅ **Do Not Disturb Hours** — Silence notifications during specific times
+- ✅ **One-Click Unsubscribe** — Token-based email unsubscribe
+- ✅ **Webhook Tracking** — Email delivery status (sent, delivered, opened, bounced)
+- ✅ **Rate Limiting** — Push notifications limited to 3/hour (urgent exempt)
 
 ### API Endpoints
 
+#### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/auth/signup` | Register new user (with first name, last name) |
 | POST | `/api/auth/signin` | Login and get JWT |
 | GET | `/api/auth/me` | Get current user profile |
 | PUT | `/api/auth/me` | Update current user profile |
+
+#### Tasks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/tasks` | List tasks (filter, sort, paginate) |
 | POST | `/api/tasks` | Create task |
 | GET | `/api/tasks/search` | Search tasks |
@@ -268,6 +288,33 @@ A modern, multi-user todo application with authentication and persistent storage
 | DELETE | `/api/tasks/{id}` | Delete task |
 | PATCH | `/api/tasks/{id}/complete` | Toggle completion |
 | GET | `/api/tasks/{id}/logs` | Get audit logs |
+
+#### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications` | List notifications (with unread count) |
+| PUT | `/api/notifications/{id}/read` | Mark notification as read |
+| POST | `/api/notifications/mark-all-read` | Mark all as read |
+| DELETE | `/api/notifications/{id}` | Delete notification |
+| GET | `/api/notifications/stream` | SSE stream for real-time updates |
+| GET | `/api/notifications/settings` | Get notification preferences |
+| PUT | `/api/notifications/settings` | Update notification preferences |
+
+#### Push Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/notifications/push/subscribe` | Subscribe to push |
+| DELETE | `/api/notifications/push/unsubscribe` | Unsubscribe from push |
+| GET | `/api/notifications/push/status` | Get subscription status |
+| POST | `/api/notifications/push/test` | Send test push notification |
+
+#### Email Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/notifications/email/preferences` | Get email preferences |
+| PUT | `/api/notifications/email/preferences` | Update email preferences |
+| POST | `/api/notifications/email/test` | Send test email |
+| POST | `/api/notifications/email/webhook` | Resend webhook handler |
 
 See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md) for detailed documentation.
 

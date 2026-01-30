@@ -27,6 +27,8 @@ pywebpush>=2.2.0
 resend>=2.21.0
 # Server-Sent Events for real-time notifications
 sse-starlette>=3.2.0
+# Webhook signature verification (Resend uses Svix)
+svix>=1.35.0
 # Validation
 pydantic>=2.0.0
 pydantic-settings>=2.0.0

@@ -905,7 +905,7 @@ async def resend_webhook(
 
     [Task]: T041
     [From]: spec.md FR-025 - Bounce handling
-    [From]: Context7 /resend/resend-python - Webhooks
+    [From]: Context7 /websites/resend - Svix webhook verification
 
     Processes webhook events from Resend:
     - email.sent: Initial send confirmation
@@ -914,33 +914,42 @@ async def resend_webhook(
     - email.opened: User opened email
     - email.clicked: User clicked link in email
 
-    Webhook signature verification:
-    - Verifies the resend-signature header to ensure request is from Resend
-    - Rejects requests older than 5 minutes to prevent replay attacks
+    Webhook signature verification (Svix):
+    - Resend uses Svix for webhook signature verification
+    - Requires three headers: svix-id, svix-timestamp, svix-signature
+    - Automatically rejects timestamps older than 5 minutes (Svix built-in)
     - Requires RESEND_WEBHOOK_SECRET to be set (optional in development)
 
     Args:
-        request: FastAPI Request object (for raw body and signature header)
+        request: FastAPI Request object (for raw body and Svix headers)
         session: Database session
 
     Returns:
         Confirmation of processing
     """
     try:
-        # Get raw body for signature verification
-        body = await request.body()
+        # Get raw body for signature verification (as string for Svix)
+        body_bytes = await request.body()
+        body = body_bytes.decode()
 
-        # Get signature header
-        signature = request.headers.get("resend-signature", "")
+        # Get Svix headers (Resend now uses Svix for webhooks)
+        svix_id = request.headers.get("svix-id", "")
+        svix_timestamp = request.headers.get("svix-timestamp", "")
+        svix_signature = request.headers.get("svix-signature", "")
 
-        # Verify webhook signature
-        if not EmailService.verify_webhook_signature(body, signature):
+        # Verify webhook signature using Svix format
+        if not EmailService.verify_webhook_signature(
+            payload=body,
+            svix_id=svix_id,
+            svix_timestamp=svix_timestamp,
+            svix_signature=svix_signature,
+        ):
             logger.warning("Webhook signature verification failed")
             raise HTTPException(status_code=401, detail="Invalid signature")
 
         # Parse JSON body after verification
         import json
-        event = json.loads(body.decode())
+        event = json.loads(body)
 
         result = await EmailService.handle_webhook(session, event)
         return result

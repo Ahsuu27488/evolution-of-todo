@@ -237,9 +237,137 @@ Dapr sidecar patterns (planned):
 - State store for caching
 - Service discovery for microservices
 
+## Notification System Architecture
+
+The notification system is a multi-channel, real-time notification platform built for Phase II:
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Notification Dispatch                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │   In-App     │  │    Push      │  │     Email       │  │
+│  │   (SSE)      │  │  (Web Push)  │  │   (Resend)      │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    NotificationService                      │
+│  - Deduplication (type-aware windows)                       │
+│  - User preference filtering                                │
+│  - Do Not Disturb checking                                  │
+│  - Multi-channel dispatch                                   │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Background Scheduler                      │
+│  - Daily digest emails (8 AM user time)                     │
+│  - Weekly summary emails (Monday 9 AM user time)            │
+│  - Task due reminders (every 15 minutes)                    │
+│  - Cleanup job (soft-deleted notifications)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Services
+
+| Service | Location | Purpose |
+|---------|----------|---------|
+| `NotificationService` | `backend/app/services/notification_service.py` | CRUD, deduplication, dispatch |
+| `SSEService` | `backend/app/services/sse_service.py` | Real-time streaming to frontend |
+| `PushService` | `backend/app/services/push_service.py` | Web Push API with VAPID |
+| `EmailService` | `backend/app/services/email_service.py` | Resend integration, templates |
+| `SchedulerService` | `backend/app/services/scheduler_service.py` | Background digest jobs |
+| `UnsubscribeService` | `backend/app/services/unsubscribe_service.py` | Token-based unsubscribe |
+
+### Notification Types
+
+```python
+class NotificationType(str, Enum):
+    TASK_DUE = "task_due"              # Task due soon
+    TASK_OVERDUE = "task_overdue"      # Task is overdue
+    TASK_COMPLETED = "task_completed"  # Task marked complete
+    TASK_ASSIGNED = "task_assigned"    # Task assigned to user
+    SYSTEM_UPDATE = "system_update"    # System notifications
+    WELCOME = "welcome"                # Welcome email
+```
+
+### Deduplication Windows
+
+To prevent spam, each notification type has a unique deduplication window:
+
+| Type | Window | Rationale |
+|------|--------|-----------|
+| TASK_DUE | 5 minutes | Tasks can become due quickly |
+| TASK_OVERDUE | 15 minutes | Less frequent, important |
+| TASK_COMPLETED | 1 minute | Instant feedback |
+| SYSTEM_UPDATE | 24 hours | Low priority |
+
+### Rate Limiting
+
+Push notifications are rate-limited to **3 per hour** per user:
+- Urgent notifications (TASK_DUE, TASK_OVERDUE) are **exempt**
+- Other notifications count against the limit
+- Tracked in-memory with sliding window
+
+### Digest Email Scheduling
+
+Digest emails respect **user timezone** for accurate delivery:
+
+```python
+# Daily digest at 8 AM in user's timezone
+def get_next_daily_digest_time(user_timezone: str) -> datetime:
+    tz = ZoneInfo(user_timezone)
+    now = datetime.now(tz)
+    scheduled = datetime.combine(now.date(), time(8, 0), tzinfo=tz)
+    if now >= scheduled:
+        scheduled += timedelta(days=1)
+    return scheduled.astimezone(ZoneInfo("UTC"))
+
+# Weekly summary on Monday 9 AM in user's timezone
+def get_next_weekly_summary_time(user_timezone: str) -> datetime:
+    tz = ZoneInfo(user_timezone)
+    target_weekday = 0  # Monday
+    # Calculate next Monday at 9 AM...
+```
+
+### Webhook Signature Verification
+
+Resend webhooks are verified using HMAC-SHA256:
+
+```python
+def verify_webhook_signature(payload: bytes, signature: str) -> bool:
+    # Parse: t={timestamp},v1={signature}
+    # Check timestamp < 5 minutes (replay protection)
+    # Verify HMAC with WEBHOOK_SECRET
+    return hmac.compare_digest(expected_signature, signature_part)
+```
+
+### Frontend SSE Integration
+
+The frontend uses EventSource to receive real-time notifications:
+
+```typescript
+// components/notifications/sse-stream-provider.tsx
+const eventSource = new EventSource(
+  `${API_URL}/api/notifications/stream`,
+  { headers: { Authorization: `Bearer ${token}` } }
+)
+
+eventSource.addEventListener('notification', (event) => {
+  const notification = JSON.parse(event.data)
+  // Update UI in real-time
+})
+```
+
 ## Recent Changes
-- 011-notification-system: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 010-loading-states-user-profile: Added Python 3.13+ (backend), TypeScript 5+ (frontend)
-- 009-light-mode-theme: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+- 012-notification-system: Comprehensive multi-channel notification system with SSE, push, email
+- 011-timezone-support: User timezone field for accurate digest scheduling
+- 010-loading-states-user-profile: Enhanced loading states and profile management
+- 009-light-mode-theme: Dark/light mode with Deep Space theme
+- 008-push-notifications: Web Push API with VAPID, rate limiting, concurrent sends
+- 007-email-service: Resend integration with production templates, webhook tracking
 
 ## Active Technologies

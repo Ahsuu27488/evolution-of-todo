@@ -8,6 +8,7 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 - User authentication via Better Auth
 - Task management UI with filtering, sorting, search
 - Real-time state synchronization with backend
+- Comprehensive notification system (SSE, push, email)
 - Dark mode and responsive design
 
 ## Architecture Overview
@@ -26,9 +27,10 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 ┌─────────────────────────────────────────────────────────────┐
 │                      Component Layer                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │  Page Components│ │  UI Components│  │  Layout Components││
-│  │  - dashboard │  │  - task-card │  │  - header        │  │
-│  │  - forms     │  │  - task-list │  │  - user-nav      │  │
+│  │  Notification│  │  Task Components│  │ Layout Components││
+│  │  - Bell      │  │  - task-card │  │  - header        │  │
+│  │  - Dropdown  │  │  - task-list │  │  - user-nav      │  │
+│  │  - SSE       │  │  - forms     │  │  - theme-toggle  │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -37,7 +39,7 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 │                      State Management                        │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  TanStack Query (Server State)                      │  │
-│  │  - Tasks, user session from backend                 │  │
+│  │  - Tasks, notifications, user session               │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  Zustand (Client State)                              │  │
@@ -51,6 +53,10 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 │  ┌──────────────────┐         ┌──────────────────────────┐ │
 │  │   API Client     │────────▶│   FastAPI Backend        │ │
 │  │  (lib/api-client)│         │   (JWT auth)             │ │
+│  └──────────────────┘         └──────────────────────────┘ │
+│  ┌──────────────────┐         ┌──────────────────────────┐ │
+│  │   SSE Stream     │────────▶│   SSE Endpoint           │ │
+│  │  (notifications) │         │   (/api/notifications/stream)│
 │  └──────────────────┘         └──────────────────────────┘ │
 │  ┌──────────────────┐         ┌──────────────────────────┐ │
 │  │   Better Auth    │────────▶│   Neon PostgreSQL        │ │
@@ -72,9 +78,15 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 | `lib/errors.ts` | Error utilities | ApiError class, error codes, Result type |
 | `app/actions/tasks.ts` | Task server actions | CRUD operations with JWT from cookies |
 | `app/actions/auth.ts` | Auth server actions | Sign in/up/sign out |
+| `app/actions/notifications.ts` | Notification actions | Mark read, delete, preferences |
 | `app/api/auth/token/route.ts` | Token endpoint | Returns JWT from session cookie |
 | `middleware.ts` | Auth middleware | Protects routes, redirects |
 | `types/task.ts` | TypeScript interfaces | Task, TaskCreate, TaskUpdate |
+| `types/notification.ts` | Notification types | Notification, NotificationType, Preferences |
+| `hooks/use-notifications.ts` | Notification hooks | Queries, mutations, unread count |
+| `components/notifications/notification-bell.tsx` | Bell icon | Unread badge, Dropdown trigger |
+| `components/notifications/notification-dropdown.tsx` | Dropdown | Notification list, filters, actions |
+| `components/notifications/sse-stream-provider.tsx` | SSE client | EventSource connection, cache updates |
 
 ## Architecture Patterns
 
@@ -88,17 +100,50 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 5. FastAPI verifies with shared BETTER_AUTH_SECRET
 ```
 
+### SSE Integration Pattern
+
+Real-time notifications use Server-Sent Events:
+
+```typescript
+// components/notifications/sse-stream-provider.tsx
+const eventSource = new EventSource("/api/notifications/stream")
+
+eventSource.addEventListener("notification", (event) => {
+  const notification = JSON.parse(event.data)
+
+  // Update TanStack Query cache instantly
+  queryClient.setQueryData(notificationKeys.list(), (old) => ({
+    ...old,
+    items: [notification, ...old.items],
+    unread_count: old.unread_count + 1,
+  }))
+})
+```
+
+**Important**: SSE provider must be imported with `{ ssr: false }`:
+
+```typescript
+const SSEStreamProvider = dynamic(
+  () => import("@/components/notifications/sse-stream-provider"),
+  { ssr: false }
+)
+```
+
 ### Server Actions Pattern
 
 Server Actions read JWT from cookies and call backend:
 
 ```typescript
-// app/actions/tasks.ts
-export async function getTasks(): Promise<ActionResult<Task[]>> {
+// app/actions/notifications.ts
+export async function markAsRead(
+  notificationId: number
+): Promise<ActionResult<void>> {
   const authData = await getAuthData()  // Reads JWT from cookie
   if (!authData) return { success: false, error: {...} }
 
-  return apiCall("/api/tasks", authData)
+  return apiCall(`/api/notifications/${notificationId}/read`, authData, {
+    method: "PUT",
+  })
 }
 ```
 
@@ -135,11 +180,34 @@ export type Result<T> =
   | { success: false; error: ApiError }
 
 // Usage
-const result = await api.getTasks()
+const result = await api.getNotifications()
 if (result.success) {
-  const tasks = result.data
+  const notifications = result.data
 } else {
   handleError(result.error)
+}
+```
+
+### Notification Hooks
+
+Custom hooks using TanStack Query:
+
+```typescript
+// hooks/use-notifications.ts
+export function useNotifications(options?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: notificationKeys.list(options),
+    queryFn: () => fetchNotifications(options),
+    staleTime: 1000 * 30, // 30 seconds
+  })
+}
+
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ["notifications", "unread-count"],
+    queryFn: fetchUnreadCount,
+    refetchInterval: 1000 * 60, // Every minute
+  })
 }
 ```
 
@@ -168,6 +236,50 @@ export async function actionName(
 - Server Actions: `*.ts` in `app/actions/`
 - API Routes: `route.ts` in `app/api/`
 - Components: `*.tsx` with kebab-case filenames
+- Hooks: `use-*.ts` in `hooks/`
+
+## Notification System Architecture
+
+### Components
+
+| Component | Purpose | Key Features |
+|-----------|---------|--------------|
+| `NotificationBell` | Bell icon with badge | Animated unread count, Framer Motion |
+| `NotificationDropdown` | Notification list | Filter tabs, mark read, delete |
+| `SSEStreamProvider` | Real-time updates | Auto-reconnect, cache updates |
+| `PushPermissionModal` | Permission request | User-friendly request flow |
+| `PushSettings` | Push management | Subscribe/unsubscribe, test |
+| `EmailPreferences` | Email settings | Per-channel toggles, test email |
+
+### Notification Types
+
+```typescript
+enum NotificationType {
+  TASK_DUE = "task_due"           // Task due soon
+  TASK_OVERDUE = "task_overdue"   // Task is overdue
+  TASK_COMPLETED = "task_completed" // Task marked complete
+  TASK_ASSIGNED = "task_assigned" // Task assigned to user
+  SYSTEM_UPDATE = "system_update" // System notifications
+}
+```
+
+### SSE Events
+
+| Event | Data | Action |
+|-------|------|--------|
+| `notification` | Notification object | Add to list, increment unread |
+| `notification_read` | `{ id: number }` | Mark as read, decrement unread |
+| `ping` | `{ timestamp: string }` | Keep connection alive |
+
+### Push Notification Flow
+
+```
+1. User clicks bell → PushPermissionModal shown
+2. User accepts → Notification.requestPermission()
+3. Subscription created → POST /api/notifications/push/subscribe
+4. Push received → Service worker displays notification
+5. User clicks → Navigate to relevant task
+```
 
 ## Auth Configuration
 
@@ -194,7 +306,7 @@ jwt({
 
 | State Type | Library | Examples |
 |------------|---------|----------|
-| **Server State** | TanStack Query | Tasks list, user session, mutations |
+| **Server State** | TanStack Query | Tasks, notifications, user session, mutations |
 | **Client State** | Zustand | Filter selections, modal open/close, toasts |
 
 ### When to Use Which
@@ -221,6 +333,8 @@ Uses `@theme` directive instead of v3 config:
 - Uses OKLCH for better color manipulation
 - CSS variables for theme values
 - Dark mode via `dark:` prefix
+- Deep Space theme (dark mode)
+- Slate/blue theme (light mode)
 
 ### Component Variants
 
@@ -295,3 +409,5 @@ const startRecording = () => {
 - **JWT never stored in localStorage** — Always fetched from session
 - **Filters persist in localStorage** — Via Zustand persist
 - **TanStack Query for server state** — Never duplicate in Zustand
+- **SSE provider must use { ssr: false }** — EventSource is browser-only
+- **Push notifications require user permission** — Show permission modal first

@@ -10,6 +10,7 @@
 
 ## Features
 
+### Core Task Management
 - User authentication with Better Auth (email/password)
 - **Enhanced signup** with firstName/lastName fields (supports mononyms)
 - **Dual-ring loading spinner** with smooth fade transitions
@@ -18,10 +19,21 @@
 - Task filtering by status, priority, and tags
 - Task sorting and search
 - Recurring task support with auto-creation
-- Dark mode support with next-themes
+
+### User Experience
+- Dark mode support with next-themes (Deep Space theme)
+- Light mode support with slate/blue color scheme
 - Smooth animations with Framer Motion
 - Responsive design with Tailwind CSS v4
 - Error boundaries and toast notifications
+
+### Notification System
+- **In-App Notifications** — Real-time notification center with unread badge
+- **SSE Streaming** — Server-Sent Events for instant updates
+- **Push Notifications** — Web Push API with browser notifications
+- **Push Permission Modal** — User-friendly permission request
+- **Email Preferences** — Per-channel enable/disable settings
+- **Push Settings** — Manage push subscriptions and test notifications
 
 ## Architecture
 
@@ -51,12 +63,22 @@ frontend/
 │   │   └── signup-form.tsx  # Now with firstName/lastName fields
 │   ├── dashboard/           # Dashboard components
 │   │   ├── dashboard-content.tsx  # Integrated with DualRingSpinner
-│   │   ├── loading-error-card.tsx # NEW: Inline error handling
+│   │   ├── loading-error-card.tsx # Inline error handling
 │   ├── layout/              # Layout components
-│   │   ├── header.tsx
-│   │   ├── user-nav.tsx     # Displays user displayName
+│   │   ├── header.tsx       # Top navigation bar with notification bell
+│   │   ├── user-nav.tsx     # User menu with displayName
 │   │   ├── brand-logo.tsx
 │   │   └── theme-toggle.tsx
+│   ├── notifications/       # Notification components
+│   │   ├── notification-bell.tsx       # Bell icon with unread badge
+│   │   ├── notification-dropdown.tsx   # Notification list dropdown
+│   │   ├── notification-item.tsx       # Individual notification
+│   │   ├── notification-tabs.tsx       # Filter tabs (All, Unread)
+│   │   ├── notifications-client.tsx    # Client wrapper for notifications
+│   │   ├── sse-stream-provider.tsx     # SSE connection manager
+│   │   ├── push-permission-modal.tsx   # Push permission request
+│   │   ├── push-settings.tsx           # Push subscription settings
+│   │   └── email-preferences.tsx       # Email preferences UI
 │   ├── tasks/              # Task components
 │   │   ├── task-card.tsx
 │   │   ├── task-list.tsx
@@ -64,7 +86,10 @@ frontend/
 │   │   ├── task-actions.tsx
 │   │   └── empty-state.tsx
 │   ├── ui/                 # shadcn/ui components
-│   │   └── dual-ring-spinner.tsx # NEW: Dual-ring loading animation
+│   │   ├── button.tsx
+│   │   ├── dropdown-menu.tsx
+│   │   ├── badge.tsx
+│   │   └── dual-ring-spinner.tsx
 │   ├── confetti.tsx
 │   └── error-boundary.tsx
 ├── lib/
@@ -76,6 +101,8 @@ frontend/
 │   │   └── ui-store.ts     # Zustand UI state
 │   ├── validations/        # Zod schemas
 │   └── utils.ts            # Utility functions
+├── hooks/
+│   └── use-notifications.ts # Notification queries & mutations
 ├── types/
 │   └── task.ts             # TypeScript interfaces
 ├── middleware.ts           # Auth middleware
@@ -184,6 +211,50 @@ npm start
 ```
 
 ## Key Components
+
+### Notification System
+
+The frontend includes a comprehensive notification system with multi-channel support:
+
+**Notification Bell** (`components/notifications/notification-bell.tsx`):
+- Bell icon with animated Badge showing unread count
+- Framer Motion animations (scale, spring transitions)
+- Integrates with Radix UI DropdownMenu
+- Displays "9+" for counts > 9
+
+**Notification Dropdown** (`components/notifications/notification-dropdown.tsx`):
+- Full-featured dropdown with notification list
+- Filter tabs: All / Unread
+- Mark as read functionality
+- Delete notifications
+- Mark all as read action
+- Empty state with helpful message
+
+**SSE Stream Provider** (`components/notifications/sse-stream-provider.tsx`):
+- Client-only component (must be imported with `{ ssr: false }`)
+- Manages EventSource connection to `/api/notifications/stream`
+- Auto-reconnect with exponential backoff (max 5 attempts)
+- Updates TanStack Query cache for instant UI refresh
+- Handles notification and notification_read events
+
+**Push Permission Modal** (`components/notifications/push-permission-modal.tsx`):
+- User-friendly browser notification permission request
+- Explains benefits of push notifications
+- Shows permission status (granted/denied/default)
+- Allows re-requesting permission
+
+**Push Settings** (`components/notifications/push-settings.tsx`):
+- Current subscription status display
+- Unsubscribe from push notifications
+- Send test push notification
+- Links to browser notification settings
+
+**Email Preferences** (`components/notifications/email-preferences.tsx`):
+- Per-channel enable/disable toggles
+- Task notifications (due, overdue, completed)
+- System notifications
+- Digest settings (daily, weekly)
+- Send test email button
 
 ### Loading States
 

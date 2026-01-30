@@ -9,6 +9,7 @@ FastAPI REST API serving the Chronos Todo frontend with:
 - JWT authentication compatible with Better Auth
 - Async PostgreSQL database operations
 - Audit trail for all task modifications
+- **Comprehensive notification system** (SSE, push, email, digests)
 
 ## Architecture Overview
 
@@ -30,6 +31,10 @@ FastAPI REST API serving the Chronos Todo frontend with:
 │  │  - signin    │  │  - search    │  │                  │  │
 │  │  - me        │  │  - filter    │  │                  │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │           /api/notifications/*                     │  │
+│  │  - In-app (SSE), Push, Email, Digest               │  │
+│  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -58,9 +63,18 @@ FastAPI REST API serving the Chronos Todo frontend with:
 ┌─────────────────────────────────────────────────────────────┐
 │                    Database (Neon)                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │   tasks      │  │  task_logs   │  │ (users in-memory)│  │
-│  │   (JSONB)    │  │  (audit)     │  │                  │  │
+│  │   tasks      │  │  task_logs   │  │ notifications    │  │
+│  │   (JSONB)    │  │  (audit)     │  │  (multi-channel)│  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Background Scheduler                       │
+│  ┌──────────────────┐  ┌──────────────────┐               │
+│  │  Daily Digest   │  │  Weekly Summary  │  Task Reminders │
+│  │  (8 AM user tz)  │  │  (Mon 9 AM tz)   │  (every 15 min) │
+│  └──────────────────┘  └──────────────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -68,13 +82,20 @@ FastAPI REST API serving the Chronos Todo frontend with:
 
 | File | Purpose | Key Details |
 |------|---------|-------------|
-| `main.py` | FastAPI app | Lifespan, CORS, middleware, route registration |
+| `main.py` | FastAPI app | Lifespan, CORS, middleware, route registration, scheduler start/stop |
 | `db.py` | Database config | Async engine, session factory, table creation |
-| `models.py` | Data models | Task, TaskLog, Tag, Pydantic schemas |
+| `models.py` | Data models | Task, TaskLog, Tag, User, Pydantic schemas |
 | `errors.py` | Error handling | Custom exceptions, error middleware |
 | `simple_auth.py` | JWT auth | Token verification, password hashing, dependencies |
 | `routes/tasks.py` | Task endpoints | CRUD, search, filtering, audit logs |
-| `routes/auth.py` | Auth endpoints | Signup, signin, signout, /me |
+| `routes/auth.py` | Auth endpoints | Signup, signin, /me, profile updates |
+| `routes/notifications.py` | Notification endpoints | SSE, push, email, preferences |
+| `services/notification_service.py` | Notification core | CRUD, deduplication, dispatch |
+| `services/sse_service.py` | SSE streaming | Real-time notification updates |
+| `services/push_service.py` | Web Push API | VAPID, rate limiting, subscription mgmt |
+| `services/email_service.py` | Resend integration | HTML templates, webhooks |
+| `services/scheduler_service.py` | Background jobs | Digest emails, reminders, cleanup |
+| `services/unsubscribe_service.py` | Token-based unsubscribe | One-click email unsubscribe |
 | `.env.example` | Config template | Required env vars |
 
 ## Architecture Patterns
