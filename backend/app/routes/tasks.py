@@ -452,15 +452,24 @@ async def delete_task(
     # Verify task exists and belongs to user
     task = await get_task_or_404(task_id, current_user_id, session)
 
-    # Delete audit logs first (foreign key constraint)
+    # Delete dependent records first (foreign key constraints)
+    # Order matters: delete in reverse order of dependency
     from sqlalchemy import delete as sql_delete
     from app.models import TaskLog
+    from app.models.notification import Notification
 
+    # 1. Delete notifications that reference this task
+    # [Fix]: Handle notifications_related_task_id_fkey constraint
+    await session.execute(
+        sql_delete(Notification).where(Notification.related_task_id == task_id)
+    )
+
+    # 2. Delete audit logs
     await session.execute(
         sql_delete(TaskLog).where(TaskLog.task_id == task_id)
     )
 
-    # Now delete the task
+    # 3. Now delete the task (no foreign keys remain)
     await session.delete(task)
     await session.commit()
 

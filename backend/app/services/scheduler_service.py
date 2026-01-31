@@ -388,11 +388,13 @@ class SchedulerService:
 
                     except Exception as e:
                         logger.exception(f"Error sending daily digest to {user.id}: {e}")
+                        await session.rollback()
 
                 logger.info(f"Daily digest emails complete: {len(rows)} user preferences processed")
 
             except Exception as e:
                 logger.exception(f"Error in _send_daily_digests: {e}")
+                await session.rollback()
 
     # ==========================================================================
     # Weekly Summary Job
@@ -531,6 +533,7 @@ class SchedulerService:
 
                     except Exception as e:
                         logger.exception(f"Error sending weekly summary to {user.id}: {e}")
+                        await session.rollback()
 
                 logger.info(
                     f"Weekly summary emails complete: {len(rows)} user preferences processed"
@@ -538,6 +541,7 @@ class SchedulerService:
 
             except Exception as e:
                 logger.exception(f"Error in _send_weekly_summaries: {e}")
+                await session.rollback()
 
     # ==========================================================================
     # Task Reminder Job
@@ -577,16 +581,18 @@ class SchedulerService:
         [From]: spec.md FR-002 - Task due notifications
 
         Sends reminders for tasks due within 1 hour.
+        [Fix]: Now validates user exists to prevent foreign key violations.
         """
         logger.info("Checking for tasks due soon")
 
         async with async_session_maker() as session:
             try:
-                # Find tasks due within 1 hour
+                # Find tasks due within 1 hour, joining with users to ensure validity
+                # [Fix]: Join with User table to prevent orphaned data foreign key errors
                 soon = datetime.now() + timedelta(hours=1)
 
                 result = await session.execute(
-                    select(Task).where(
+                    select(Task).join(User, Task.user_id == User.id).where(
                         Task.completed == False,
                         Task.due_date <= soon,
                     )
@@ -636,10 +642,14 @@ class SchedulerService:
                         logger.info(f"Reminder sent for task {task.id}")
 
                     except Exception as e:
+                        # [Fix]: Rollback session on error to prevent transaction issues
                         logger.exception(f"Error sending reminder for task {task.id}: {e}")
+                        await session.rollback()
 
             except Exception as e:
+                # [Fix]: Rollback session on error and continue scheduler operation
                 logger.exception(f"Error in _check_and_send_reminders: {e}")
+                await session.rollback()
 
     # ==========================================================================
     # Cleanup Job
@@ -703,6 +713,7 @@ class SchedulerService:
 
             except Exception as e:
                 logger.exception(f"Error in _cleanup_old_notifications: {e}")
+                await session.rollback()
 
 
 # =============================================================================
