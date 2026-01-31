@@ -454,22 +454,39 @@ async def delete_task(
 
     # Delete dependent records first (foreign key constraints)
     # Order matters: delete in reverse order of dependency
-    from sqlalchemy import delete as sql_delete
+    # Chain: tasks → notifications → email_delivery_logs
+    from sqlalchemy import delete as sql_delete, select
     from app.models import TaskLog
     from app.models.notification import Notification
+    from app.models.email_delivery_log import EmailDeliveryLog
 
-    # 1. Delete notifications that reference this task
+    # 1. Find all notification IDs that reference this task
+    notification_ids_result = await session.execute(
+        select(Notification.id).where(Notification.related_task_id == task_id)
+    )
+    notification_ids = [row[0] for row in notification_ids_result.all()]
+
+    # 2. Delete email_delivery_logs that reference those notifications
+    # [Fix]: Handle email_delivery_logs_notification_id_fkey constraint
+    if notification_ids:
+        await session.execute(
+            sql_delete(EmailDeliveryLog).where(
+                EmailDeliveryLog.notification_id.in_(notification_ids)
+            )
+        )
+
+    # 3. Delete notifications that reference this task
     # [Fix]: Handle notifications_related_task_id_fkey constraint
     await session.execute(
         sql_delete(Notification).where(Notification.related_task_id == task_id)
     )
 
-    # 2. Delete audit logs
+    # 4. Delete audit logs
     await session.execute(
         sql_delete(TaskLog).where(TaskLog.task_id == task_id)
     )
 
-    # 3. Now delete the task (no foreign keys remain)
+    # 5. Now delete the task (no foreign keys remain)
     await session.delete(task)
     await session.commit()
 
