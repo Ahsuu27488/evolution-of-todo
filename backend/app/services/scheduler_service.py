@@ -266,7 +266,7 @@ class SchedulerService:
             try:
                 # Calculate time until next run
                 now = datetime.now(timezone.utc)
-                scheduled_time = datetime.combine(now.date(), DAILY_DIGEST_TIME)
+                scheduled_time = datetime.combine(now.date(), DAILY_DIGEST_TIME, tzinfo=timezone.utc)
 
                 # If we've passed the time today, schedule for tomorrow
                 if now >= scheduled_time:
@@ -423,6 +423,7 @@ class SchedulerService:
                 scheduled_time = datetime.combine(
                     now.date() + timedelta(days=days_until),
                     WEEKLY_SUMMARY_TIME,
+                    tzinfo=timezone.utc,
                 )
 
                 wait_seconds = (scheduled_time - now).total_seconds()
