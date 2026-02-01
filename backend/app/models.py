@@ -10,7 +10,7 @@ Per data-model.md specification.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -89,7 +89,8 @@ class TaskBase(SQLModel):
     )
     due_date: Optional[datetime] = SQLField(
         default=None,
-        description="Task due date/time",
+        sa_column=Column(DateTime(timezone=True)),
+        description="Task due date/time (timezone-aware)",
     )
     recurrence_pattern: Optional[RecurrencePattern] = SQLField(
         default=None,
@@ -131,13 +132,14 @@ class Task(TaskBase, table=True):
     )
 
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
-        description="Creation timestamp",
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
+        description="Creation timestamp (timezone-aware)",
     )
     updated_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), onupdate=func.now()),
-        description="Last update timestamp",
+        description="Last update timestamp (timezone-aware)",
     )
 
     # Relationships
@@ -179,9 +181,10 @@ class TaskLog(TaskLogBase, table=True):
         description="User who performed the action",
     )
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
         index=True,
-        description="When the action occurred",
+        description="When the action occurred (timezone-aware)",
     )
 
     # Relationships

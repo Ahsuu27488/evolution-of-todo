@@ -344,4 +344,22 @@ async def semantic_search(
 - **404 not 403** for ownership checks — Prevents ID enumeration
 - **Token must include `sub` claim** — User ID extracted from JWT
 - **Tags stored as JSONB** — Max 10 tags, validated in Pydantic
-- **Audit logs cascade delete** — TaskLog deleted when Task deleted
+
+## Task Deletion: Foreign Key Cascade
+
+Tasks have multiple dependent records that must be deleted in a specific order:
+
+```
+tasks → notifications → email_delivery_logs
+         ↓
+         task_logs
+```
+
+When deleting a task, the order is:
+1. Find notification IDs that reference the task
+2. Delete `email_delivery_logs` for those notifications
+3. Delete `notifications` that reference the task
+4. Delete `task_logs` for the task
+5. Delete the `task` itself
+
+**Location**: `routes/tasks.py:455-491` (`delete_task` function)
