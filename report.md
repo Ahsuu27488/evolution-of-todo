@@ -1,75 +1,69 @@
-● 📊 Notification Delivery Timing Report
+/sp.specify Read Constitution and create specs for Phase 3: AI-Powered Todo Chatbot
 
-  What's Working ✅
-  ┌────────────────────┬─────────────────────────────────┬────────────────────┬───────────────────────┐
-  │      Channel       │             Trigger             │       Timing       │        Status         │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ In-App (SSE)       │ Any notification creation       │ <200ms (immediate) │ ✅ Real-time          │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ Push Notifications │ Task creation, completion       │ Immediate          │ ✅ Working            │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ Email (Immediate)  │ Task creation, completion       │ <30s (Resend)      │ ✅ Working            │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ Email Digest       │ Daily at 8:00 AM                │ Scheduled          │ ⏳ Requires scheduler │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ Email Summary      │ Mondays at 9:00 AM              │ Scheduled          │ ⏳ Requires scheduler │
-  ├────────────────────┼─────────────────────────────────┼────────────────────┼───────────────────────┤
-  │ Task Reminders     │ Hourly check for tasks due <1hr │ Check: hourly      │ ⏳ Requires scheduler │
-  └────────────────────┴─────────────────────────────────┴────────────────────┴───────────────────────┘
-  ---
-  Missing Triggers (Not Sending) 🚨
-  ┌─────────────────────────────────────────────┬───────────────────┬────────────────────────────┐
-  │                    Event                    │    Should Send    │         Currently          │
-  ├─────────────────────────────────────────────┼───────────────────┼────────────────────────────┤
-  │ Task updated (title, description, due date) │ Push notification │ ❌ Not triggered           │
-  ├─────────────────────────────────────────────┼───────────────────┼────────────────────────────┤
-  │ Task deleted                                │ Notification      │ ❌ Not triggered           │
-  ├─────────────────────────────────────────────┼───────────────────┼────────────────────────────┤
-  │ Task becomes overdue                        │ Immediate alert   │ ❌ Only hourly check       │
-  ├─────────────────────────────────────────────┼───────────────────┼────────────────────────────┤
-  │ Task assigned (multi-user)                  │ Notification      │ ❌ Feature not implemented │
-  └─────────────────────────────────────────────┴───────────────────┴────────────────────────────┘
-  ---
-  Timing Characteristics
-  ┌───────────────────────┬──────────────────────────────────────────────┐
-  │   Notification Type   │                    Timing                    │
-  ├───────────────────────┼──────────────────────────────────────────────┤
-  │ Immediate (real-time) │ In-app, Push, Email on task create/complete  │
-  ├───────────────────────┼──────────────────────────────────────────────┤
-  │ Hourly checks         │ Task due reminders, Task overdue detection   │
-  ├───────────────────────┼──────────────────────────────────────────────┤
-  │ Scheduled             │ Daily digest (8am), Weekly summary (Mon 9am) │
-  ├───────────────────────┼──────────────────────────────────────────────┤
-  │ Rate limited          │ Push: max 3/hour (urgent exempt)             │
-  └───────────────────────┴──────────────────────────────────────────────┘
-  ---
-  Potential Delays
-  ┌───────────────────────────┬─────────────────────────────────┬────────────────────┐
-  │           Area            │         Potential Delay         │       Impact       │
-  ├───────────────────────────┼─────────────────────────────────┼────────────────────┤
-  │ Scheduler not running     │ No digests/reminders            │ High               │
-  ├───────────────────────────┼─────────────────────────────────┼────────────────────┤
-  │ Hourly reminder check     │ Up to 59min delay for reminders │ Medium             │
-  ├───────────────────────────┼─────────────────────────────────┼────────────────────┤
-  │ Email sending             │ 5-30s (Resend API)              │ Low                │
-  ├───────────────────────────┼─────────────────────────────────┼────────────────────┤
-  │ Push subscription expired │ Failed delivery                 │ User action needed │
-  └───────────────────────────┴─────────────────────────────────┴────────────────────┘
-  ---
-  Bottom Line
+CONTEXT GATHERING (Step 1):
+- Read Hackathon.md to understand Phase 3 requirements
+- Read all README.md and CLAUDE.md files in codebase
+- Read constitution.md and existing specs from phases 1 & 2
+- Understand our current architecture and implementation state
 
-  What Works Now:
-  - ✅ Real-time in-app notifications (SSE)
-  - ✅ Push notifications on task create/complete
-  - ✅ Email notifications on task create/complete
-  - ✅ Test email/push buttons work
+PHASE 3 REQUIREMENTS (from Hackathon.md):
+Core Features (200 points):
+- AI-Powered Todo Chatbot using OpenAI Agents SDK
+- Natural language task management (e.g., "Reschedule my morning meetings to 2 PM")
+- Integration with existing Next.js frontend and FastAPI backend
+- Official MCP SDK integration for tool use
 
-  Requires Scheduler Running:
-  - ⏳ Daily/weekly email digests
-  - ⏳ Task due reminders (hourly check)
-  - ⏳ Task overdue detection (hourly check)
+Bonus Features to Target:
+- Semantic/Vector Search using Qdrant (+implementing Advanced Level features)
+- Multi-language Support (Urdu) (+100 points)
+- Voice Commands (+200 points)
+- Reusable Intelligence via Subagents and Agent Skills (+200 points)
 
-  To fully test timing, you need to:
-  1. Ensure the scheduler service is running
-  2. Create tasks with due dates to trigger reminders
-  3. Wait for the hourly/daily/weekly scheduled jobs
+TECHNOLOGY STACK:
+- OpenAI GPT-4o mini for all AI operations
+- OpenAI Agents SDK for chatbot
+- Official MCP SDK for tool integration
+- Qdrant for vector database (semantic search)
+- Environment variables: OPENAI_API_KEY, QDRANT_API_KEY, QDRANT_URL (already in backend/.env)
+
+AI CAPABILITIES TO IMPLEMENT:
+1. Conversational Task Management
+   - Natural language parsing for todo operations
+   - Context-aware task suggestions
+   - Smart task scheduling and rescheduling
+
+2. AI-Enhanced Features
+   - Task summaries and insights
+   - Smart suggestions based on user patterns
+   - Automated email generation for tasks
+   - Semantic search across tasks using vector embeddings
+
+3. MCP Server Integration
+   - Create MCP server with todo management tools
+   - Enable AI agent to use tools through conversation
+   - Jarvis-level interaction: AI communicates naturally and executes autonomously
+
+CRITICAL INSTRUCTION:
+Use Context7 (context7.com) to access official documentation:
+- OpenAI Agents SDK documentation
+- OpenAI API documentation for GPT-4o mini
+- Qdrant documentation for vector database
+- Official MCP SDK documentation
+- Any other technology mentioned above
+
+
+CONSTRAINTS:
+- Must maintain compatibility with existing Phase 2 implementation
+- Must follow constitution.md principles
+- All code must be generated through spec-driven process
+- No manual coding - iterate on specs until Claude Code generates correct output
+- Must reference task IDs when implementing
+
+SUCCESS CRITERIA:
+- Achieve all Phase 3 core requirements (200 points)
+- Implement at least 2-3 bonus features (400-600+ points total)
+- Create reusable AI components (Agent Skills/Subagents)
+- Demonstrate Jarvis-level autonomous operation
+- Outperform competitors through comprehensive bonus feature implementation
+
+Begin by reading all context documents, then create comprehensive specs following the SDD workflow.

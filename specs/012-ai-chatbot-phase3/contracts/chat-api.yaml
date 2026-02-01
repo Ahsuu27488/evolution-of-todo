@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: Evolution of Todo - Chat API
+  description: AI-powered chatbot endpoints for Phase III
+  version: 1.0.0
+  contact:
+    name: Evolution of Todo Project
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.evolution-of-todo.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth (extract user_id from 'sub' claim)
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: User's message to the AI
+          maxLength: 5000
+          example: "Add a task to buy groceries tomorrow at 5pm"
+        conversation_id:
+          type: string
+          format: uuid
+          description: Existing conversation ID (optional for new conversations)
+          example: "01234567-89ab-cdef-0123-456789abcdef"
+
+    ChatResponse:
+      type: object
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+          description: Conversation ID (created if new)
+        message_id:
+          type: string
+          format: uuid
+          description: User message ID
+        response:
+          type: string
+          description: AI response (deprecated - use streaming instead)
+
+    ChatEvent:
+      type: object
+      description: Server-Sent Event for streaming
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          enum: [message_start, token, message_done, error, tool_call]
+          description: Event type
+        data:
+          type: object
+          description: Event payload
+        id:
+          type: string
+          description: Event ID for reconnection tracking
+        retry:
+          type: integer
+          description: Reconnection delay in milliseconds
+
+    TranscriptionRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Audio file (max 25 MB)
+        language:
+          type: string
+          description: ISO-639-1 language code (auto-detect if omitted)
+          example: "ur"
+
+    TranscriptionResponse:
+      type: object
+      required:
+        - text
+      properties:
+        text:
+          type: string
+          description: Transcribed text (supports UTF-8 for Urdu)
+        language:
+          type: string
+          description: Detected language code
+        duration:
+          type: number
+          description: Audio duration in seconds
+
+    Conversation:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        title:
+          type: string
+        language_preference:
+          type: string
+          enum: [en, ur, auto]
+        message_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Message:
+      type: object
+      required:
+        - id
+        - role
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        correlation_id:
+          type: string
+          description: For distributed tracing
+        role:
+          type: string
+          enum: [user, assistant, system]
+        content:
+          type: string
+        tool_calls:
+          type: array
+          items:
+            type: object
+        created_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+        error_code:
+          type: string
+        retry_after:
+          type: integer
+          description: Seconds to wait before retrying (for rate limits)
+
+  responses:
+    Unauthorized:
+      description: Invalid or missing JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Invalid authentication credentials"
+
+    RateLimitExceeded:
+      description: Rate limit exceeded (30 req/min per user)
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until limit resets
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Rate limit exceeded. Please try again later."
+            retry_after: 30
+
+    NotFound:
+      description: Resource not found (404, not 403 - prevents enumeration)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+paths:
+  /api/chat:
+    post:
+      summary: Send chat message
+      description: |
+        Send a message to the AI chatbot and receive a streaming response.
+
+        - Supports natural language task management
+        - Streaming response via Server-Sent Events
+        - Creates or resumes conversation
+        - AI can invoke MCP tools for task operations
+      operationId: chat
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Streaming SSE response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                event: message_start
+                data: {"conversation_id": "...", "message_id": "..."}
+
+                event: token
+                data: {"content": "I"}
+
+                event: token
+                data: {"content": "'ll"}
+
+                event: token
+                data: {"content": " add"}
+
+                event: message_done
+                data: {"final_output": "I'll add that task for you."}
+
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /api/chat/transcribe:
+    post:
+      summary: Transcribe audio to text
+      description: |
+        Upload audio file for speech-to-text transcription using OpenAI Whisper API.
+
+        - Supports mp3, mp4, mpeg, mpga, m4a, wav, webm formats
+        - Max file size: 25 MB
+        - Auto-detects language (supports Urdu)
+        - Returns transcribed text as UTF-8
+      operationId: transcribe
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                language:
+                  type: string
+                  description: ISO-639-1 code (auto-detect if omitted)
+      responses:
+        '200':
+          description: Transcription successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptionResponse'
+              example:
+                text: "Add a task to buy groceries"
+                language: "en"
+                duration: 3.2
+        '400':
+          description: Invalid request (unsupported format, file too large)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File too large (max 25 MB)
+        '415':
+          description: Unsupported audio format
+
+  /api/conversations:
+    get:
+      summary: List conversations
+      description: Get all conversations for the authenticated user
+      operationId: listConversations
+      tags:
+        - Conversations
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/conversations/{conversation_id}:
+    get:
+      summary: Get conversation
+      description: Get conversation with all messages
+      operationId: getConversation
+      tags:
+        - Conversations
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation:
+                    $ref: '#/components/schemas/Conversation'
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete conversation
+      description: Delete a conversation and all its messages
+      operationId: deleteConversation
+      tags:
+        - Conversations
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Conversation deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+tags:
+  - name: Chat
+    description: AI chatbot endpoints
+  - name: Conversations
+    description: Conversation management

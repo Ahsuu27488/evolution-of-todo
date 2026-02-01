@@ -114,8 +114,7 @@ class Notification(SQLModel, table=True):
     )
     created_at: datetime = SQLField(
         default_factory=lambda: datetime.now(timezone.utc),
-        sa_column=Column(DateTime(timezone=True)),
-        index=True,
+        sa_column=Column(DateTime(timezone=True), index=True),
         description="When notification was created (timezone-aware)",
     )
     sent_channels: list[str] = SQLField(
@@ -127,7 +126,7 @@ class Notification(SQLModel, table=True):
     # Soft delete support (30-day archive per spec)
     deleted_at: Optional[datetime] = SQLField(
         default=None,
-        index=True,
+        sa_column=Column(DateTime(timezone=True), index=True),
         description="Soft delete timestamp for 30-day archive",
     )
 

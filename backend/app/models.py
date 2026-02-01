@@ -182,8 +182,7 @@ class TaskLog(TaskLogBase, table=True):
     )
     created_at: datetime = SQLField(
         default_factory=lambda: datetime.now(timezone.utc),
-        sa_column=Column(DateTime(timezone=True)),
-        index=True,
+        sa_column=Column(DateTime(timezone=True), index=True),
         description="When the action occurred (timezone-aware)",
     )
 
