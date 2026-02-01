@@ -4,11 +4,11 @@
 [From]: spec.md FR-018, research.md Web Push section, data-model.md §Entity Definitions - PushSubscription
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import Column
+from sqlalchemy import Column, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field as SQLField
 
@@ -65,12 +65,14 @@ class PushSubscription(SQLModel, table=True):
 
     # Lifecycle tracking
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
-        description="When subscription was created",
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
+        description="When subscription was created (timezone-aware)",
     )
     last_used_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
-        description="When subscription was last used successfully",
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
+        description="When subscription was last used successfully (timezone-aware)",
     )
     is_valid: bool = SQLField(
         default=True,

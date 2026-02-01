@@ -4,7 +4,7 @@
 [From]: spec.md §Key Entities, data-model.md §Entity Definitions
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
@@ -113,9 +113,10 @@ class Notification(SQLModel, table=True):
         description="Whether user has read this notification",
     )
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
         index=True,
-        description="When notification was created",
+        description="When notification was created (timezone-aware)",
     )
     sent_channels: list[str] = SQLField(
         default_factory=list,
@@ -201,13 +202,14 @@ class NotificationPreference(SQLModel, table=True):
     )
 
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
-        description="When preference was created",
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
+        description="When preference was created (timezone-aware)",
     )
     updated_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), onupdate=func.now()),
-        description="When preference was last updated",
+        description="When preference was last updated (timezone-aware)",
     )
 
 

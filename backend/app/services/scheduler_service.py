@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 import logging
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -265,7 +265,7 @@ class SchedulerService:
         while self._running:
             try:
                 # Calculate time until next run
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 scheduled_time = datetime.combine(now.date(), DAILY_DIGEST_TIME)
 
                 # If we've passed the time today, schedule for tomorrow
@@ -412,7 +412,7 @@ class SchedulerService:
 
         while self._running:
             try:
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 current_weekday = now.weekday()
 
                 # Calculate days until next scheduled day
@@ -589,7 +589,7 @@ class SchedulerService:
             try:
                 # Find tasks due within 1 hour, joining with users to ensure validity
                 # [Fix]: Join with User table to prevent orphaned data foreign key errors
-                soon = datetime.now() + timedelta(hours=1)
+                soon = datetime.now(timezone.utc) + timedelta(hours=1)
 
                 result = await session.execute(
                     select(Task).join(User, Task.user_id == User.id).where(
@@ -617,7 +617,7 @@ class SchedulerService:
                             select(Notification).where(
                                 Notification.related_task_id == task.id,
                                 Notification.type == NotificationType.TASK_DUE,
-                                Notification.created_at >= datetime.now() - timedelta(hours=2),
+                                Notification.created_at >= datetime.now(timezone.utc) - timedelta(hours=2),
                             )
                         )
 
@@ -694,7 +694,7 @@ class SchedulerService:
                 from datetime import timedelta
 
                 # Delete notifications soft-deleted more than 30 days ago
-                cutoff = datetime.now() - timedelta(days=30)
+                cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
                 result = await session.execute(
                     select(Notification).where(
