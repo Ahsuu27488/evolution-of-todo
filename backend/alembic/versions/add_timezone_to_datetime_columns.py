@@ -30,7 +30,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'add_timezone_to_datetime_columns'
-down_revision: Union[str, Sequence[str], None] = 'add_user_timezone'
+down_revision: Union[str, Sequence[str], None] = 'populate_notif_prefs'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

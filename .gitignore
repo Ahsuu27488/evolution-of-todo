@@ -79,3 +79,4 @@ frontend/.env*.local
 # Claude Code & MCP
 .playwright-mcp/
 testing prompts
+report.md

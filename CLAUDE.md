@@ -363,11 +363,9 @@ eventSource.addEventListener('notification', (event) => {
 ```
 
 ## Recent Changes
+- 012-ai-chatbot-phase3: Added Python 3.13+ (STRICT per constitution §V.1.1)
 - 012-notification-system: Comprehensive multi-channel notification system with SSE, push, email
 - 011-timezone-support: User timezone field for accurate digest scheduling
-- 010-loading-states-user-profile: Enhanced loading states and profile management
-- 009-light-mode-theme: Dark/light mode with Deep Space theme
-- 008-push-notifications: Web Push API with VAPID, rate limiting, concurrent sends
-- 007-email-service: Resend integration with production templates, webhook tracking
 
 ## Active Technologies
+- Python 3.13+ (STRICT per constitution §V.1.1) (012-ai-chatbot-phase3)
