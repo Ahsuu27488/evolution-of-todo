@@ -4,6 +4,26 @@
 **Date**: 2026-01-30
 **Status**: Complete
 
+## Observability & Audit Fields
+
+**★ Insight ─────────────────────────────────────**
+Every entity includes observability fields for distributed tracing. The `correlation_id` propagates through the entire request lifecycle, enabling end-to-end tracing from API ingress through agent handoffs to database operations.
+─────────────────────────────────────────────────
+
+### Cross-Cutting Observability Fields
+
+All new entities include these standard observability fields:
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `correlation_id` | UUID (indexed) | Distributed tracing across services |
+| `created_at` | timestamp (UTC) | Audit trail - entity creation |
+| `updated_at` | timestamp (UTC) | Audit trail - last modification |
+
+**Index Strategy**: `correlation_id` is indexed on all entities for log queries to reconstruct request flows.
+
+---
+
 ## Entity Relationship Diagram
 
 ```
@@ -114,11 +134,15 @@ class Conversation(SQLModel, table=True):
 |--------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | Unique message identifier |
 | `conversation_id` | UUID | FK, NOT NULL, INDEX | Reference to conversations |
-| `correlation_id` | str | INDEX | For distributed tracing (observability) |
+| `correlation_id` | UUID | INDEX | **Distributed tracing ID** - links to structured logs for full request lifecycle |
 | `role` | str | NOT NULL | user/assistant/system |
 | `content` | str | NOT NULL | Message content (supports UTF-8 for Urdu) |
-| `tool_calls` | JSON | NULL | Array of tools invoked by AI |
+| `tool_calls` | JSON | NULL | Array of tools invoked by AI with execution metadata |
 | `created_at` | timestamp | NOT NULL, DEFAULT NOW() | Message creation time |
+
+**Observability Notes**:
+- `correlation_id` enables querying logs to find: (a) the API request that created this message, (b) all MCP tool calls made during processing, (c) agent handoffs that occurred, (d) OpenAI API calls with token usage
+- `tool_calls` JSON includes timing data for each tool call, enabling performance analysis
 
 **Indexes**:
 - `idx_messages_conversation_id` on `conversation_id` (for loading conversation history)
@@ -163,7 +187,7 @@ class Message(SQLModel, table=True):
 
 ### 3. AgentHandoff
 
-**Purpose**: Tracks agent handoff events for analytics and debugging.
+**Purpose**: Tracks agent handoff events for analytics, debugging, and audit trail. Critical for understanding AI behavior in multi-agent systems.
 
 **Table Name**: `agent_handoffs`
 
@@ -171,15 +195,27 @@ class Message(SQLModel, table=True):
 |--------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | Unique handoff identifier |
 | `conversation_id` | UUID | FK, NOT NULL, INDEX | Reference to conversations |
+| `correlation_id` | UUID | INDEX | **Links to structured logs** for full handoff tracing |
 | `from_agent` | str | NOT NULL | Name of agent handing off |
 | `to_agent` | str | NOT NULL | Name of agent receiving control |
-| `reason` | str | NOT NULL | Why handoff occurred |
+| `reason` | str | NOT NULL | Why handoff occurred (AI-generated) |
 | `timestamp` | timestamp | NOT NULL, DEFAULT NOW() | When handoff happened |
-| `context_snapshot` | JSON | NULL | Conversation state at handoff |
+| `context_snapshot` | JSON | NULL | Conversation state at handoff (for debugging) |
+| `success` | bool | NOT NULL, DEFAULT true | Whether handoff completed successfully |
+| `error_message` | str | NULL | Error details if handoff failed |
+
+**Observability Notes**:
+- `correlation_id` enables linking handoffs to the full request lifecycle in logs
+- `context_snapshot` stores conversation summary, active tasks, user state at handoff time
+- `success` flag tracks failed handoffs for error rate monitoring
+- Handoff records provide audit trail for understanding AI decision-making
+- Can be queried to analyze: (a) handoff frequency by agent pair, (b) common handoff reasons, (c) failure patterns
 
 **Indexes**:
 - `idx_agent_handoffs_conversation_id` on `conversation_id`
+- `idx_agent_handoffs_correlation_id` on `correlation_id` (for distributed tracing)
 - `idx_agent_handoffs_timestamp` on `timestamp` (for analytics)
+- `idx_agent_handoffs_success` on `success` (for error monitoring)
 
 **SQLModel Definition**:
 
@@ -189,11 +225,14 @@ class AgentHandoff(SQLModel, table=True):
 
     id: UUID | None = Field(default_factory=uuid4, primary_key=True)
     conversation_id: UUID = Field(foreign_key="conversations.id", index=True)
+    correlation_id: UUID = Field(index=True)  # For distributed tracing
     from_agent: str = Field(...)  # e.g., "TodoAssistant"
     to_agent: str = Field(...)     # e.g., "PlanningAgent"
     reason: str = Field(...)       # e.g., "User asked for weekly planning"
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     context_snapshot: Optional[dict] = Field(default=None)
+    success: bool = Field(default=True)
+    error_message: Optional[str] = Field(default=None)
 
     # Relationships
     conversation: Conversation = Relationship(back_populates="handoffs")

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Evolution of Todo - Chat API
-  description: AI-powered chatbot endpoints for Phase III
+  description: AI-powered chatbot endpoints for Phase III with observability support
   version: 1.0.0
   contact:
     name: Evolution of Todo Project
@@ -15,6 +15,14 @@ servers:
 security:
   - BearerAuth: []
 
+# ==========================================
+# OBSERVABILITY: Correlation ID Headers
+# ==========================================
+# All endpoints support distributed tracing via X-Correlation-ID header.
+# Clients should include this header to continue trace spans across requests.
+# If omitted, a new UUID v4 will be generated and returned in response headers.
+# ==========================================
+
 components:
   securitySchemes:
     BearerAuth:
@@ -22,6 +30,29 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT token from Better Auth (extract user_id from 'sub' claim)
+
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      description: |
+        Distributed tracing ID for request correlation.
+
+        - **Optional**: System generates UUID v4 if not provided
+        - **Propagated**: Returned in all response headers
+        - **Purpose**: Trace requests across API calls, MCP tools, agent handoffs, and external services
+
+        Example flow:
+        1. Client sends request (may include X-Correlation-ID)
+        2. Backend logs all events with this ID
+        3. Backend forwards to OpenAI/Qdrant with this ID
+        4. Response includes same X-Correlation-ID
+        5. Client can query logs by this ID to see full request lifecycle
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+      required: false
 
   schemas:
     ChatRequest:
@@ -51,6 +82,10 @@ components:
           type: string
           format: uuid
           description: User message ID
+        correlation_id:
+          type: string
+          format: uuid
+          description: Request correlation ID for log tracing
         response:
           type: string
           description: AI response (deprecated - use streaming instead)
@@ -64,7 +99,7 @@ components:
       properties:
         event:
           type: string
-          enum: [message_start, token, message_done, error, tool_call]
+          enum: [message_start, token, message_done, error, tool_call, handoff]
           description: Event type
         data:
           type: object
@@ -177,6 +212,12 @@ components:
   responses:
     Unauthorized:
       description: Invalid or missing JWT token
+      headers:
+        X-Correlation-ID:
+          schema:
+            type: string
+            format: uuid
+          description: Correlation ID for this request
       content:
         application/json:
           schema:
@@ -187,6 +228,11 @@ components:
     RateLimitExceeded:
       description: Rate limit exceeded (30 req/min per user)
       headers:
+        X-Correlation-ID:
+          schema:
+            type: string
+            format: uuid
+          description: Correlation ID for this request
         Retry-After:
           schema:
             type: integer
@@ -201,10 +247,26 @@ components:
 
     NotFound:
       description: Resource not found (404, not 403 - prevents enumeration)
+      headers:
+        X-Correlation-ID:
+          schema:
+            type: string
+            format: uuid
+          description: Correlation ID for this request
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+
+    SuccessWithCorrelationId:
+      description: Successful response with correlation ID
+      headers:
+        X-Correlation-ID:
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Correlation ID for distributed tracing - use this to query logs
 
 paths:
   /api/chat:
@@ -217,9 +279,12 @@ paths:
         - Streaming response via Server-Sent Events
         - Creates or resumes conversation
         - AI can invoke MCP tools for task operations
+        - All events are logged with correlation ID for tracing
       operationId: chat
       tags:
         - Chat
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
       requestBody:
         required: true
         content:
@@ -229,13 +294,19 @@ paths:
       responses:
         '200':
           description: Streaming SSE response
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+                format: uuid
+              description: Correlation ID for this request - use to trace in logs
           content:
             text/event-stream:
               schema:
                 type: string
               example: |
                 event: message_start
-                data: {"conversation_id": "...", "message_id": "..."}
+                data: {"conversation_id": "...", "message_id": "...", "correlation_id": "..."}
 
                 event: token
                 data: {"content": "I"}
@@ -264,9 +335,12 @@ paths:
         - Max file size: 25 MB
         - Auto-detects language (supports Urdu)
         - Returns transcribed text as UTF-8
+        - Transcription logged with correlation ID for audit trail
       operationId: transcribe
       tags:
         - Chat
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
       requestBody:
         required: true
         content:
@@ -285,6 +359,12 @@ paths:
       responses:
         '200':
           description: Transcription successful
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+                format: uuid
+              description: Correlation ID for this request
           content:
             application/json:
               schema:
@@ -310,6 +390,7 @@ paths:
       tags:
         - Conversations
       parameters:
+        - $ref: '#/components/parameters/CorrelationId'
         - name: limit
           in: query
           schema:
@@ -324,6 +405,11 @@ paths:
       responses:
         '200':
           description: List of conversations
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+                format: uuid
           content:
             application/json:
               schema:
@@ -346,6 +432,7 @@ paths:
       tags:
         - Conversations
       parameters:
+        - $ref: '#/components/parameters/CorrelationId'
         - name: conversation_id
           in: path
           required: true
@@ -355,6 +442,11 @@ paths:
       responses:
         '200':
           description: Conversation details
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+                format: uuid
           content:
             application/json:
               schema:
@@ -378,6 +470,7 @@ paths:
       tags:
         - Conversations
       parameters:
+        - $ref: '#/components/parameters/CorrelationId'
         - name: conversation_id
           in: path
           required: true
@@ -387,6 +480,11 @@ paths:
       responses:
         '204':
           description: Conversation deleted
+          headers:
+            X-Correlation-ID:
+              schema:
+                type: string
+                format: uuid
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':

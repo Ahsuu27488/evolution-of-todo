@@ -15,6 +15,10 @@
 - Q: When should conversation titles be auto-generated? This affects UX and API costs. → A: After 3 messages (enough context for meaningful title)
 - Q: How should the MCP server be deployed? This affects architecture and deployment complexity. → A: In-process with FastAPI application (simpler, shared DB access, lower latency)
 
+### Session 2026-02-02
+
+- Q: What should happen when conversation history exceeds 50 messages? → A: Rolling window - keep last 50 messages with automatic summary of archived content for context continuity
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Natural Language Task Management (Priority: P1)
@@ -163,7 +167,7 @@ A user wants the AI to route complex requests to specialized agents. When they a
 
 ### Edge Cases
 
-- What happens when a user sends a command the AI doesn't understand? (AI asks for clarification with example commands)
+- What happens when a user sends a command the AI doesn't understand? (AI asks for clarification with example commands: "Try: 'Add a task', 'Show my tasks', 'Complete task 1'")
 - How does system handle concurrent updates to the same task? (Last write wins with optimistic locking, conflict notification)
 - What happens when Qdrant vector search is unavailable? (Fallback to keyword search, log error, notify user)
 - How does system handle extremely long task descriptions (>1000 characters)? (Truncate with ellipsis for display, store full text, generate summary)
@@ -176,6 +180,242 @@ A user wants the AI to route complex requests to specialized agents. When they a
 - What happens when uploaded audio file exceeds 25 MB limit? (Reject with error message, suggest shorter recording)
 - What happens when Whisper API returns non-ASCII text (Urdu, Chinese, etc.)? (Store as UTF-8, display correctly in UI)
 - What happens when audio file format is not supported? (Return 415 error with list of supported formats)
+- What happens when user sends extremely long message (>5000 characters)? (Reject with 400 error, suggest breaking into multiple messages)
+- What happens when rapid consecutive messages from same user? (Queue per conversation, process sequentially, maintain order)
+- What happens when conversation exceeds 50 message limit? (Rolling window: archive oldest messages with AI-generated summary, keep last 50 active)
+- What happens when Qdrant search returns zero results? (Return empty results, offer keyword search alternative)
+- What happens with mixed script text (Arabic + English numbers)? (Store as UTF-8, render with appropriate direction per segment)
+- What happens with circular agent handoffs (Agent A → B → A)? (Detect and prevent after 2 hops, return to main agent)
+- What happens during zero-state (no tasks, first-time user)? (Show welcome message, suggest first task creation)
+- What happens when user switches language mid-conversation? (Detect language change, update conversation preference, adapt responses)
+- What happens when user sends emoji-only message? (Treat as normal message, AI interprets emoji contextually: 👍 = confirmation, ❓ = question)
+- What happens when user tries to use voice and text input simultaneously? (UI prevents: microphone button disables text input, typing disables mic)
+- What happens when extending beyond 3 agents? (Architecture supports N agents via handoffs array, new agents must follow handoff return pattern)
+
+### Error Handling Specifications
+
+**★ Insight ─────────────────────────────────────**
+Error messages must balance helpfulness with security. Never expose internal details to clients, but provide enough information for users to understand what went wrong and how to fix it.
+─────────────────────────────────────────────────
+
+#### Error Message Templates
+
+| Error Type | User Message | Log Level | HTTP Status |
+|------------|--------------|-----------|-------------|
+| `auth_missing` | "Please sign in to access the chat" | INFO | 401 |
+| `auth_invalid` | "Your session expired. Please sign in again" | WARN | 401 |
+| `auth_expired` | "Your session expired. Please refresh to continue" | INFO | 401 |
+| `rate_limit_exceeded` | "You're sending messages too quickly. Please wait {seconds} seconds." | INFO | 429 |
+| `message_too_long` | "Your message is too long. Maximum is 5000 characters." | INFO | 400 |
+| `conversation_not_found` | "This conversation doesn't exist or was deleted." | INFO | 404 |
+| `task_not_found` | "Task {task_id} doesn't exist or was deleted." | INFO | 404 |
+| `mcp_tool_timeout` | "The request took too long. Please try again." | WARN | 504 |
+| `openai_rate_limit` | "The service is busy. Your request is queued and will be processed shortly." | WARN | 503 |
+| `openai_unavailable` | "The AI service is temporarily unavailable. Please try again in a few minutes." | ERROR | 503 |
+| `qdrant_unavailable` | "Search is temporarily unavailable. Using keyword search instead." | WARN | 200 (degraded) |
+| `whisper_error` | "Could not transcribe audio. Please try again or type your message." | WARN | 500 |
+| `audio_too_large` | "Audio file is too large. Maximum is 25 MB." | INFO | 413 |
+| `audio_unsupported_format` | "Audio format not supported. Please use MP3, M4A, or WAV." | INFO | 415 |
+| `transcription_confidence_low` | "I'm not sure I understood correctly. Did you say: '{transcription}'?" | INFO | 200 (confirmation) |
+| `ambiguous_command` | "I'm not sure what you mean. Did you want to: create a task, show tasks, or complete a task?" | INFO | 200 (clarification) |
+
+#### Retry Mechanism
+
+**FR-099**: System MUST implement retry with exponential backoff for transient failures
+
+- **Retryable errors**: OpenAI 429 (rate limit), OpenAI 5xx, Qdrant connection errors
+- **Non-retryable**: 400 (bad request), 401 (auth), 403 (forbidden), 404 (not found)
+- **Backoff strategy**: 1s, 2s, 4s, 8s (max 4 attempts)
+- **Jitter**: Add random ±25% to backoff to prevent thundering herd
+
+```python
+async def retry_with_backoff(operation, max_attempts=4):
+    for attempt in range(max_attempts):
+        try:
+            return await operation()
+        except RetryableError as e:
+            if attempt == max_attempts - 1:
+                raise
+            backoff = (2 ** attempt) + random.uniform(-0.25, 0.25)
+            await asyncio.sleep(backoff)
+```
+
+#### JWT Token Refresh Flow
+
+**FR-100**: System MUST handle JWT token refresh for long-running conversations
+
+- **Token validation**: Check JWT exp claim on each request
+- **Refresh mechanism**: Frontend calls /api/auth/token endpoint via Better Auth
+- **Refresh trigger**: When JWT expires within 30 seconds
+- **SSE handling**: If JWT expires during SSE stream, send event: `{"type": "auth_refresh_required"}`
+- **Graceful period**: Allow 5-minute grace period for ongoing streams
+
+#### Orphaned Conversation Handling
+
+**FR-101**: System MUST handle orphaned conversations (user account deletion)
+
+- **Detection**: Foreign key ON DELETE CASCADE from users to conversations
+- **Archive before delete**: Soft-delete conversations 30 days before permanent deletion
+- **Notification**: Email user before deletion if email available
+- **Anonymization**: For anonymous users, delete after 90 days per FR-095
+
+#### OpenAI Rate Limit Handling
+
+**FR-102**: System MUST handle OpenAI API rate limits gracefully
+
+- **Detection**: Catch 429 responses from OpenAI API
+- **Response**: Return 503 to client with Retry-After header
+- **Queue**: Queue request for retry after rate limit window
+- **Logging**: Log rate limit events with tokens used and window reset time
+- **Circuit breaker**: Open circuit after 5 consecutive rate limit errors, reset after 60 seconds
+
+#### Qdrant Connection Recovery
+
+**FR-103**: System MUST implement Qdrant connection recovery
+
+- **Health check**: Ping Qdrant before each search operation
+- **Reconnection**: Exponential backoff reconnection: 1s, 2s, 4s, 8s, 16s (max 30s)
+- **Fallback**: Use keyword search during Qdrant unavailability
+- **Circuit breaker**: Open circuit after 3 consecutive failures, attempt reconnection every 30 seconds
+- **State tracking**: Track connection state: CONNECTED, DISCONNECTED, RECONNECTING
+
+### Non-Functional Requirements
+
+**★ Insight ─────────────────────────────────────**
+Non-functional requirements determine production readiness. Data retention, compliance, and cost management are not "nice-to-haves" - they're essential for sustainable operation.
+─────────────────────────────────────────────────
+
+#### Data Retention and Compliance
+
+**FR-104**: System MUST implement data retention policies
+
+| Data Type | Retention Period | Deletion Method |
+|-----------|------------------|-----------------|
+| Active conversations | 90 days | Soft-delete (marked deleted) |
+| Archived conversations | 30 days in archive | Permanent deletion |
+| Messages (in active conversations) | 90 days | Cascade with conversation |
+| Messages (in archived conversations) | 30 days | Permanent deletion |
+| Agent handoff records | 90 days | Permanent deletion |
+| Transcriptions (in tasks) | As long as task exists | Cascade with task |
+| AI summaries | As long as task exists | Cascade with task |
+| Audit logs | 30 days | Permanent deletion |
+
+**FR-105**: System MUST support GDPR right to erasure
+- User can request account deletion via /api/account/delete
+- All user data soft-deleted within 24 hours
+- Permanent deletion within 30 days
+- Email confirmation sent before permanent deletion
+
+**FR-106**: System MUST implement data export functionality
+- Users can export all data via /api/account/export
+- Export format: JSON with all conversations, messages, tasks
+- Export delivered via email or download link (expires in 24 hours)
+
+#### Cost Management
+
+**FR-107**: System MUST implement OpenAI API cost controls
+
+| Metric | Limit | Action |
+|--------|-------|--------|
+| Tokens per user per day | 100,000 | Return warning, throttle requests |
+| Tokens per user per month | 2,000,000 | Return error, suggest upgrade |
+| Whisper transcriptions per day | 100 | Return error, suggest text input |
+| Total tokens per hour (system) | 1,000,000 | Circuit breaker, alert admins |
+
+**FR-108**: System MUST track and log API costs
+- Log token usage per request (model, tokens, estimated cost)
+- Aggregate costs per user per day/month
+- Alert when approaching budget limits
+- Cost estimates based on OpenAI pricing:
+  - GPT-4o-mini: $0.15/1M input tokens, $0.60/1M output tokens
+  - text-embedding-3-small: $0.02/1M tokens
+  - Whisper: $0.006/minute
+
+#### Scalability Requirements
+
+**FR-109**: System MUST scale to support growth
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| Concurrent conversations | 100 (MVP), 1000 (Phase IV) | Per-instance, horizontal scaling |
+| Messages per second | 50 (MVP), 500 (Phase IV) | With SSE streaming |
+| MCP tool calls per minute | 500 (MVP), 5000 (Phase IV) | Stateless enables scaling |
+| Vector search latency | < 500ms (p95) | For < 10k vectors |
+| Database connections | 50 max | Connection pooling required |
+
+#### Backup and Recovery
+
+**FR-110**: System MUST implement backup procedures
+- Database backup: Daily at 2 AM UTC, retained for 30 days
+- Qdrant backup: Weekly snapshot, retained for 4 weeks
+- Backup location: Secure cloud storage (encrypted)
+- Recovery time objective (RTO): 4 hours
+- Recovery point objective (RPO): 24 hours
+
+#### Monitoring and Alerting
+
+**FR-111**: System MUST implement production monitoring
+
+| Metric | Alert Threshold | Severity |
+|--------|----------------|----------|
+| Error rate | > 5% | Critical |
+| P95 latency | > 5 seconds | Warning |
+| P99 latency | > 15 seconds | Critical |
+| OpenAI failure rate | > 10% | Warning |
+| Qdrant failure rate | > 5% | Warning |
+| Database connection pool | > 90% utilized | Warning |
+| Memory usage | > 80% | Critical |
+| Disk usage | > 85% | Warning |
+
+**FR-112**: System MUST provide health check endpoint
+- GET /health returns: {status: "healthy", services: {db: "ok", qdrant: "ok", openai: "ok"}}
+- Response time: < 100ms
+- Used by load balancers for instance health
+
+#### Performance Requirements
+
+**FR-113**: System MUST meet performance targets
+
+| Operation | P50 | P95 | P99 |
+|-----------|-----|-----|-----|
+| Chat message send | 500ms | 3s | 10s |
+| First token (SSE) | 300ms | 1s | 3s |
+| Semantic search | 100ms | 500ms | 2s |
+| Task creation | 200ms | 1s | 2s |
+| Conversation list | 100ms | 500ms | 1s |
+| Voice transcription | 1s | 3s | 10s |
+
+#### Accessibility
+
+**FR-114**: Frontend MUST meet WCAG 2.1 Level AA
+- Keyboard navigation for all chat functions
+- Screen reader announcements for new messages
+- Focus indicators on all interactive elements
+- Color contrast ratio ≥ 4.5:1 for text
+- ARIA labels for chat interface components
+- Voice input alternative (microphone button has keyboard shortcut)
+
+#### User Feedback and Satisfaction Measurement
+
+**FR-115**: System MUST collect user feedback for satisfaction measurement
+
+- **Feedback trigger**: Show survey modal after every 5 chat sessions
+- **Survey timing**: Display 30 seconds after session ends (not during active use)
+- **Survey questions** (3 questions max):
+  1. "How helpful was the chatbot today?" (1-5 stars)
+  2. "Did the chatbot understand you correctly?" (Yes/No)
+  3. "Any suggestions for improvement?" (optional text)
+- **Storage**: Store responses in user_feedback table with user_id, timestamp, session_id
+- **Aggregation**: Calculate average satisfaction score per user (SC-009: 4.0/5.0 target)
+- **Opt-out**: Users can disable surveys via settings
+- **Data retention**: Feedback data retained for 90 days
+
+**FR-116**: System MUST track implicit satisfaction signals
+
+- **Task completion rate**: % of chat-initiated tasks that are completed (not abandoned)
+- **Clarification rate**: % of messages requiring AI clarification (lower = better)
+- **Repeat usage**: % of users who return within 7 days (engagement metric)
+- **Session length**: Average messages per conversation (engagement depth)
 
 ## Requirements *(mandatory)*
 
@@ -201,8 +441,18 @@ A user wants the AI to route complex requests to specialized agents. When they a
 - **FR-013**: AI MUST understand task completion commands ("complete", "done", "finish", "mark as done")
 - **FR-014**: AI MUST understand task deletion commands ("delete", "remove", "cancel")
 - **FR-015**: AI MUST understand task update commands ("change", "update", "modify", "rename")
-- **FR-016**: AI MUST extract task priorities from natural language ("urgent", "important", "high priority")
+- **FR-016**: AI MUST extract task priorities from natural language with explicit mapping:
+  - **"urgent"** → Priority.HIGH (most time-sensitive)
+  - **"important"** → Priority.MEDIUM (significant but not urgent)
+  - **"high priority"** → Priority.HIGH (explicitly stated importance)
+  - **"low priority"** → Priority.LOW (explicitly stated low importance)
+  - **"asap"** → Priority.HIGH (as soon as possible)
+  - **"eventually"** → Priority.LOW (no urgency)
+  - Default: Priority.MEDIUM if no priority specified
 - **FR-017**: AI MUST extract due dates from natural language ("tomorrow", "next week", "Friday at 3pm")
+  - **Ambiguity handling**: For "next Friday" on Thursday, interpret as the upcoming Friday (not the following week)
+  - **Time defaults**: When time not specified, default to 9:00 AM for task due dates
+  - **Timezone**: Use user's timezone preference (default UTC)
 - **FR-018**: AI MUST handle ambiguous requests by asking clarifying questions
 - **FR-019**: AI MUST confirm all actions with user before executing (undo opportunity)
 - **FR-020**: AI MUST handle multi-turn conversations with context from previous messages
@@ -236,13 +486,33 @@ A user wants the AI to route complex requests to specialized agents. When they a
 #### Multi-Language Urdu Support (+100 bonus)
 
 - **FR-041**: System MUST support Urdu language input (Urdu script: اردو)
-- **FR-042**: AI MUST detect language from user message (English vs Urdu)
+- **FR-042**: AI MUST detect language from user message (English vs Urdu) using character analysis
+  - **Detection method**: If >30% of characters are in Unicode Arabic block (U+0600-U+06FF), classify as Urdu
+  - **Code-switching detection**: Mixed text classified by dominant script, preserve both in storage
 - **FR-043**: System MUST respond in the same language as user input
 - **FR-044**: System MUST support task titles in Urdu characters
-- **FR-045**: System MUST support mixed English-Urdu (code-switching)
-- **FR-046**: AI MUST understand Urdu task management commands ("شامل کرو" for add, "دکھاؤ" for show)
+- **FR-045**: System MUST support mixed English-Urdu (code-switching) within same message
+- **FR-046**: AI MUST understand Urdu task management commands:
+  | English | Urdu | Roman Urdu |
+  |---------|------|------------|
+  | Add | شامل کرو | shamil karo |
+  | Create | بنائو | banao |
+  | Show | دکھاؤ | dikhao |
+  | List | فہرست | fehrist |
+  | Complete | مکمل | mukammal |
+  | Done | ہو گیا | ho gaya |
+  | Delete | حذف کرو | hazf karo |
+  | Remove | ہٹاؤ | hatao |
+  | Update | اپ ڈیٹ | update |
+  | Change | تبدیل کرو | tabdeel karo |
+  | Task | ٹاسک | task |
+  | Tomorrow | کل | kal |
+  | Today | آج | aaj |
+  | Pending | زیر التوا | zair-e-intizaar |
+  | Remaining | باقی | baqi |
+  | Finish | ختم | khatam |
 - **FR-047**: System MUST store Urdu text correctly in PostgreSQL (UTF-8)
-- **FR-048**: System MUST render Urdu text right-to-left in UI
+- **FR-048**: System MUST render Urdu text right-to-left in UI using `dir="rtl"` attribute
 - **FR-049**: User MUST be able to set language preference (auto-detect default)
 - **FR-050**: AI MUST handle Roman Urdu (Urdu written with Latin script) optionally
 
@@ -274,40 +544,235 @@ A user wants the AI to route complex requests to specialized agents. When they a
 #### Agent Handoffs and Specialization (+200 bonus)
 
 - **FR-070**: System MUST implement main TodoAssistant agent for general commands
+  - **Triggers**: All chat requests initially route through TodoAssistant
+  - **Instructions**: Task CRUD, basic conversation handling, clarification requests
+  - **Handoff criteria**: Detect keywords requiring specialized handling
+
 - **FR-071**: System MUST implement PlanningAgent for weekly planning and prioritization
+  - **Triggers**: Keywords: "plan my week", "help me prioritize", "what should I focus on", "organize my tasks"
+  - **Instructions**: Analyze upcoming tasks, suggest priorities, identify overloaded days
+  - **Return criteria**: After presenting plan or when user asks to create specific task
+
 - **FR-072**: System MUST implement TaskQueryAgent for complex task searches and filtering
+  - **Triggers**: Keywords: "find", "search", "show me [concept]", complex queries, semantic searches
+  - **Instructions**: Use semantic_search tool, interpret results, filter by criteria
+  - **Return criteria**: After presenting search results or when user selects a task
+
 - **FR-073**: System MUST implement handoff mechanism between agents
+  - **Handoff timeout**: < 100ms for transfer completion
+  - **Context preservation**: Full conversation history passed to new agent
+  - **Circular detection**: Prevent Agent A → B → A loops (max 2 hops before return to main)
+
 - **FR-074**: Handoffs MUST preserve full conversation context
+  - **Context snapshot**: Last 50 messages, active tasks mentioned, user preferences
+  - **Handoff reason**: Logged in agent_handoffs table for debugging
+
 - **FR-075**: Specialized agents MUST return to main agent after completing specialized task
+  - **Auto-return**: After task completion (search results presented, plan created)
+  - **User override**: User can explicitly request main agent ("nevermind", "cancel", "go back")
+
 - **FR-076**: Agent handoffs MUST be transparent to user (seamless experience)
+  - **No interruption**: Streaming continues during handoff
+  - **Visual indicator**: Optional subtle badge showing current agent (for debugging)
+
 - **FR-077**: Each agent MUST have specialized instructions for its domain
+  - **TodoAssistant**: "You are a helpful todo assistant. Use MCP tools to manage tasks. Hand off to PlanningAgent for weekly planning, TaskQueryAgent for complex searches."
+  - **PlanningAgent**: "You are a planning specialist. Analyze tasks, suggest priorities, identify time conflicts. Always return to TodoAssistant after presenting the plan."
+  - **TaskQueryAgent**: "You are a search specialist. Use semantic_search for conceptual queries. Always return to TodoAssistant after presenting results."
+
+**FR-078**: System MUST support extensible agent architecture for future expansion
+- **Handoffs array**: Agents accept dynamic handoffs array for N agent support
+- **New agent requirements**: Any new agent MUST:
+  - Accept conversation history (last 50 messages)
+  - Return to TodoAssistant after completing specialized task
+  - Log handoff events to agent_handoffs table
+  - Follow same instruction format (name, instructions, handoffs, tools)
+- **Example future agents**: NotificationAgent (scheduling digest notifications), CalendarAgent (calendar integration), AnalyticsAgent (task insights)
 
 #### ChatKit Frontend Integration
 
-- **FR-078**: Frontend MUST use OpenAI ChatKit for chat UI
-- **FR-079**: Chat interface MUST match Deep Space theme (glassmorphism, cyan accents)
-- **FR-080**: Chat MUST display user messages and AI responses with different styling
-- **FR-081**: Chat MUST show typing indicator only until first token arrives, then display streaming tokens in real-time
-- **FR-082**: Chat MUST auto-scroll to latest message
-- **FR-083**: Chat MUST support message history loading (pagination for long conversations)
-- **FR-084**: System MUST render task cards in chat when AI creates/displays tasks
-- **FR-085**: System MUST support quick actions on chat task cards (complete, delete, edit)
-- **FR-086**: Chat MUST be accessible from /chat route and as a floating widget
+- **FR-079**: Frontend MUST use OpenAI ChatKit for chat UI
+- **FR-080**: Chat interface MUST match Deep Space theme (glassmorphism, cyan accents) with specific color values:
+  ```css
+  /* Deep Space Theme - OKLCH Color Space */
+  --custom-background: oklch(0.08 0.01 270);     /* Deep space black */
+  --custom-foreground: oklch(0.95 0.01 270);     /* Near white */
+  --custom-primary: oklch(0.91 0.17 195);        /* Neon cyan #00f5ff */
+  --custom-secondary: oklch(0.65 0.26 293);      /* Neon purple #a855f7 */
+  --custom-muted: oklch(0.25 0.01 270);          /* Dark gray */
+  --custom-accent: oklch(0.70 0.20 330);         /* Pink accent */
+  --custom-success: oklch(0.65 0.20 145);        /* Green */
+  --custom-destructive: oklch(0.60 0.25 25);      /* Red */
+
+  /* Glassmorphism effects */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glow-primary: 0 0 20px rgba(0, 245, 255, 0.3);
+
+  /* Spacing */
+  --chat-padding: 1rem;
+  --message-gap: 0.75rem;
+  --input-height: 60px;
+  ```
+- **FR-081**: Chat MUST display user messages and AI responses with different styling
+- **FR-082**: Chat MUST show typing indicator only until first token arrives, then display streaming tokens in real-time
+- **FR-083**: Chat MUST auto-scroll to latest message
+- **FR-084**: Chat MUST support message history loading (pagination for long conversations)
+- **FR-085**: System MUST render task cards in chat when AI creates/displays tasks
+- **FR-086**: System MUST support quick actions on chat task cards (complete, delete, edit)
+- **FR-087**: Chat MUST be accessible from /chat route and as a floating widget
 
 #### Error Handling and Edge Cases
 
-- **FR-087**: System MUST return 401 for requests without valid JWT
-- **FR-088**: System MUST implement per-user rate limiting at 30 requests/minute, return 429 with retry-after header when exceeded
-- **FR-089**: System MUST implement structured logging with correlation IDs for all requests
-- **FR-090**: System MUST log all AI agent tool calls with parameters, results, and timing
-- **FR-091**: System MUST log agent handoff events with from_agent, to_agent, and context snapshot
-- **FR-092**: System MUST handle OpenAI API outages gracefully (cached responses or apology)
-- **FR-093**: System MUST sanitize user input to prevent prompt injection
-- **FR-094**: System MUST limit conversation history to last 50 messages per conversation
-- **FR-095**: System MUST archive conversations older than 90 days
-- **FR-096**: System MUST handle concurrent message processing (queue per conversation)
-- **FR-097**: System MUST timeout AI agent calls after 30 seconds
-- **FR-098**: System MUST implement circuit breaker for failing external APIs
+- **FR-088**: System MUST return 401 for requests without valid JWT
+- **FR-089**: System MUST implement per-user rate limiting at 30 requests/minute, return 429 with retry-after header when exceeded
+- **FR-090**: System MUST implement structured logging with correlation IDs for all requests
+- **FR-091**: System MUST log all AI agent tool calls with parameters, results, and timing
+- **FR-092**: System MUST log agent handoff events with from_agent, to_agent, and context snapshot
+- **FR-093**: System MUST handle OpenAI API outages gracefully (cached responses or apology)
+- **FR-094**: System MUST sanitize user input to prevent prompt injection
+- **FR-095**: System MUST implement rolling window for conversation history: keep last 50 messages active, automatically archive older messages with AI-generated summary for context continuity
+- **FR-096**: System MUST archive conversations older than 90 days
+- **FR-097**: System MUST handle concurrent message processing (queue per conversation)
+- **FR-098**: System MUST timeout AI agent calls after 30 seconds
+- **FR-099**: System MUST implement circuit breaker for failing external APIs
+
+---
+
+## Observability & Structured Logging *(mandatory)*
+
+### Backend Observability Requirements
+
+**★ Insight ─────────────────────────────────────**
+Observability is NOT optional for distributed AI systems. With agent handoffs, MCP tool calls, external APIs (OpenAI, Qdrant, Whisper), and SSE streaming, debugging without structured logging is nearly impossible. These requirements enforce "debuggability by default."
+─────────────────────────────────────────────────
+
+#### Log Schema Requirements
+
+All log entries MUST follow this structured JSON schema:
+
+```json
+{
+  "timestamp": "ISO-8601 with timezone (UTC)",
+  "level": "debug|info|warn|error",
+  "correlation_id": "UUID v4 - propagates through entire request",
+  "user_id": "extracted from JWT sub claim",
+  "service": "chat|mcp|agents|search|embeddings|voice",
+  "component": "module or class name",
+  "event_type": "specific event category",
+  "message": "human-readable description",
+  "data": {
+    "key": "event-specific structured data"
+  },
+  "metrics": {
+    "duration_ms": "operation duration",
+    "tokens_used": "OpenAI token count",
+    "db_queries": "number of database queries"
+  },
+  "error": {
+    "type": "exception class name",
+    "message": "error message",
+    "stack_trace": "full stack trace (error level only)"
+  }
+}
+```
+
+#### Functional Requirements - Observability
+
+- **LOG-001**: System MUST use Python `structlog` library for structured JSON logging
+- **LOG-002**: System MUST generate and propagate `correlation_id` for ALL requests (generate if not provided in header)
+- **LOG-003**: System MUST log correlation_id in: (a) ALL application logs, (b) ALL database queries (via comment), (c) ALL external API calls (via header)
+- **LOG-004**: System MUST include `X-Correlation-ID` header in ALL API responses
+- **LOG-005**: System MUST accept external `X-Correlation-ID` header from frontend for trace continuity
+- **LOG-006**: System MUST log at `INFO` level for: request start, request end, agent handoffs, tool calls
+- **LOG-007**: System MUST log at `DEBUG` level for: state transitions, context snapshots, internal decisions
+- **LOG-008**: System MUST log at `WARN` level for: retries, fallback activations, degraded performance
+- **LOG-009**: System MUST log at `ERROR` level for: all exceptions, API failures, timeouts
+- **LOG-010**: System MUST NEVER log sensitive data: JWT tokens, API keys, user passwords, PII
+
+#### Request Tracing Requirements
+
+- **LOG-011**: System MUST log request start with: correlation_id, user_id, endpoint, method, path
+- **LOG-012**: System MUST log request end with: correlation_id, status_code, duration_ms, response_size
+- **LOG-013**: System MUST log all middleware events: auth validation, rate limit check, correlation ID binding
+- **LOG-014**: System MUST log database queries with: correlation_id, table, operation_type, duration_ms, row_count
+- **LOG-015**: System MUST use contextvars to propagate correlation_id across async boundaries
+
+#### MCP Tool Logging Requirements
+
+- **LOG-020**: System MUST log before each MCP tool call with: tool_name, parameters (sanitized), user_id, correlation_id
+- **LOG-021**: System MUST log after each MCP tool call with: tool_name, result_status, duration_ms, error (if failed)
+- **LOG-022**: System MUST log MCP tool call parameters with sensitive values redacted (passwords, tokens)
+- **LOG-023**: System MUST aggregate tool call metrics: total_calls_by_tool, avg_duration_by_tool, error_rate_by_tool
+- **LOG-024**: System MUST log tool validation failures with: field_name, validation_error, correlation_id
+
+#### Agent Handoff Logging Requirements
+
+- **LOG-030**: System MUST log agent handoff initiation with: from_agent, to_agent, reason, conversation_id, correlation_id
+- **LOG-031**: System MUST log agent handoff completion with: from_agent, to_agent, duration_ms, success, correlation_id
+- **LOG-032**: System MUST log agent handoff failures with: from_agent, to_agent, error_type, error_message, fallback_action
+- **LOG-033**: System MUST store handoff records in `agent_handoffs` table for audit trail
+- **LOG-034**: System MUST log context_snapshot on handoff (conversation state at handoff time)
+
+#### External API Logging Requirements
+
+- **LOG-040**: System MUST log OpenAI API calls with: model, endpoint_type (chat/embeddings/audio), tokens_used, duration_ms
+- **LOG-041**: System MUST log Qdrant operations with: collection_name, operation_type, vector_count, duration_ms, success
+- **LOG-042**: System MUST log Whisper transcriptions with: duration_seconds, detected_language, confidence, duration_ms
+- **LOG-043**: System MUST log external API retries with: attempt_number, max_retries, error_code, backoff_ms
+- **LOG-044**: System MUST log circuit breaker state changes with: service_name, old_state, new_state, failure_count
+
+#### Streaming (SSE) Logging Requirements
+
+- **LOG-050**: System MUST log SSE connection start with: correlation_id, user_id, conversation_id
+- **LOG-051**: System MUST log SSE connection end with: correlation_id, duration_ms, tokens_sent, events_sent
+- **LOG-052**: System MUST log SSE disconnections (abnormal) with: correlation_id, reason, bytes_sent
+- **LOG-053**: System MUST log each SSE event type for debugging: message_start, token, tool_call, message_done, error
+
+#### Performance Metrics Requirements
+
+- **LOG-060**: System MUST log request duration percentiles: p50, p95, p99 (aggregated per minute)
+- **LOG-061**: System MUST log database query performance: slow_query_threshold_ms=500, log queries exceeding threshold
+- **LOG-062**: System MUST log active concurrent requests: current_count, user_id breakdown
+- **LOG-063**: System MUST log rate limit events: user_id, requests_count, window_start, blocked=true|false
+- **LOG-064**: System MUST log token usage: total_tokens_per_minute, cost_estimate
+
+#### Error Tracking Requirements
+
+- **LOG-070**: System MUST log all errors with full stack trace in `error.stack_trace` field
+- **LOG-071**: System MUST include error categorization: validation_error|auth_error|api_error|db_error|unknown
+- **LOG-072**: System MUST implement error aggregation: count unique errors per minute for alerting
+- **LOG-073**: System MUST log user-friendly error messages separately from internal error details
+- **LOG-074**: System MUST NEVER expose internal errors or stack traces to API clients
+
+#### Log Storage & Retention
+
+- **LOG-080**: System MUST write logs to stdout for container/Cloud logging capture
+- **LOG-081**: System MUST support log level configuration via environment variable `LOG_LEVEL` (default: INFO)
+- **LOG-082**: System MUST implement log sampling for DEBUG logs in production (sample_rate=0.01)
+- **LOG-083**: System MUST retain logs for 30 days in production (compliance, debugging window)
+- **LOG-084**: System MUST support structured log queries (JSON parsing) for debugging tools
+
+#### Observability Success Criteria
+
+- **SC-OBS-001**: 100% of requests have traceable correlation_id from ingress to egress
+- **SC-OBS-002**: All MCP tool calls are auditable with parameters and results
+- **SC-OBS-003**: All agent handoffs are traceable with context preservation verification
+- **SC-OBS-004**: 95% of errors have sufficient context for root cause analysis within 5 minutes
+- **SC-OBS-005**: Log query can reconstruct full conversation flow for any conversation_id
+- **SC-OBS-006**: Performance bottlenecks identifiable from log metrics within 1 minute
+
+---
+
+## Acceptance Criteria for Observability
+
+When implementing Phase III, developers must verify:
+
+1. **Logs are queryable**: Can search logs by `correlation_id` and see entire request lifecycle
+2. **Logs are structured**: All logs parse as valid JSON with consistent schema
+3. **Logs are complete**: Every database operation, API call, and agent action is logged
+4. **Logs are safe**: No secrets, tokens, or sensitive PII in log output
+5. **Logs are actionable**: Error logs contain enough context to diagnose without code inspection
 
 ### Key Entities
 
@@ -323,7 +788,81 @@ A user wants the AI to route complex requests to specialized agents. When they a
 
 ## Success Criteria *(mandatory)*
 
-### Measurable Outcomes
+### Per-User Story Success Criteria
+
+**★ Insight ─────────────────────────────────────**
+Each user story has its own success criteria to enable independent testing and validation. Stories can be verified individually before integration.
+─────────────────────────────────────────────────
+
+#### User Story 1: Natural Language Task Management
+
+- **SC-US1-001**: 90% of natural language task creation commands successfully create tasks
+- **SC-US1-002**: 90% of task listing queries return correct filtered results
+- **SC-US1-003**: 95% of task completion commands correctly update task status
+- **SC-US1-004**: 85% of ambiguous requests trigger clarifying questions (not guesses)
+- **SC-US1-005**: 100% of task operations are scoped to authenticated user_id (no leakage)
+- **SC-US1-006**: SSE streaming delivers first token within 1 second for 95% of requests
+
+#### User Story 2: Conversational Context Memory
+
+- **SC-US2-001**: AI correctly references previous context in 90% of multi-turn conversations
+- **SC-US2-002**: Conversation history persists across server restarts (100% data integrity)
+- **SC-US2-003**: Resuming a conversation after 1 hour maintains full context
+- **SC-US2-004**: Conversation auto-titles are generated after 3 messages with meaningful names
+- **SC-US2-005**: Last 50 messages are correctly loaded and passed to agents
+
+#### User Story 3: Semantic Task Search
+
+- **SC-US3-001**: Semantic search returns relevant results for 85% of conceptual queries
+- **SC-US3-002**: "Financial obligations" query finds tasks containing "pay bills", "credit card"
+- **SC-US3-003**: Qdrant search completes within 500ms for collections < 10,000 vectors
+- **SC-US3-004**: Fallback to keyword search activates within 1 second when Qdrant unavailable
+- **SC-US3-005**: Search results are ranked by relevance (cosine similarity)
+
+#### User Story 4: Multi-Language Urdu Support (+100 bonus)
+
+- **SC-US4-001**: 80% of Urdu task commands are correctly identified and executed
+- **SC-US4-002**: Language detection accuracy exceeds 90% for pure English or Urdu text
+- **SC-US4-003**: Urdu text renders correctly with right-to-left alignment
+- **SC-US4-004**: Mixed English-Urdu messages are handled correctly (code-switching)
+- **SC-US4-005**: AI responses match detected language (English for English input, Urdu for Urdu)
+- **SC-US4-006**: Urdu text is stored and retrieved without character corruption (UTF-8 validation)
+
+#### User Story 5: Voice Command Input (+200 bonus)
+
+- **SC-US5-001**: 75% transcription accuracy for clear English speech
+- **SC-US5-002**: 60% transcription accuracy for Urdu speech
+- **SC-US5-003**: Transcription completes within 5 seconds for 30-second audio
+- **SC-US5-004**: Ambiguous transcriptions (< 80% confidence) trigger confirmation prompt
+- **SC-US5-005**: Audio files exceeding 25 MB are rejected with clear error message
+- **SC-US5-006**: Full transcription is stored in task.transcription_text field
+
+#### User Story 6: AI Task Summarization
+
+- **SC-US6-001**: AI summaries are generated for 100% of task descriptions > 100 characters
+- **SC-US6-002**: Summaries are under 100 characters while preserving key information
+- **SC-US6-003**: Summary regeneration occurs when description is updated
+- **SC-US6-004**: Descriptions < 50 characters bypass summarization (use original)
+- **SC-US6-005**: AI summaries reduce display length by 60% on average
+
+#### User Story 7: MCP Tool Integration
+
+- **SC-US7-001**: All MCP tools return structured responses with status, data/error, message
+- **SC-US7-002**: 100% of MCP tool calls include correlation ID for tracing
+- **SC-US7-003**: MCP tools handle 10,000 calls per hour without degradation
+- **SC-US7-004**: Stateless architecture verified (server restart doesn't affect tool execution)
+- **SC-US7-005**: Tool timeouts (> 30s) return graceful errors to AI agent
+
+#### User Story 8: Agent Handoffs (+200 bonus)
+
+- **SC-US8-001**: Agent handoffs complete successfully in 95% of cases
+- **SC-US8-002**: Handoff completes within 100ms (no user-visible delay)
+- **SC-US8-003**: Full conversation context preserved during handoff
+- **SC-US8-004**: Circular handoffs (A→B→A) are detected and prevented
+- **SC-US8-005**: Specialized agents return to main agent after task completion
+- **SC-US8-006**: Agent handoff records are logged in database for audit trail
+
+### Cross-Cutting Measurable Outcomes
 
 - **SC-001**: Chat endpoint responds within 3 seconds for 95% of requests
 - **SC-002**: AI correctly identifies user intent (create/list/complete/delete/update) in 90% of natural language requests
@@ -333,7 +872,7 @@ A user wants the AI to route complex requests to specialized agents. When they a
 - **SC-006**: Agent handoffs complete successfully in 95% of cases without user confusion
 - **SC-007**: MCP tools handle 10,000 calls per hour without degradation
 - **SC-008**: Conversation history persists correctly across server restarts (100% data integrity)
-- **SC-009**: User satisfaction score exceeds 4.0/5.0 for chatbot helpfulness
+- **SC-009**: User satisfaction score exceeds 4.0/5.0 for chatbot helpfulness (measured via post-session survey)
 - **SC-010**: 90% of users can complete basic task operations (add, list, complete) via chat within first session
 - **SC-011**: System handles 100 concurrent conversations without response time degradation
 - **SC-012**: Zero cross-user data leakage (all operations correctly scoped to user_id)
@@ -348,6 +887,15 @@ A user wants the AI to route complex requests to specialized agents. When they a
 - **SC-018**: Zero memory leaks in long-running agent processes (verified with load testing)
 - **SC-019**: Database connection pooling handles 50 concurrent DB connections
 - **SC-020**: Qdrant vector search completes within 500ms for collections < 10,000 vectors
+
+### Non-Functional Success Criteria
+
+- **SC-NFR-001**: Data retention policies enforced (90-day conversation archive)
+- **SC-NFR-002**: GDPR right to erasure functional (account deletion within 30 days)
+- **SC-NFR-003**: Cost limits enforced (per-user token quotas)
+- **SC-NFR-004**: Health check endpoint responds within 100ms
+- **SC-NFR-005**: Daily database backups completed successfully
+- **SC-NFR-006**: Frontend meets WCAG 2.1 Level AA accessibility standards
 
 ## Assumptions & Decisions
 

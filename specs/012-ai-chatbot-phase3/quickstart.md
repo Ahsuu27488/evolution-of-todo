@@ -8,6 +8,10 @@
 
 ## Environment Setup
 
+**★ Insight ─────────────────────────────────────**
+Observability is configured FIRST, before any other services. This ensures all subsequent development is debuggable from day one. Structured logging with correlation IDs is non-negotiable for distributed AI systems.
+─────────────────────────────────────────────────
+
 ### 1. Backend Environment Variables
 
 Add to `backend/.env`:
@@ -21,10 +25,21 @@ BETTER_AUTH_SECRET=... (>=32 chars)
 CORS_ORIGINS=http://localhost:3000
 
 # ==========================================
-# NEW (Phase III)
+# NEW (Phase III) - Observability
+# ==========================================
+# Logging Configuration (STRUCTURED LOGGING - MANDATORY)
+LOG_LEVEL=info                    # debug|info|warn|error
+LOG_FORMAT=json                   # json for prod, console for dev
+CORRELATION_ID_HEADER=X-Correlation-ID
+SLOW_QUERY_THRESHOLD_MS=500       # Log queries exceeding this
+ENABLE_QUERY_LOGGING=true         # Log all DB queries at DEBUG level
+
+# ==========================================
+# NEW (Phase III) - External Services
 # ==========================================
 # OpenAI API (GPT-4o-mini, Whisper, embeddings)
 OPENAI_API_KEY=sk-proj-...
+TOKEN_COST_PER_1K=0.0001          # For cost estimation
 
 # Qdrant Cloud (vector database)
 QDRANT_URL=https://...
@@ -52,6 +67,11 @@ Add to `frontend/.env.local` (already configured for Phase II):
 ```bash
 cd backend
 
+# === OBSERVABILITY (INSTALL FIRST) ===
+# Structured logging
+pip install structlog
+
+# === PHASE III DEPENDENCIES ===
 # OpenAI Agents SDK
 pip install openai-agents-python
 
@@ -68,7 +88,7 @@ pip install qdrant-client
 pip install openai
 
 # Or install all at once
-pip install openai-agents-python mcp sse-starlette qdrant-client openai
+pip install structlog openai-agents-python mcp sse-starlette qdrant-client openai
 ```
 
 ### Update `pyproject.toml`
@@ -77,11 +97,182 @@ pip install openai-agents-python mcp sse-starlette qdrant-client openai
 [project]
 dependencies = [
     # ... existing dependencies ...
+    # Observability (must be first)
+    "structlog>=24.0.0",
+    # Phase III
     "openai-agents-python>=0.7.0",
     "mcp>=0.1.0",
     "sse-starlette>=2.0.0",
     "qdrant-client>=1.12.0",
 ]
+```
+
+---
+
+## Observability Setup (REQUIRED)
+
+### Step 1: Create Logging Configuration
+
+Create `backend/app/observability/logging_config.py`:
+
+```python
+import structlog
+import logging
+from contextvars import ContextVar
+from typing import Any
+
+correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
+
+def configure_logging(log_level: str = "INFO", log_format: str = "json"):
+    """Configure structured logging for the application."""
+
+    # Shared processors for all formats
+    shared_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.stdlib.add_logger_name,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+    ]
+
+    if log_format == "json":
+        # Production: JSON output for log aggregation
+        processors = shared_processors + [
+            structlog.processors.JSONRenderer()
+        ]
+    else:
+        # Development: Human-readable console output
+        processors = shared_processors + [
+            structlog.dev.ConsoleRenderer(colors=True)
+        ]
+
+    # Configure structlog
+    structlog.configure(
+        processors=processors,
+        wrapper_class=structlog.stdlib.BoundLogger,
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
+
+    # Configure standard logging
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(message)s",
+    )
+
+def get_logger() -> structlog.stdlib.BoundLogger:
+    """Get a configured logger instance."""
+    return structlog.get_logger()
+```
+
+### Step 2: Create Correlation ID Middleware
+
+Create `backend/app/observability/middleware.py`:
+
+```python
+import uuid
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from contextvars import ContextVar
+import time
+
+from .logging_config import get_logger, correlation_id_var
+
+logger = get_logger()
+
+class ObservabilityMiddleware(BaseHTTPMiddleware):
+    """Middleware for correlation ID propagation and request tracing."""
+
+    async def dispatch(self, request: Request, call_next):
+        # Generate or extract correlation ID
+        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+        correlation_id_var.set(correlation_id)
+
+        # Start timer
+        start_time = time.time()
+
+        # Log request start
+        logger.info(
+            "request_start",
+            correlation_id=correlation_id,
+            method=request.method,
+            path=request.url.path,
+            query_params=str(request.query_params),
+        )
+
+        # Process request
+        try:
+            response = await call_next(request)
+            duration_ms = (time.time() - start_time) * 1000
+
+            # Log request end
+            logger.info(
+                "request_end",
+                correlation_id=correlation_id,
+                status_code=response.status_code,
+                duration_ms=round(duration_ms, 2),
+            )
+
+            # Add correlation ID to response
+            response.headers["X-Correlation-ID"] = correlation_id
+            return response
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "request_error",
+                correlation_id=correlation_id,
+                error_type=type(e).__name__,
+                error_message=str(e),
+                duration_ms=round(duration_ms, 2),
+                exc_info=True,
+            )
+            raise
+```
+
+### Step 3: Register Middleware in FastAPI App
+
+Update `backend/app/main.py`:
+
+```python
+from fastapi import FastAPI
+from app.observability.logging_config import configure_logging
+from app.observability.middleware import ObservabilityMiddleware
+import os
+
+# Configure logging FIRST (before any imports that log)
+configure_logging(
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_format=os.getenv("LOG_FORMAT", "json"),
+)
+
+app = FastAPI()
+
+# Add observability middleware (first middleware)
+app.add_middleware(ObservabilityMiddleware)
+
+# ... rest of your app setup
+```
+
+### Step 4: Verify Logging Works
+
+```bash
+# Start backend
+cd backend
+uvicorn app.main:app --reload
+
+# In another terminal, make a request
+curl http://localhost:8000/health
+
+# Check logs - you should see JSON structured logs with:
+# - timestamp (ISO-8601 UTC)
+# - level (info)
+# - correlation_id (UUID)
+# - event (request_start, request_end)
+# - duration_ms
 ```
 
 ### Frontend Dependencies
