@@ -1,7 +1,7 @@
 /**
  * useChat hook - React hook for chat functionality.
  *
- * Combines TanStack Query for server state with Zustand for UI state.
+ * Combines TanStack Query for server state with Context for UI state.
  * Handles SSE streaming for real-time AI responses.
  *
  * Per spec.md FR-001 through FR-010.
@@ -10,51 +10,19 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-// API URL configuration
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { API_URL } from "@/lib/config/api";
+import { getAuthToken } from "@/lib/auth/token";
+import type { Conversation, Message } from "@/types/chat";
 
-// Auth token helper
-async function getAuthToken(): Promise<string | null> {
-  try {
-    const response = await fetch("/api/auth/token", {
-      credentials: "include",
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.token || null;
-  } catch {
-    return null;
-  }
-}
+// =============================================================================
+// Query Keys
+// =============================================================================
 
-// Query keys
 export const chatKeys = {
   all: ["chat"] as const,
   conversations: () => [...chatKeys.all, "conversations"] as const,
   conversation: (id: string) => [...chatKeys.all, "conversation", id] as const,
 };
-
-// Types
-export interface ChatMessage {
-  id: string;
-  conversationId: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  toolCalls?: Array<{
-    tool: string;
-    arguments: Record<string, unknown>;
-  }>;
-  createdAt: string;
-}
-
-export interface Conversation {
-  id: string;
-  title: string;
-  messageCount: number;
-  languagePreference: "auto" | "en" | "ur";
-  createdAt: string;
-  updatedAt: string;
-}
 
 // =============================================================================
 // Hooks
@@ -101,7 +69,7 @@ export function useConversation(conversationId: string | null) {
       if (!response.ok) throw new Error("Failed to load conversation");
       return response.json() as Promise<{
         conversation: Conversation;
-        messages: ChatMessage[];
+        messages: Message[];
       }>;
     },
     enabled: !!conversationId,

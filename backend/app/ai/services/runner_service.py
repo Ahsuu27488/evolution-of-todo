@@ -11,6 +11,7 @@ Handles:
 Per spec.md FR-001 through FR-010, FR-018.
 """
 
+import asyncio
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -511,7 +512,3 @@ async def stream_with_correlation(
     """
     async for event in service.stream_chat(user_message, context, conversation_history):
         yield convert_to_sse_format(event)
-
-
-# Need to import asyncio for fallback
-import asyncio

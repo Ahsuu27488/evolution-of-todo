@@ -1,6 +1,6 @@
 # frontend/ — Chronos Todo Web App
 
-**Claude Code Context** for the Next.js frontend (Phase II Chronos WebApp).
+**Claude Code Context** for the Next.js frontend (Phase II Chronos WebApp + Phase III AI Chatbot).
 
 ## Project Purpose
 
@@ -9,6 +9,7 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 - Task management UI with filtering, sorting, search
 - Real-time state synchronization with backend
 - Comprehensive notification system (SSE, push, email)
+- **AI Chatbot with natural language task management** (Phase III)
 - Dark mode and responsive design
 
 ## Architecture Overview
@@ -27,10 +28,10 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 ┌─────────────────────────────────────────────────────────────┐
 │                      Component Layer                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │  Notification│  │  Task Components│  │ Layout Components││
-│  │  - Bell      │  │  - task-card │  │  - header        │  │
-│  │  - Dropdown  │  │  - task-list │  │  - user-nav      │  │
-│  │  - SSE       │  │  - forms     │  │  - theme-toggle  │  │
+│  │  Notification│  │  Task Components│  │ Chat Components  ││
+│  │  - Bell      │  │  - task-card │  │  - chat-panel    │  │
+│  │  - Dropdown  │  │  - task-list │  │  - chat-input    │  │
+│  │  - SSE       │  │  - forms     │  │  - voice-recorder│  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -39,11 +40,11 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 │                      State Management                        │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  TanStack Query (Server State)                      │  │
-│  │  - Tasks, notifications, user session               │  │
+│  │  - Tasks, notifications, conversations              │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Zustand (Client State)                              │  │
-│  │  - Filters, modals, toasts                           │  │
+│  │  React Context/Zustand (Client State)               │  │
+│  │  - Filters, modals, toasts, chat UI state          │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -52,20 +53,22 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 │                      Data Layer                              │
 │  ┌──────────────────┐         ┌──────────────────────────┐ │
 │  │   API Client     │────────▶│   FastAPI Backend        │ │
-│  │  (lib/api-client)│         │   (JWT auth)             │ │
+│  │  (lib/api-client)│         │   (JWT auth)             │  │
 │  └──────────────────┘         └──────────────────────────┘ │
 │  ┌──────────────────┐         ┌──────────────────────────┐ │
-│  │   SSE Stream     │────────▶│   SSE Endpoint           │ │
-│  │  (notifications) │         │   (/api/notifications/stream)│
+│  │   Chat API       │────────▶│   OpenAI Agents Backend │  │
+│  │  (lib/api/chat) │         │   (MCP tools)            │  │
 │  └──────────────────┘         └──────────────────────────┘ │
 │  ┌──────────────────┐         ┌──────────────────────────┐ │
 │  │   Better Auth    │────────▶│   Neon PostgreSQL        │ │
-│  │  (lib/auth.ts)   │         │   (user sessions)        │ │
+│  │  (lib/auth.ts)   │         │   (user sessions)        │  │
 │  └──────────────────┘         └──────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## Key File Locations
+
+### Phase II (Core Features)
 
 | File | Purpose | Key Details |
 |------|---------|-------------|
@@ -88,6 +91,24 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 | `components/notifications/notification-dropdown.tsx` | Dropdown | Notification list, filters, actions |
 | `components/notifications/sse-stream-provider.tsx` | SSE client | EventSource connection, cache updates |
 
+### Phase III (AI Chatbot)
+
+| File | Purpose | Key Details |
+|------|---------|-------------|
+| `lib/config/api.ts` | API configuration | Centralized `API_URL` constant |
+| `lib/auth/token.ts` | Auth token utilities | Shared `getAuthToken()` function |
+| `lib/utils/sse.ts` | SSE parsing utilities | `parseSSEStream()`, event handlers |
+| `lib/utils/text-direction.ts` | Text direction utilities | `isUrduText()`, `getTextDirection()` for RTL support |
+| `lib/api/chat.ts` | Chat API client | SSE streaming, conversations, transcription |
+| `hooks/use-chat.ts` | Chat hooks | `useConversations()`, `useSendMessage()` |
+| `lib/stores/chat-store.ts` | Chat UI state | React Context for chat panel, messages, streaming |
+| `types/chat.ts` | Chat types | Message, Conversation, SSE events |
+| `components/chat/chat-panel.tsx` | Chat interface | Floating panel, conversation list |
+| `components/chat/chat-input.tsx` | Message input | Auto-expanding textarea, voice button |
+| `components/chat/chat-message.tsx` | Message display | User/assistant styling, RTL support |
+| `components/chat/voice-recorder.tsx` | Voice recording | MediaRecorder API, Whisper transcription |
+| `components/chat/task-card.tsx` | Task cards in chat | Inline task display for AI-created tasks |
+
 ## Architecture Patterns
 
 ### Better Auth + JWT Flow
@@ -98,6 +119,16 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 3. API Client fetches JWT via /api/auth/token
 4. JWT sent to FastAPI in Authorization header
 5. FastAPI verifies with shared BETTER_AUTH_SECRET
+```
+
+**Implementation** (Phase III refactored):
+
+```typescript
+// lib/auth/token.ts - Shared auth token utility
+import { getAuthToken } from "@/lib/auth/token";
+
+// Used in all API clients
+const token = await getAuthToken();
 ```
 
 ### SSE Integration Pattern
@@ -127,6 +158,45 @@ const SSEStreamProvider = dynamic(
   () => import("@/components/notifications/sse-stream-provider"),
   { ssr: false }
 )
+```
+
+### Chat SSE Streaming (Phase III)
+
+Chat responses use SSE streaming with the new shared utilities:
+
+```typescript
+// lib/api/chat.ts
+import { parseSSEStream } from "@/lib/utils/sse";
+
+// Parse SSE stream from chat API
+for await (const { eventType, data } of parseSSEStream(reader, handlers)) {
+  // Events handled by handlers: onToken, onToolCall, onAgentHandoff, etc.
+}
+```
+
+### Shared Utilities (Phase III)
+
+**Location**: `frontend/lib/utils/` and `frontend/lib/config/`
+
+| Utility | Purpose | Export |
+|---------|---------|--------|
+| `lib/config/api.ts` | API URL config | `API_URL` |
+| `lib/auth/token.ts` | JWT token fetching | `getAuthToken()` |
+| `lib/utils/sse.ts` | SSE stream parsing | `parseSSEStream()`, `SSEEventHandlers` |
+| `lib/utils/text-direction.ts` | RTL support | `isUrduText()`, `getTextDirection()` |
+
+**Usage example**:
+
+```typescript
+// Import shared utilities
+import { API_URL } from "@/lib/config/api";
+import { getAuthToken } from "@/lib/auth/token";
+import { getTextDirection } from "@/lib/utils/text-direction";
+import { parseSSEStream } from "@/lib/utils/sse";
+
+// Use in components
+const direction = getTextDirection(text);
+const token = await getAuthToken();
 ```
 
 ### Server Actions Pattern
@@ -174,7 +244,7 @@ class ApiClient {
 All API calls use `Result<T>` pattern:
 
 ```typescript
-// lib/errors.ts
+// lib/errors.ts (or types/chat.ts for chat-specific)
 export type Result<T> =
   | { success: true; data: T }
   | { success: false; error: ApiError }
@@ -188,40 +258,16 @@ if (result.success) {
 }
 ```
 
-### Notification Hooks
+### Shared Utility Pattern (Phase III)
 
-Custom hooks using TanStack Query:
-
-```typescript
-// hooks/use-notifications.ts
-export function useNotifications(options?: { limit?: number; offset?: number }) {
-  return useQuery({
-    queryKey: notificationKeys.list(options),
-    queryFn: () => fetchNotifications(options),
-    staleTime: 1000 * 30, // 30 seconds
-  })
-}
-
-export function useUnreadCount() {
-  return useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: fetchUnreadCount,
-    refetchInterval: 1000 * 60, // Every minute
-  })
-}
-```
-
-### Server Actions Signatures
+**Always use shared utilities instead of duplicating code:**
 
 ```typescript
-"use server"  // Required directive
+// ✅ Good - Use shared utility
+import { getAuthToken } from "@/lib/auth/token";
 
-export async function actionName(
-  data: InputType
-): Promise<ActionResult<OutputType>> {
-  // ...
-  return { success: true, data: ... }
-}
+// ❌ Bad - Duplicate implementation
+async function getAuthToken() { /* ... */ }
 ```
 
 ### Component Patterns
@@ -237,6 +283,8 @@ export async function actionName(
 - API Routes: `route.ts` in `app/api/`
 - Components: `*.tsx` with kebab-case filenames
 - Hooks: `use-*.ts` in `hooks/`
+- Utilities: `*.ts` in `lib/utils/`
+- Config: `*.ts` in `lib/config/`
 
 ## Notification System Architecture
 
@@ -271,14 +319,65 @@ enum NotificationType {
 | `notification_read` | `{ id: number }` | Mark as read, decrement unread |
 | `ping` | `{ timestamp: string }` | Keep connection alive |
 
-### Push Notification Flow
+## Chat System Architecture (Phase III)
+
+### Chat Flow
 
 ```
-1. User clicks bell → PushPermissionModal shown
-2. User accepts → Notification.requestPermission()
-3. Subscription created → POST /api/notifications/push/subscribe
-4. Push received → Service worker displays notification
-5. User clicks → Navigate to relevant task
+User Input → ChatPanel → ChatInput/VoiceRecorder
+    │
+    ▼
+Chat API (SSE Stream) → FastAPI Backend
+    │
+    ▼
+OpenAI Agents SDK → MCP Tools → Task CRUD
+    │
+    ▼
+SSE Events → Real-time UI Updates
+```
+
+### Chat SSE Events
+
+| Event | Data | Action |
+|-------|------|--------|
+| `message_start` | `{ conversationId, correlationId }` | Initialize streaming |
+| `token` | `{ content }` | Append to message |
+| `tool_call` | `{ tool, arguments }` | Show tool indicator |
+| `tool_result` | `{ tool, output }` | Show tool result |
+| `agent_handoff` | `{ from_agent, to_agent }` | Show handoff notification |
+| `message_done` | `{ final_output, agent }` | Finalize message |
+| `error` | `{ message }` | Show error |
+
+### Chat State Management
+
+Uses React Context (not Zustand) for chat UI state to avoid SSR/hydration issues:
+
+```typescript
+// lib/stores/chat-store.ts
+export function useChatStore() {
+  const context = useContext(ChatContext)
+  if (!context) throw new Error("useChatStore must be used within ChatProvider")
+  return context
+}
+```
+
+### Voice Input (Phase III)
+
+```typescript
+// components/chat/voice-recorder.tsx
+- MediaRecorder API for audio capture
+- 30-second recording limit
+- Whisper API transcription via /api/chat/transcribe
+- Ambiguity confirmation for unclear transcriptions
+```
+
+### Urdu Language Support
+
+```typescript
+// lib/utils/text-direction.ts
+- isUrduText(): Unicode range detection
+- getTextDirection(): Returns "rtl" or "ltr"
+- Applied to chat messages and input placeholders
 ```
 
 ## Auth Configuration
@@ -306,14 +405,15 @@ jwt({
 
 | State Type | Library | Examples |
 |------------|---------|----------|
-| **Server State** | TanStack Query | Tasks, notifications, user session, mutations |
-| **Client State** | Zustand | Filter selections, modal open/close, toasts |
+| **Server State** | TanStack Query | Tasks, notifications, conversations, mutations |
+| **Client State** | React Context/Zustand | Filter selections, modal open/close, chat UI |
 
 ### When to Use Which
 
 - Use TanStack Query for data from API
-- Use Zustand for transient UI state
-- Never persist server state in Zustand
+- Use React Context for interactive component state (chat, modals)
+- Use Zustand for persistent client-side preferences (filters)
+- Never persist server state in client stores
 
 ## Styling Conventions
 
@@ -328,13 +428,13 @@ Uses `@theme` directive instead of v3 config:
 }
 ```
 
-### Color System
+### Color System (Deep Space Theme)
 
 - Uses OKLCH for better color manipulation
 - CSS variables for theme values
 - Dark mode via `dark:` prefix
-- Deep Space theme (dark mode)
-- Slate/blue theme (light mode)
+- Primary: `oklch(0.91 0.17 195)` (Neon cyan)
+- Secondary: `oklch(0.65 0.26 293)` (Neon purple)
 
 ### Component Variants
 
@@ -378,36 +478,13 @@ toast.success("Task created")
 toast.error("Failed to create task")
 ```
 
-## Extension Points for Phase III
-
-### AI Chat Interface
-
-Pre-provisioned fields ready for Phase III:
-
-```typescript
-// types/task.ts
-export interface Task {
-  transcription_text: string | null  // Voice input
-  ai_summary: string | null          // LLM summary
-  embedding_id: string | null        // Vector search
-}
-```
-
-### Voice Input Integration
-
-```typescript
-// Phase III: Add voice recording
-const startRecording = () => {
-  // Use Web Speech API or OpenAI Whisper
-}
-```
-
 ## Important Constraints
 
-- **All API calls must go through api-client** — Don't use fetch directly
+- **All API calls must use shared utilities** — Use `getAuthToken()` from `@/lib/auth/token`
 - **Server Actions require "use server"** — First line of file
 - **JWT never stored in localStorage** — Always fetched from session
 - **Filters persist in localStorage** — Via Zustand persist
-- **TanStack Query for server state** — Never duplicate in Zustand
+- **TanStack Query for server state** — Never duplicate in client stores
 - **SSE provider must use { ssr: false }** — EventSource is browser-only
 - **Push notifications require user permission** — Show permission modal first
+- **Use shared utilities for common operations** — Don't duplicate `getAuthToken()`, SSE parsing, or text detection

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Chat Input - Input component with voice recording.
  *
@@ -20,31 +19,12 @@ import { Send, Loader2 } from "lucide-react";
 
 import { useChatInput } from "@/lib/stores/chat-store";
 import { useChatStreaming } from "@/lib/stores/chat-store";
+import { getTextDirection } from "@/lib/utils/text-direction";
 import { VoiceRecorder } from "./voice-recorder";
 
 interface ChatInputProps {
   onSend: () => void;
   disabled?: boolean;
-}
-
-// =============================================================================
-// Urdu Detection Utilities (Per T069, T078)
-// =============================================================================
-
-/**
- * Check if text contains Urdu/Arabic characters.
- */
-function isUrduText(text: string): boolean {
-  if (!text) return false;
-  const urduPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  return urduPattern.test(text);
-}
-
-/**
- * Get text direction based on content.
- */
-function getTextDirection(text: string): "rtl" | "ltr" {
-  return isUrduText(text) ? "rtl" : "ltr";
 }
 
 export function ChatInput({ onSend, disabled }: ChatInputProps) {

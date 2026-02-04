@@ -17,30 +17,12 @@ import { User, Bot, Wrench } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo } from "react";
 import type { Task } from "@/types/task";
+import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
 
 // =============================================================================
-// Urdu Detection Utilities (Per T069, T077)
+// Utility Functions
 // =============================================================================
-
-/**
- * Check if text contains Urdu/Arabic characters.
- * Per FR-042: Unicode range U+0600-U+06FF for Urdu detection.
- */
-function isUrduText(text: string): boolean {
-  if (!text) return false;
-  // Urdu/Arabic Unicode range
-  const urduPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
-  return urduPattern.test(text);
-}
-
-/**
- * Get text direction based on content.
- * Returns "rtl" for Urdu text, "ltr" otherwise.
- */
-function getTextDirection(text: string): "rtl" | "ltr" {
-  return isUrduText(text) ? "rtl" : "ltr";
-}
 
 /**
  * Extract task data from tool call output.
@@ -90,6 +72,10 @@ function extractTaskFromToolCall(toolCall: {
   return null;
 }
 
+// =============================================================================
+// Props
+// =============================================================================
+
 interface ChatMessageProps {
   message: {
     id: string;
@@ -106,6 +92,10 @@ interface ChatMessageProps {
   onTaskAction?: (action: "complete" | "delete" | "edit", task: Task) => void;
 }
 
+// =============================================================================
+// Animation Variants
+// =============================================================================
+
 const messageVariants = {
   hidden: {
     opacity: 0,
@@ -118,6 +108,10 @@ const messageVariants = {
     scale: 1,
   },
 };
+
+// =============================================================================
+// Component
+// =============================================================================
 
 export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageProps) {
   const isUser = message.role === "user";
