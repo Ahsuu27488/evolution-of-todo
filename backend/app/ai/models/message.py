@@ -11,18 +11,26 @@ from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field as PydanticField
 from sqlalchemy import Column, DateTime, Enum as SQLEnum, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
 
 
 class MessageRole(str, Enum):
-    """Role of the message sender."""
+    """Role of the message sender.
+
+    Per OpenAI API format:
+    - user: Message from the user
+    - assistant: Message from the AI
+    - system: System instruction
+    - tool: Tool result (for maintaining conversation context after tool calls)
+    """
 
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    TOOL = "tool"  # FR-005: Tool results for conversation context
 
 
 @dataclass
@@ -138,15 +146,22 @@ class MessageCreate(MessageBase):
 
 
 class MessagePublic(MessageBase):
-    """Schema for message API responses."""
+    """Schema for message API responses.
 
-    model_config = ConfigDict(from_attributes=True)
+    Uses camelCase aliases for JSON serialization to match frontend expectations.
+    Python attributes remain snake_case per PEP 8.
+    """
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
 
     id: UUID
-    conversation_id: UUID
-    correlation_id: str | None
-    tool_calls: list[ToolCallSchema]
-    created_at: datetime
+    conversation_id: UUID = PydanticField(alias="conversationId")
+    correlation_id: str | None = PydanticField(alias="correlationId")
+    tool_calls: list[ToolCallSchema] = PydanticField(alias="toolCalls", default_factory=list)
+    created_at: datetime = PydanticField(alias="createdAt")
 
 
 class MessageList(BaseModel):

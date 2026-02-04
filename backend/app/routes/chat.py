@@ -11,6 +11,7 @@ Provides endpoints for:
 Per spec.md chat-api.yaml contract.
 """
 
+import json
 import os
 import uuid
 import tempfile
@@ -320,14 +321,32 @@ async def chat(
             history_messages = msg_result.scalars().all()
 
             # Build conversation history in OpenAI format
-            # Include tool_calls for assistant messages to maintain context
+            # Include tool_calls for assistant messages and tool results for context
             conversation_history = []
             for m in history_messages:
-                msg_dict = {"role": m.role, "content": m.content}
-                # Include tool_calls for assistant messages (important for context)
-                if m.role == MessageRole.ASSISTANT and m.tool_calls:
-                    msg_dict["tool_calls"] = m.tool_calls
-                conversation_history.append(msg_dict)
+                # Handle tool messages (tool results)
+                if m.role == MessageRole.TOOL:
+                    # Parse the stored JSON format
+                    try:
+                        result_data = json.loads(m.content)
+                        # Format as tool result for OpenAI API
+                        # Note: tool_call_id would be ideal but requires schema change
+                        # Using a simplified format for now
+                        msg_dict = {
+                            "role": "tool",
+                            "content": result_data.get("output", ""),
+                        }
+                    except json.JSONDecodeError:
+                        # Fallback for malformed tool results
+                        msg_dict = {"role": "tool", "content": m.content}
+                    conversation_history.append(msg_dict)
+                else:
+                    # Handle user and assistant messages
+                    msg_dict = {"role": m.role.value, "content": m.content}
+                    # Include tool_calls for assistant messages (important for context)
+                    if m.role == MessageRole.ASSISTANT and m.tool_calls:
+                        msg_dict["tool_calls"] = m.tool_calls
+                    conversation_history.append(msg_dict)
 
             # Create Runner service
             runner_service = RunnerService(
@@ -338,6 +357,7 @@ async def chat(
             # Track accumulated response for storage
             accumulated_response = []
             tool_calls_list = []
+            tool_results_list = []  # Track tool results for conversation context
             handoffs_list = []
 
             try:
@@ -355,6 +375,9 @@ async def chat(
                         accumulated_response.append(event.data.get("content", ""))
                     elif event.event == StreamEventType.TOOL_CALL:
                         tool_calls_list.append(event.data)
+                    elif event.event == StreamEventType.TOOL_RESULT:
+                        # Track tool results for conversation context (fixes agent memory)
+                        tool_results_list.append(event.data)
                     elif event.event == StreamEventType.AGENT_HANDOFF:
                         handoffs_list.append(event.data)
 
@@ -382,6 +405,25 @@ async def chat(
                     conversation.message_count += 2
                     conversation.updated_at = datetime.utcnow()
                     await session.commit()
+
+                    # Save tool results as messages for conversation context (fixes agent memory)
+                    # Tool results maintain context between requests so agent knows what happened
+                    if tool_results_list:
+                        for tool_result in tool_results_list:
+                            # Format tool result as JSON string for storage
+                            result_content = json.dumps({
+                                "tool": tool_result.get("tool", "unknown"),
+                                "output": tool_result.get("output", ""),
+                            })
+                            tool_message = Message(
+                                conversation_id=conversation.id,
+                                correlation_id=correlation_id,
+                                role=MessageRole.TOOL,  # New TOOL role for conversation context
+                                content=result_content,
+                            )
+                            session.add(tool_message)
+                            conversation.message_count += 1
+                        await session.commit()
 
                     # Log handoffs if any (T109, T110: Handoff tracking and storage)
                     if handoffs_list:
@@ -651,15 +693,7 @@ async def list_conversations(
 
     return {
         "conversations": [
-            ConversationPublic(
-                id=c.id,
-                user_id=c.user_id,
-                title=c.title,
-                language_preference=c.language_preference,
-                message_count=c.message_count,
-                created_at=c.created_at,
-                updated_at=c.updated_at,
-            )
+            ConversationPublic.model_validate(c)  # Uses camelCase aliases
             for c in conversations
         ],
         "total": total,
@@ -750,15 +784,7 @@ async def get_conversation(
     return {
         "conversation": ConversationPublic.model_validate(conversation),
         "messages": [
-            MessagePublic(
-                id=m.id,
-                conversation_id=m.conversation_id,
-                correlation_id=m.correlation_id,
-                role=m.role,
-                content=m.content,
-                tool_calls=m.tool_calls or [],
-                created_at=m.created_at,
-            )
+            MessagePublic.model_validate(m)  # Uses camelCase aliases
             for m in messages
         ],
         "pagination": {

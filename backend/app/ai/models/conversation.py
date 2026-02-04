@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field as PydanticField
 from sqlalchemy import Column, DateTime, Enum as SQLEnum, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
@@ -96,7 +96,10 @@ class ConversationBase(BaseModel):
     """Base conversation schema."""
 
     title: Optional[str] = None
-    language_preference: LanguagePreference = LanguagePreference.AUTO
+    language_preference: LanguagePreference = PydanticField(
+        default=LanguagePreference.AUTO,
+        alias="languagePreference",
+    )
 
 
 class ConversationCreate(ConversationBase):
@@ -106,15 +109,22 @@ class ConversationCreate(ConversationBase):
 
 
 class ConversationPublic(ConversationBase):
-    """Schema for conversation API responses."""
+    """Schema for conversation API responses.
 
-    model_config = ConfigDict(from_attributes=True)
+    Uses camelCase aliases for JSON serialization to match frontend expectations.
+    Python attributes remain snake_case per PEP 8.
+    """
+
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,  # Allow both snake_case and camelCase input
+    )
 
     id: UUID
-    user_id: str
-    message_count: int
-    created_at: datetime
-    updated_at: datetime
+    user_id: str = PydanticField(alias="userId")
+    message_count: int = PydanticField(alias="messageCount")
+    created_at: datetime = PydanticField(alias="createdAt")
+    updated_at: datetime = PydanticField(alias="updatedAt")
 
 
 class ConversationList(BaseModel):
