@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Noto_Nastaliq_Urdu } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
 import { ViewTransitions } from "next-view-transitions"
@@ -17,6 +17,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
   display: "optional", // Only load if needed, reduces preload warnings
   adjustFontFallback: true,
+})
+
+// Urdu font for Phase III: AI Chatbot bilingual support (T076)
+// Noto Nastaliq Urdu is a Nastaliq-style font for Urdu text rendering
+const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
+  variable: "--font-noto-nastaliq-urdu",
+  subsets: ["arabic"],
+  display: "swap",
+  weight: ["400", "700"],
 })
 
 export const metadata: Metadata = {
@@ -78,7 +87,7 @@ export default function RootLayout({
     <ViewTransitions>
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
+          className={`${geistSans.variable} ${geistMono.variable} ${notoNastaliqUrdu.variable} antialiased min-h-screen`}
         >
           <Providers>{children}</Providers>
           {/* Register service worker for push notifications */}

@@ -434,16 +434,18 @@ const SSEStreamProvider = dynamic(
 
 ### User Story Priorities
 
-| Priority | User Story | Tasks | Bonus |
-|----------|------------|-------|-------|
-| **P1** 🎯 MVP | Natural Language Task Management | T026-T049 | - |
-| P2 | Conversational Context Memory | T050-T056 | - |
-| P3 | Semantic Task Search | T057-T067 | - |
-| P4 | Urdu Language Support | T068-T079 | +100 |
-| P5 | Voice Command Input | T080-T092 | +200 |
-| P6 | AI Task Summarization | T093-T099 | - |
-| P7 | MCP Tool Integration | T100-T105 | - |
-| P8 | Agent Handoffs | T106-T113 | +200 |
+| Priority | User Story | Tasks | Bonus | Status |
+|----------|------------|-------|-------|--------|
+| **P1** 🎯 MVP | Natural Language Task Management | T026-T049 | - | ✅ Complete |
+| P2 | Conversational Context Memory | T050-T056 | - | ✅ Complete |
+| P3 | Semantic Task Search | T057-T067 | - | ✅ Complete |
+| P4 | Urdu Language Support | T068-T079 | +100 | ✅ Complete |
+| P5 | Voice Command Input | T080-T092 | +200 | ✅ Complete |
+| P6 | AI Task Summarization | T093-T099 | - | ✅ Complete |
+| P7 | MCP Tool Integration | T100-T105 | - | ✅ Complete |
+| P8 | Agent Handoffs | T106-T113 | +200 | ✅ Complete |
+
+**All core user stories complete!** Remaining work is Phase 11 polish (T114-T130).
 
 ### MVP Path (Fastest to Working Chatbot)
 
@@ -461,7 +463,7 @@ STOP → Test and Demo
 
 ```
 MVP → US3 (Search) → US4 (Urdu +100) → US5 (Voice +200) → US8 (Handoffs +200)
-Total Bonus Potential: +500 points
+Total Bonus Achieved: +500 points ✅
 ```
 
 ### Environment Variables
@@ -539,39 +541,57 @@ async def get_upcoming_tasks(user_id: str) -> list[Task]:
 
 ```
 backend/app/
-├── models.py                 # ← Add Conversation, Message, AgentHandoff
+├── models.py                 # ← Extended with transcription_text, ai_summary, embedding_id
 ├── routes/
-│   ├── chat.py              # ← NEW: Chat endpoints
+│   ├── chat.py              # ← NEW: Chat endpoints (includes /transcribe)
 │   ├── tasks.py             # Existing (keep unchanged)
 │   └── auth.py              # Existing (keep unchanged)
+├── ai/                      # ← NEW: Phase III namespace (cleaner separation)
+│   ├── agents/
+│   │   └── todo_agent.py     # OpenAI Agents SDK (TodoAgent, PlanningAgent, QueryAgent)
+│   ├── mcp/
+│   │   ├── server.py         # MCP server with 30s timeout per tool
+│   │   └── tools.py          # TaskTools class (add, list, complete, delete, update, get, semantic_search)
+│   ├── services/
+│   │   ├── runner_service.py # Chat orchestration with SSE streaming
+│   │   ├── openai_client.py  # GPT-4o-mini, Whisper, embeddings (text-embedding-3-small)
+│   │   └── qdrant_client.py  # Vector search with keyword fallback
+│   ├── models/
+│   │   ├── conversation.py   # Conversation model (id, user_id, title, language_preference, message_count)
+│   │   ├── message.py        # Message model (id, conversation_id, role, content, tool_calls)
+│   │   └── agent_handoff.py  # AgentHandoff model (from_agent, to_agent, reason, context_snapshot)
+│   ├── utils/
+│   │   ├── logging.py        # Structured logging with correlation ID (structlog)
+│   │   ├── language.py       # Language detection (English vs Urdu)
+│   │   └── nlp.py            # NLP utilities (transcription cleanup, etc.)
+│   ├── middleware.py         # CorrelationMiddleware for distributed tracing
+│   ├── rate_limit.py         # Per-user rate limiting (30 req/min)
+│   └── context.py            # TodoContext for agent execution
 ├── services/
-│   ├── agent_service.py     # ← NEW: OpenAI Agents SDK
-│   ├── mcp_server.py        # ← NEW: MCP tools
-│   ├── vector_service.py    # ← NEW: Qdrant integration
-│   ├── transcription_service.py  # ← NEW: Whisper
-│   └── sse_service.py       # Existing (reuse for chat streaming)
-└── db.py                     # ← Update for new models
+│   ├── sse_service.py        # Existing (reused for chat streaming)
+│   └── ...                   # Other Phase II services (unchanged)
+└── db.py                     # ← Async database session factory
 
 frontend/
 ├── app/
-│   ├── layout.tsx           # ← Add Chat FAB + Provider
-│   └── actions/
-│       └── chat.ts          # ← NEW: Chat server actions
+│   ├── layout.tsx           # ← Updated with Chat FAB + Provider
+│   └── globals.css          # ← RTL support for Urdu text
 ├── components/
 │   └── chat/                # ← NEW: Chat UI components
-│       ├── chat-fab.tsx
-│       ├── chat-panel.tsx
-│       ├── chat-message.tsx
-│       ├── chat-input.tsx
-│       └── voice-recorder.tsx
+│       ├── chat-fab.tsx     # Floating action button to open chat
+│       ├── chat-panel.tsx   # Main chat interface with Deep Space theme
+│       ├── chat-input.tsx   # Message input with microphone button
+│       ├── voice-recorder.tsx  # MediaRecorder API with 30s limit
+│       └── message-list.tsx # SSE streaming with auto-scroll
 ├── hooks/
-│   ├── use-chat.ts          # ← NEW: Chat state
-│   ├── use-conversations.ts # ← NEW: Conversations
-│   └── use-voice-input.ts   # ← NEW: Voice recording
+│   └── use-chat.ts          # ← NEW: Chat state (messages, isTyping, error)
 ├── lib/
-│   ├── api-client.ts        # ← Add chat methods
+│   ├── api/
+│   │   └── chat.ts          # ← NEW: Chat API client (EventSource, transcription)
 │   └── stores/
-│       └── ui-store.ts      # ← Add chat UI state
+│       └── chat-store.ts    # ← NEW: Chat UI state (isOpen, conversationId)
 └── types/
-    └── chat.ts              # ← NEW: Chat interfaces
+    └── chat.ts              # ← NEW: Chat interfaces (Message, Conversation, ChatEvent)
 ```
+
+**Note on `/ai/` namespace**: Phase III code lives in `backend/app/ai/` for clean separation from Phase II services. This prevents namespace conflicts and makes the codebase easier to navigate.

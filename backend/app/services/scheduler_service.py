@@ -1,6 +1,6 @@
 """Scheduler Service for Digest Emails and Background Jobs.
 
-[Task]: T042-T046
+[Task]: T042-T046, T120
 [From]: spec.md FR-022 - Digest email frequencies
 [From]: spec.md SC-003 - Background processing
 
@@ -10,6 +10,7 @@ Features:
 - Daily digest emails (configurable time, default 8 AM) - RESPECTS USER TIMEZONE
 - Weekly summary emails (configurable day/time, default Monday 9 AM) - RESPECTS USER TIMEZONE
 - Task due reminder checks (every 15 minutes, reduced from hourly)
+- Conversation archival (90-day soft delete for old conversations) - T120
 - Async background task processing
 """
 
@@ -674,6 +675,7 @@ class SchedulerService:
                     break
 
                 await self._cleanup_old_notifications()
+                await self._archive_old_conversations()
 
             except asyncio.CancelledError:
                 logger.info("Cleanup job cancelled")
@@ -714,6 +716,44 @@ class SchedulerService:
 
             except Exception as e:
                 logger.exception(f"Error in _cleanup_old_notifications: {e}")
+                await session.rollback()
+
+    async def _archive_old_conversations(self) -> None:
+        """Archive conversations older than 90 days.
+
+        [Task]: T120 - Conversation archive job (90 days)
+
+        Soft deletes conversations that haven't been updated in 90 days.
+        This preserves the data while hiding it from the main UI.
+        Messages cascade delete when conversation is soft-deleted.
+        """
+        logger.info("Archiving old conversations")
+
+        async with async_session_maker() as session:
+            try:
+                from app.ai.models.conversation import Conversation
+
+                # Soft delete conversations not updated in 90 days
+                cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+
+                result = await session.execute(
+                    select(Conversation).where(
+                        Conversation.updated_at <= cutoff,
+                        Conversation.deleted_at.is_(None),  # Not already deleted
+                    )
+                )
+
+                old_conversations = result.scalars().all()
+
+                for conversation in old_conversations:
+                    conversation.deleted_at = datetime.now(timezone.utc)
+
+                await session.commit()
+
+                logger.info(f"Archived {len(old_conversations)} old conversations")
+
+            except Exception as e:
+                logger.exception(f"Error in _archive_old_conversations: {e}")
                 await session.rollback()
 
 

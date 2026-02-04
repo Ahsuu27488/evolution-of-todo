@@ -4,6 +4,7 @@
  * - FR-037: glassmorphism visual design with backdrop-blur effects
  * - FR-039: micro-animations for state transitions (slide-in, glow, fade)
  * - FR-040: confetti particle effect on task completion
+ * - T097-T099: AI task summarization with regenerate button
  *
  * Acceptance Scenarios (US4):
  * - Given a user with an incomplete task, When they click the completion checkbox,
@@ -17,7 +18,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { Check, Calendar, Tag, Repeat2 } from "lucide-react"
+import { Check, Calendar, Tag, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -56,6 +57,7 @@ const priorityBadgeColors = {
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [optimisticCompleted, setOptimisticCompleted] = useState(task.completed)
+  const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false)  // T098
   const queryClient = useQueryClient()
 
   async function handleToggleComplete() {
@@ -88,6 +90,39 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
       toast.error("Failed to update task")
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  // T098: Handle regenerate AI summary
+  async function handleRegenerateSummary() {
+    if (isRegeneratingSummary) return
+
+    setIsRegeneratingSummary(true)
+
+    try {
+      const response = await fetch(`/api/tasks/${task.id}/summary/regenerate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Failed to regenerate summary")
+      }
+
+      await response.json()
+
+      // Invalidate queries to get updated task
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+
+      toast.success("Summary regenerated successfully")
+    } catch (error) {
+      console.error("Failed to regenerate summary:", error)
+      toast.error("Failed to regenerate summary. Please try again.")
+    } finally {
+      setIsRegeneratingSummary(false)
     }
   }
 
@@ -171,6 +206,53 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                   {task.description}
                 </p>
               )}
+
+              {/* T097: AI Summary display */}
+              <AnimatePresence>
+                {task.ai_summary && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="mt-3"
+                  >
+                    <div className="relative group">
+                      {/* Summary label */}
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                        <span className="text-xs font-medium text-cyan-400/90">AI Summary</span>
+                        {/* T098: Regenerate button */}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleRegenerateSummary}
+                          disabled={isRegeneratingSummary}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 disabled:opacity-50"
+                          title="Regenerate summary"
+                        >
+                          {isRegeneratingSummary ? (
+                            <Loader2 className="h-3 w-3.5 text-cyan-400 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-3 w-3.5 text-cyan-400/70 hover:text-cyan-400" />
+                          )}
+                        </motion.button>
+                      </div>
+
+                      {/* Summary text */}
+                      <p
+                        className={cn(
+                          "text-xs text-muted-foreground leading-relaxed p-2.5 rounded-lg border",
+                          "bg-cyan-500/5 border-cyan-500/20",
+                          optimisticCompleted && "line-through opacity-60"
+                        )}
+                      >
+                        {task.ai_summary}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Tags */}
               {task.tags && task.tags.length > 0 && (

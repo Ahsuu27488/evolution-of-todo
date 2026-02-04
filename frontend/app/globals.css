@@ -705,3 +705,90 @@
   transform: translate(-50%, -50%);
   z-index: 50;
 }
+
+/* =============================================================================
+   RTL (Right-to-Left) Utilities for Urdu Text Rendering
+   Per T076: CSS utilities for Urdu language support with proper RTL rendering
+   =========================================================================== */
+
+@layer utilities {
+  /* RTL text direction utilities */
+  .rtl {
+    direction: rtl;
+  }
+
+  .ltr {
+    direction: ltr;
+  }
+
+  /* Urdu-specific font styling */
+  .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Amiri', serif;
+    line-height: 2; /* Urdu script requires more vertical space */
+  }
+
+  /* Auto text direction based on content */
+  .dir-auto {
+    direction: auto;
+  }
+
+  /* RTL-specific alignment utilities */
+  .text-start-rtl {
+    text-align: start; /* Respects direction: left for LTR, right for RTL */
+  }
+
+  .text-end-rtl {
+    text-align: end; /* Respects direction: right for LTR, left for RTL */
+  }
+
+  /* RTL spacing utilities for proper padding/margin reversal */
+  .ms-auto-rtl {
+    margin-inline-start: auto;
+  }
+
+  .me-auto-rtl {
+    margin-inline-end: auto;
+  }
+
+  /* Urdu-friendly text container with proper line-height */
+  .urdu-text {
+    font-family: 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Amiri', serif;
+    line-height: 2;
+    direction: rtl;
+    text-align: right;
+  }
+
+  /* Mixed language text (code-switching) */
+  .mixed-lang-text {
+    line-height: 1.8;
+    unicode-bidi: embed;
+  }
+
+  /* RTL list styling */
+  .rtl-list {
+    direction: rtl;
+    text-align: right;
+    padding-inline-start: 0;
+    padding-inline-end: 1.5rem;
+  }
+
+  /* RTL flex utilities */
+  .flex-row-rtl {
+    flex-direction: row-reverse;
+  }
+
+  /* Light mode RTL adjustments */
+  .light .urdu-text {
+    color: rgb(var(--foreground));
+  }
+}
+
+/* =============================================================================
+   Google Fonts import for Urdu support
+   Per T076: Import Noto Nastaliq Urdu for proper Urdu script rendering
+   =========================================================================== */
+
+/* Note: Font should be loaded via next/font in layout.tsx:
+   import { Noto_Nastaliq_Urdu } from 'next/font/google'
+   const notoNastaliqUrdu = Noto_Nastaliq_Urdu({ subsets: ['arabic'], display: 'swap' })
+*/

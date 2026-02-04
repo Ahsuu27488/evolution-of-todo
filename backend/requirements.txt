@@ -32,3 +32,27 @@ svix>=1.35.0
 # Validation
 pydantic>=2.0.0
 pydantic-settings>=2.0.0
+
+# =============================================================================
+# Phase III: AI Chatbot Dependencies (012)
+# =============================================================================
+# OpenAI Agents SDK
+openai-agents>=0.1.0
+# OpenAI API client
+openai>=1.60.0
+# MCP Python SDK for in-process server
+mcp>=0.9.0
+# Qdrant vector database client
+qdrant-client>=1.12.0
+# Structured logging for observability
+structlog>=24.1.0
+# Language detection for Urdu support
+langdetect>=1.0.9
+# Async HTTP client (already have httpx, keeping for completeness)
+aiohttp>=3.9.0
+# Async file operations for audio transcription
+aiofiles>=24.1.0
+# Rate limiting
+slowapi>=0.1.9
+# Context variables for async correlation ID propagation
+contextvars>=2.4

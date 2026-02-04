@@ -30,8 +30,8 @@ env/
 .uv/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
@@ -55,10 +55,14 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
-server_output.log
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
+
+# Alembic
+alembic/versions/*.pyc
+
+# Node.js (if any frontend assets)
+node_modules/

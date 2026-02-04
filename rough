@@ -1,0 +1,10 @@
+Tools for postgresql (9 tools)
+1. list_schemas
+2. list_objects
+3. get_object_details│
+4. explain_query
+5. analyze_workload_indexes
+6. analyze_query_indexes
+7. analyze_db_health
+8. get_top_queries
+9. execute_sql   

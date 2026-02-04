@@ -5,7 +5,6 @@ It includes connection pooling, table creation, and session management.
 """
 
 import os
-import ssl
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
@@ -40,15 +39,9 @@ else:
 # We'll configure SSL via code instead (connect_args)
 ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.split("?")[0]
 
-# Create SSL context for Neon PostgreSQL connection
-# This avoids the 'channel_binding' error caused by URL-based SSL configuration
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-
 # Create async engine with connection pooling for serverless Neon
 # Settings per research.md for optimal serverless performance
-# SSL is configured via connect_args to avoid 'channel_binding' error
+# SSL is configured via connect_args using "require" to avoid start_tls issues
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=os.getenv("DEBUG", "false").lower() == "true",  # SQL logging in dev
@@ -57,7 +50,7 @@ engine = create_async_engine(
     pool_recycle=300,  # Recycle connections after 5 min (serverless friendly)
     pool_size=5,  # Min pool size per quickstart.md
     max_overflow=15,  # Max pool size: 5 + 15 = 20 per quickstart.md
-    connect_args={"ssl": ssl_context},  # Code-based SSL config, not URL-based
+    connect_args={"ssl": "require"},  # Direct SSL requirement, avoids start_tls error
 )
 
 # Create async session factory

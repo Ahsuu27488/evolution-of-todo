@@ -1,8 +1,9 @@
 # Quickstart: AI-Powered Todo Chatbot
 
 **Feature**: 012-ai-chatbot-phase3
-**Date**: 2026-01-30
+**Date**: 2025-02-03
 **Prerequisites**: Phase II (Full-Stack Web) complete
+**Status**: All core user stories complete (T001-T113 ✅)
 
 ---
 
@@ -48,6 +49,13 @@ QDRANT_API_KEY=...
 # Optional: Qdrant local (for development)
 # QDRANT_URL=http://localhost:6333
 # QDRANT_API_KEY=
+
+# ==========================================
+# NEW (Phase III) - Chat Configuration
+# ==========================================
+MAX_MESSAGE_LENGTH=5000           # Maximum chat message length
+MAX_AUDIO_SIZE_MB=25              # Maximum audio file size for transcription
+MAX_AUDIO_DURATION_SECONDS=30     # Maximum audio duration for voice input
 ```
 
 ### 2. Frontend Environment Variables
@@ -56,6 +64,7 @@ Add to `frontend/.env.local` (already configured for Phase II):
 
 ```bash
 # No new variables needed - JWT auth flows through existing setup
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
@@ -87,6 +96,9 @@ pip install qdrant-client
 # OpenAI (if not already installed)
 pip install openai
 
+# Framer Motion (frontend)
+cd ../frontend && npm install framer-motion
+
 # Or install all at once
 pip install structlog openai-agents-python mcp sse-starlette qdrant-client openai
 ```
@@ -111,181 +123,9 @@ dependencies = [
 
 ## Observability Setup (REQUIRED)
 
-### Step 1: Create Logging Configuration
-
-Create `backend/app/observability/logging_config.py`:
-
-```python
-import structlog
-import logging
-from contextvars import ContextVar
-from typing import Any
-
-correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
-
-def configure_logging(log_level: str = "INFO", log_format: str = "json"):
-    """Configure structured logging for the application."""
-
-    # Shared processors for all formats
-    shared_processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.stdlib.add_logger_name,
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-    ]
-
-    if log_format == "json":
-        # Production: JSON output for log aggregation
-        processors = shared_processors + [
-            structlog.processors.JSONRenderer()
-        ]
-    else:
-        # Development: Human-readable console output
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer(colors=True)
-        ]
-
-    # Configure structlog
-    structlog.configure(
-        processors=processors,
-        wrapper_class=structlog.stdlib.BoundLogger,
-        context_class=dict,
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=True,
-    )
-
-    # Configure standard logging
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
-        format="%(message)s",
-    )
-
-def get_logger() -> structlog.stdlib.BoundLogger:
-    """Get a configured logger instance."""
-    return structlog.get_logger()
-```
-
-### Step 2: Create Correlation ID Middleware
-
-Create `backend/app/observability/middleware.py`:
-
-```python
-import uuid
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-from contextvars import ContextVar
-import time
-
-from .logging_config import get_logger, correlation_id_var
-
-logger = get_logger()
-
-class ObservabilityMiddleware(BaseHTTPMiddleware):
-    """Middleware for correlation ID propagation and request tracing."""
-
-    async def dispatch(self, request: Request, call_next):
-        # Generate or extract correlation ID
-        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
-        correlation_id_var.set(correlation_id)
-
-        # Start timer
-        start_time = time.time()
-
-        # Log request start
-        logger.info(
-            "request_start",
-            correlation_id=correlation_id,
-            method=request.method,
-            path=request.url.path,
-            query_params=str(request.query_params),
-        )
-
-        # Process request
-        try:
-            response = await call_next(request)
-            duration_ms = (time.time() - start_time) * 1000
-
-            # Log request end
-            logger.info(
-                "request_end",
-                correlation_id=correlation_id,
-                status_code=response.status_code,
-                duration_ms=round(duration_ms, 2),
-            )
-
-            # Add correlation ID to response
-            response.headers["X-Correlation-ID"] = correlation_id
-            return response
-
-        except Exception as e:
-            duration_ms = (time.time() - start_time) * 1000
-            logger.error(
-                "request_error",
-                correlation_id=correlation_id,
-                error_type=type(e).__name__,
-                error_message=str(e),
-                duration_ms=round(duration_ms, 2),
-                exc_info=True,
-            )
-            raise
-```
-
-### Step 3: Register Middleware in FastAPI App
-
-Update `backend/app/main.py`:
-
-```python
-from fastapi import FastAPI
-from app.observability.logging_config import configure_logging
-from app.observability.middleware import ObservabilityMiddleware
-import os
-
-# Configure logging FIRST (before any imports that log)
-configure_logging(
-    log_level=os.getenv("LOG_LEVEL", "INFO"),
-    log_format=os.getenv("LOG_FORMAT", "json"),
-)
-
-app = FastAPI()
-
-# Add observability middleware (first middleware)
-app.add_middleware(ObservabilityMiddleware)
-
-# ... rest of your app setup
-```
-
-### Step 4: Verify Logging Works
-
-```bash
-# Start backend
-cd backend
-uvicorn app.main:app --reload
-
-# In another terminal, make a request
-curl http://localhost:8000/health
-
-# Check logs - you should see JSON structured logs with:
-# - timestamp (ISO-8601 UTC)
-# - level (info)
-# - correlation_id (UUID)
-# - event (request_start, request_end)
-# - duration_ms
-```
-
-### Frontend Dependencies
-
-```bash
-cd frontend
-
-# ChatKit for AI chat UI
-npm install @ai-sdk/sdk @ai-sdk/react
-
-# Or if using specific versions
-npm install @ai-sdk/sdk@latest @ai-sdk/react@latest
-```
+All observability infrastructure is already implemented in:
+- `backend/app/ai/utils/logging.py` - Structured logging with correlation IDs
+- `backend/app/ai/middleware.py` - CorrelationMiddleware for request tracing
 
 ---
 
@@ -308,9 +148,10 @@ docker run -p 6333:6333 qdrant/qdrant
 ```bash
 cd backend
 
-# Create new tables
-python -m alembic revision --autogenerate -m "Add chat tables"
+# Apply all migrations
 python -m alembic upgrade head
+
+# Verify conversations, messages, agent_handoffs tables exist
 ```
 
 ### 3. Start Backend Server
@@ -375,73 +216,72 @@ data: {"final_output": "Hello! I can help you manage your todo list..."}
 
 ---
 
-## Agent-Skills Reference
+## Security Features (Phase III)
 
-During implementation, use these existing skills:
+### Prompt Injection Sanitization (T126)
 
-| Skill | Command | Purpose |
-|-------|---------|---------|
-| OpenAI Agents | `openai-agents-guide` | Agent definition, handoffs |
-| MCP Server | `mcp-server-builder` | MCP tool implementation |
-| Qdrant | `qdrant-guide` | Vector search setup |
-| Whisper | `whisper-guide` | Voice transcription |
-| Urdu | `urdu-language-guide` | RTL text support |
-| Voice Commands | `voice-commands-guide` | Audio recording UI |
-| ChatKit | `chatkit-guide` | Chat UI components |
+All user messages are sanitized for prompt injection attacks:
+- Detects common injection patterns ("ignore instructions", "act as", etc.)
+- Blocks suspicious inputs with 400 error
+- Strips system instruction leaks from AI responses
+- Logs all blocked attempts for security monitoring
 
----
+### Concurrent Message Queuing (T125)
 
-## Context7 Queries
+Per-conversation locks ensure sequential processing:
+- Each conversation has its own asyncio.Lock
+- Messages are processed in order received
+- Prevents race conditions in agent state
 
-During implementation, query Context7 for latest patterns:
+### Conversation Archival (T120)
 
-```bash
-# OpenAI Agents SDK
-context7 query /openai/openai-agents-python "agent handoff context"
-
-# MCP Python SDK
-context7 query /modelcontextprotocol/python-sdk "FastMCP tool definition"
-
-# SSE Streaming
-context7 query /sysid/sse-starlette "EventSourceResponse async generator"
-
-# Qdrant
-context7 query /qdrant/qdrant-client "async query_points filter"
-```
+Soft delete pattern for 90-day retention:
+- Conversations marked with `deleted_at` timestamp
+- Background job archives old conversations
+- Data preserved for audit trail
 
 ---
 
-## Project Structure Reference
+## Project Structure (Actual)
 
 ```
-backend/
-├── app/
-│   ├── agents/                # NEW: AI agents
-│   │   ├── todo_agent.py
-│   │   ├── planning_agent.py
-│   │   └── query_agent.py
-│   ├── mcp/                   # NEW: MCP server
-│   │   ├── server.py
-│   │   └── tools/
-│   ├── chat/                  # NEW: Chat endpoints
-│   │   ├── router.py
-│   │   └── service.py
-│   ├── search/                # NEW: Semantic search
-│   │   └── service.py
-│   ├── embeddings/            # NEW: Embeddings
-│   │   └── service.py
-│   └── voice/                 # NEW: Voice transcription
-│       └── service.py
+backend/app/
+├── ai/                         # Phase III namespace
+│   ├── agents/
+│   │   └── context.py          # TodoContext for agent execution
+│   ├── mcp/
+│   │   └── tools.py             # TaskTools (add, list, complete, delete, semantic_search)
+│   ├── models/
+│   │   └── conversation.py      # Conversation, Message, AgentHandoff
+│   ├── services/
+│   │   ├── runner_service.py    # Chat orchestration with SSE streaming
+│   │   └── openai_client.py     # GPT-4o-mini, Whisper, embeddings
+│   ├── utils/
+│   │   ├── logging.py           # Structured logging with correlation ID
+│   │   ├── language.py          # Language detection (English vs Urdu)
+│   │   └── sanitize.py          # Prompt injection sanitization (T126)
+│   └── middleware.py            # CorrelationMiddleware for distributed tracing
+├── routes/
+│   └── chat.py                  # Chat endpoints (SSE, transcription, conversations)
+└── services/
+    └── scheduler_service.py     # Background jobs (includes conversation archival)
 
 frontend/
-├── src/
-│   ├── app/
-│   │   └── chat/              # NEW: Chat page
-│   └── components/
-│       └── chat/              # NEW: Chat UI
-│           ├── ChatInterface.tsx
-│           ├── VoiceRecorder.tsx
-│           └── TaskCard.tsx
+├── components/
+│   └── chat/                    # Chat UI components
+│       ├── chat-panel.tsx       # Main chat interface with Deep Space theme
+│       ├── chat-message.tsx     # Message display with markdown
+│       ├── chat-input.tsx       # Message input with voice button
+│       └── task-card.tsx        # Inline task cards with quick actions (T115-T117)
+├── hooks/
+│   └── use-chat.ts              # Chat state management
+├── lib/
+│   ├── api/
+│   │   └── chat.ts              # Chat API client with SSE support
+│   └── stores/
+│       └── chat-store.ts        # Zustand store for chat UI state
+└── types/
+    └── chat.ts                  # Chat interfaces (Message, Conversation, ChatEvent)
 ```
 
 ---
@@ -470,6 +310,32 @@ docker run -p 6333:6333 qdrant/qdrant
 
 **Solution**: Check CORS settings - ensure SSE endpoint is allowed
 
+### Issue: Prompt injection blocked
+
+**Solution**: Rephrase your message. Legitimate queries like "ignore this task" may trigger false positives - try "mark this task as done" instead.
+
+---
+
+## Implementation Status
+
+| User Story | Tasks | Status | Bonus |
+|------------|-------|--------|-------|
+| US1: Natural Language Task Management | T026-T049 | ✅ Complete | - |
+| US2: Conversational Context Memory | T050-T056 | ✅ Complete | - |
+| US3: Semantic Task Search | T057-T067 | ✅ Complete | - |
+| US4: Urdu Language Support | T068-T079 | ✅ Complete | +100 |
+| US5: Voice Command Input | T080-T092 | ✅ Complete | +200 |
+| US6: AI Task Summarization | T093-T099 | ✅ Complete | - |
+| US7: MCP Tool Integration | T100-T105 | ✅ Complete | - |
+| US8: Agent Handoffs | T106-T113 | ✅ Complete | +200 |
+
+**Phase 11 (Polish)** - Remaining tasks:
+- T115-T118: Task cards in chat (✅ Complete)
+- T120: Conversation archival (✅ Complete)
+- T125: Concurrent message queuing (✅ Complete)
+- T126: Prompt injection sanitization (✅ Complete)
+- T127-T130: Documentation, migrations, verification, testing (⏳ In Progress)
+
 ---
 
 ## Next Steps
@@ -477,8 +343,9 @@ docker run -p 6333:6333 qdrant/qdrant
 1. ✅ Review this quickstart guide
 2. ✅ Set up environment variables
 3. ✅ Install dependencies
-4. ⏭️ Run `/sp.tasks` to generate implementation tasks
-5. ⏭️ Follow tasks.md for implementation order
+4. ⏭️ Run database migrations (T128)
+5. ⏭️ Verify Qdrant collection (T129)
+6. ⏭️ Test user scenarios (T130)
 
 ---
 

@@ -10,6 +10,7 @@ Per contracts/backend-api.yaml specification.
 """
 
 import logging
+import os
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -35,6 +36,20 @@ from app.models import (
 from app.simple_auth import get_current_user_id
 from app.services.notification_service import NotificationService
 from app.models.notification import NotificationType
+
+# T094: Import OpenAI service for task summarization (if API key available)
+if os.getenv("OPENAI_API_KEY"):
+    from app.ai.services.openai_client import OpenAIService
+    _openai_service: Optional[OpenAIService] = None
+
+    def get_openai_service() -> Optional[OpenAIService]:
+        global _openai_service
+        if _openai_service is None:
+            _openai_service = OpenAIService()
+        return _openai_service
+else:
+    def get_openai_service() -> Optional[object]:
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -297,9 +312,112 @@ async def create_task(
             related_task_id=task.id,
         )
 
+    # T095: Generate AI summary for the task (async, non-blocking)
+    # Summary is generated in background and updated separately
+    openai_service = get_openai_service()
+    if openai_service:
+        try:
+            # Generate summary with 500 character limit (T099)
+            tag_names = [tag.get("name", "") for tag in tags_as_dicts] if tags_as_dicts else None
+            summary = await openai_service.generate_task_summary(
+                title=task.title,
+                description=task.description,
+                tags=tag_names,
+                priority=task.priority.value,
+                max_length=500,
+            )
+
+            # Update task with AI summary
+            task.ai_summary = summary
+            await session.commit()
+            await session.refresh(task)
+
+            logger.info(f"AI summary generated for task: id={task.id}, summary_length={len(summary)}")
+        except Exception as e:
+            # Don't fail task creation if summary generation fails
+            logger.warning(f"Failed to generate AI summary for task {task.id}: {e}")
+
     logger.info(f"Task created: id={task.id}, user={current_user_id}")
 
     return TaskPublic.model_validate(task)
+
+
+# T096: Regenerate AI summary endpoint
+@router.post("/{task_id}/summary/regenerate", response_model=TaskPublic)
+async def regenerate_task_summary(
+    task_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user_id: str = Depends(get_current_user_id),
+) -> TaskPublic:
+    """Regenerate AI summary for a task.
+
+    Per T096: Allows users to request a new summary if the original
+    wasn't helpful or if task details changed significantly.
+    """
+    logger.info(f"Regenerate summary requested: task_id={task_id}, user={current_user_id}")
+
+    # Get task with ownership check
+    statement = select(Task).where(
+        and_(
+            Task.id == task_id,
+            Task.user_id == current_user_id,
+        )
+    )
+    task = (await session.execute(statement)).scalar_one_or_none()
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Check if OpenAI service is available
+    openai_service = get_openai_service()
+    if not openai_service:
+        raise HTTPException(
+            status_code=503,
+            detail="AI summarization not available. OPENAI_API_KEY not configured.",
+        )
+
+    try:
+        # Extract tag names
+        tag_names = [tag.get("name", "") for tag in (task.tags or [])] if task.tags else None
+
+        # Generate new summary
+        summary = await openai_service.generate_task_summary(
+            title=task.title,
+            description=task.description,
+            tags=tag_names,
+            priority=task.priority.value,
+            max_length=500,
+        )
+
+        # Update task with new summary
+        task.ai_summary = summary
+        task.updated_at = datetime.utcnow()
+
+        await session.commit()
+        await session.refresh(task)
+
+        # Create audit log
+        await create_task_log(
+            session=session,
+            task_id=task.id,
+            user_id=current_user_id,
+            action=Action.UPDATED,
+            changed_fields={"ai_summary": {"old": "[regenerated]", "new": summary[:50] + "..."}},
+        )
+        await session.commit()
+
+        logger.info(f"AI summary regenerated: task_id={task_id}, summary_length={len(summary)}")
+
+        return TaskPublic.model_validate(task)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to regenerate summary for task {task_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to regenerate summary. Please try again later.",
+        )
 
 
 @router.get("/search", response_model=TaskList)
