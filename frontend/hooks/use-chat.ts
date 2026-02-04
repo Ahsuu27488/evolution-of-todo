@@ -85,6 +85,7 @@ export function useSendMessage() {
     mutationFn: async ({
       message,
       conversationId,
+      onMessageStart,
       onToken,
       onToolCall,
       onAgentHandoff,
@@ -93,6 +94,7 @@ export function useSendMessage() {
     }: {
       message: string;
       conversationId: string | null;
+      onMessageStart?: (conversationId: string, correlationId: string) => void;
       onToken: (token: string) => void;
       onToolCall: (tool: string, args: Record<string, unknown>) => void;
       onAgentHandoff: (from: string, to: string) => void;
@@ -163,6 +165,11 @@ export function useSendMessage() {
               const data = JSON.parse(eventData);
 
               switch (eventType) {
+                case "message_start":
+                  if (onMessageStart && data.conversationId) {
+                    onMessageStart(data.conversationId, data.correlationId || "");
+                  }
+                  break;
                 case "token":
                   onToken(data.content || "");
                   break;

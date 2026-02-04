@@ -21,6 +21,26 @@ import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
 
 // =============================================================================
+// Safe Date Utilities
+// =============================================================================
+
+/**
+ * Safely format a date string or return "just now" if invalid.
+ */
+function safeFormatDistanceToNow(dateString: string | undefined | null): string {
+  if (!dateString) return "just now";
+
+  try {
+    const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) return "just now";
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch {
+    return "just now";
+  }
+}
+
+// =============================================================================
 // Utility Functions
 // =============================================================================
 
@@ -86,7 +106,7 @@ interface ChatMessageProps {
       arguments: Record<string, unknown>;
       output?: string;
     }>;
-    createdAt: string;
+    createdAt?: string | null;
   };
   isStreaming?: boolean;
   onTaskAction?: (action: "complete" | "delete" | "edit", task: Task) => void;
@@ -245,7 +265,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
 
         {/* Timestamp */}
         <span className="text-xs text-white/40 mt-1 px-1">
-          {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+          {safeFormatDistanceToNow(message.createdAt)}
         </span>
       </div>
     </motion.div>

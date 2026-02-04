@@ -20,6 +20,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Loader2, Check, X } from "lucide-react";
 import { useChatLanguage } from "@/lib/stores/chat-store";
+import { API_URL } from "@/lib/config/api";
+import { getAuthToken } from "@/lib/auth/token";
 
 // =============================================================================
 // Types
@@ -193,6 +195,12 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
     setError(null);
 
     try {
+      // Get auth token for API call
+      const token = await getAuthToken();
+      if (!token) {
+        throw new Error("Authentication required");
+      }
+
       // Prepare form data
       const formData = new FormData();
       formData.append("file", state.audioBlob, "audio.webm");
@@ -201,10 +209,10 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       // const language = languagePreference === "auto" ? "auto" : languagePreference;
 
       // Fetch with progress tracking (T089)
-      const response = await fetch("/api/chat/transcribe", {
+      const response = await fetch(`${API_URL}/api/chat/transcribe`, {
         method: "POST",
         headers: {
-          // Will be populated by API client middleware with auth token
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
         // Note: XHR would give better progress tracking, but fetch is simpler

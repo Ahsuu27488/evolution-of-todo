@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Chat Panel - Main AI chatbot interface.
  *
@@ -7,7 +6,8 @@
  * - Glassmorphism design
  * - Animated transitions
  * - Message list with typing indicators
- * - Voice input button
+ * - Voice input button with Whisper API
+ * - Conversation history management
  * - Minimize/maximize support
  *
  * Per spec.md FR-001 through FR-010, frontend design guidelines.
@@ -15,9 +15,9 @@
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageSquare, X, Minimize2, Maximize2, Send, Loader2, Languages } from "lucide-react";
+import { MessageSquare, X, Minimize2, Maximize2, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/types/task";
 
@@ -34,15 +34,29 @@ import {
   useChatInputActions,
   useChatLanguagePreference,
   useChatLanguageActions,
-  useChatPaginationState,
-  useChatPaginationActions,
+  useChatConversationsList,
+  useChatConversationsActions,
 } from "@/lib/stores/chat-store";
 
-import { useSendMessage } from "@/hooks/use-chat";
+import { useSendMessage, useConversations, useDeleteConversation as useDeleteConversationApi } from "@/hooks/use-chat";
 import { api } from "@/lib/api-client";
 import * as chatApi from "@/lib/api/chat";
 
 import { ChatMessage } from "./chat-message";
+import { VoiceRecorder } from "./voice-recorder";
+
+// =============================================================================
+// Types
+// =============================================================================
+
+interface Conversation {
+  id: string;
+  title: string;
+  messageCount: number;
+  languagePreference: "auto" | "en" | "ur";
+  createdAt: string;
+  updatedAt: string;
+}
 
 // =============================================================================
 // Animation Variants
@@ -85,11 +99,12 @@ export function ChatPanel() {
   // Conversation state
   const messages = useChatMessages();
   const conversationId = useChatConversationId();
-  const { addMessage, prependMessages } = useChatConversationActions();
+  const { addMessage, prependMessages, setConversationId: setStoreConversationId, clearMessages } = useChatConversationActions();
+  const { setConversations: setStoreConversations } = useChatConversationsActions();
 
   // Streaming state
   const { isStreaming, streamedContent } = useChatStreamingState();
-  const { resetStreamState: resetStream, appendStreamedContent, startStreaming } = useChatStreamingActions();
+  const { resetStreamState: resetStream, appendStreamedContent, startStreaming, stopStreaming } = useChatStreamingActions();
 
   // Input state
   const inputValue = useChatInputValue();
@@ -97,20 +112,36 @@ export function ChatPanel() {
 
   // Language state
   const languagePreference = useChatLanguagePreference();
-  const { toggleLanguage } = useChatLanguageActions();
-
-  // Pagination state
-  const pagination = useChatPaginationState();
-  const { setPagination, setLoadingMore } = useChatPaginationActions();
+  const { toggleLanguage, setLanguagePreference } = useChatLanguageActions();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // API hooks
   const sendMessage = useSendMessage();
+  const { data: conversationsData, refetch: refetchConversations } = useConversations();
+  const deleteConversationApi = useDeleteConversationApi();
+
+  // Local state for conversation history sidebar
+  const [showHistory, setShowHistory] = useState(false);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedContent]);
+
+  // Load conversations when panel opens
+  useEffect(() => {
+    if (isOpen) {
+      refetchConversations();
+    }
+  }, [isOpen, refetchConversations]);
+
+  // Sync conversations from API to store
+  useEffect(() => {
+    if (conversationsData?.conversations) {
+      setStoreConversations(conversationsData.conversations);
+    }
+  }, [conversationsData, setStoreConversations]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isStreaming) return;
@@ -130,33 +161,53 @@ export function ChatPanel() {
     // Start streaming
     startStreaming();
 
-    await sendMessage.mutateAsync({
-      message,
-      conversationId: null,
-      onToken: (content) => {
-        appendStreamedContent(content);
-      },
-      onToolCall: (tool, args) => {
-        console.log("Tool called:", tool, args);
-      },
-      onAgentHandoff: (from, to) => {
-        console.log("Agent handoff:", from, "->", to);
-      },
-      onDone: (output, _agent) => {
-        // Add the final assistant message
-        addMessage({
-          id: `assistant-${Date.now()}`,
-          conversationId: conversationId || "temp",
-          role: "assistant",
-          content: output,
-          createdAt: new Date().toISOString(),
-        });
-        resetStream();
-      },
-      onError: (_error) => {
-        resetStream();
-      },
-    });
+    try {
+      // Track the actual conversation ID (may be updated by onMessageStart)
+      let actualConversationId = conversationId;
+
+      // Send message with current conversationId (or null for new conversation)
+      await sendMessage.mutateAsync({
+        message,
+        conversationId: conversationId, // ← FIXED: Use actual conversationId, not null!
+        onMessageStart: (newConversationId) => {
+          // Update store when backend creates a new conversation
+          if (!conversationId && newConversationId) {
+            actualConversationId = newConversationId;
+            setStoreConversationId(newConversationId);
+            console.log("New conversation created:", newConversationId);
+          }
+        },
+        onToken: (content) => {
+          appendStreamedContent(content);
+        },
+        onToolCall: (tool, args) => {
+          console.log("Tool called:", tool, args);
+        },
+        onAgentHandoff: (from, to) => {
+          console.log("Agent handoff:", from, "->", to);
+        },
+        onDone: (output, _agent) => {
+          // Add the final assistant message
+          // Use actualConversationId which may have been updated by onMessageStart
+          addMessage({
+            id: `assistant-${Date.now()}`,
+            conversationId: actualConversationId || "temp",
+            role: "assistant",
+            content: output,
+            createdAt: new Date().toISOString(),
+          });
+          resetStream();
+        },
+        onError: (error) => {
+          console.error("Chat error:", error);
+          toast.error(error || "Failed to send message");
+          resetStream();
+        },
+      });
+    } catch (error) {
+      console.error("Send message error:", error);
+      resetStream();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -165,6 +216,57 @@ export function ChatPanel() {
       handleSend();
     }
   };
+
+  // Start a new conversation
+  const handleNewConversation = useCallback(() => {
+    clearMessages();
+    setStoreConversationId(null);
+    setShowHistory(false);
+  }, [clearMessages, setStoreConversationId]);
+
+  // Load an existing conversation
+  const handleLoadConversation = useCallback(async (conv: Conversation) => {
+    try {
+      const result = await chatApi.getConversation(conv.id);
+      if (result.success && result.data) {
+        setStoreConversationId(conv.id);
+        // Convert API messages to store format
+        const loadedMessages = result.data.messages.map((m) => ({
+          id: m.id,
+          conversationId: m.conversationId,
+          role: m.role,
+          content: m.content,
+          toolCalls: m.toolCalls,
+          createdAt: m.createdAt,
+        }));
+        // Clear and set messages (reverse to show newest at bottom)
+        clearMessages();
+        loadedMessages.forEach((msg) => addMessage(msg));
+        setShowHistory(false);
+      }
+    } catch (error) {
+      console.error("Failed to load conversation:", error);
+      toast.error("Failed to load conversation");
+    }
+  }, [addMessage, clearMessages, setStoreConversationId]);
+
+  // Delete a conversation
+  const handleDeleteConversation = useCallback(async (convId: string) => {
+    try {
+      const result = await deleteConversationApi.mutateAsync(convId);
+      if (result) {
+        toast.success("Conversation deleted");
+        refetchConversations();
+        // If deleted current conversation, start fresh
+        if (convId === conversationId) {
+          handleNewConversation();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      toast.error("Failed to delete conversation");
+    }
+  }, [conversationId, deleteConversationApi, handleNewConversation, refetchConversations]);
 
   // Handle task actions from inline task cards (T116, T117)
   const handleTaskAction = async (action: "complete" | "delete" | "edit", task: Task) => {
@@ -189,8 +291,6 @@ export function ChatPanel() {
           break;
         }
         case "edit": {
-          // For edit, we could open a modal or prompt user
-          // For now, just notify that full editing is available in main UI
           toast.info("Full task editing available in the main task view");
           break;
         }
@@ -200,43 +300,22 @@ export function ChatPanel() {
     }
   };
 
-  // Load more messages (T118: conversation pagination)
-  const loadMoreMessages = async () => {
-    if (!conversationId || pagination.loadingMore || !pagination.hasMore) return;
+  // Handle transcript from voice recording
+  const handleTranscript = useCallback((text: string, language?: string) => {
+    // Append transcript to current input value
+    setInputValue(inputValue ? `${inputValue} ${text}` : text);
 
-    setLoadingMore(true);
-    try {
-      const result = await chatApi.getConversation(
-        conversationId,
-        50, // limit
-        messages.length, // current offset
-      );
-
-      if (result.success) {
-        const { data } = result;
-        // Convert API messages to store format
-        const newMessages: typeof messages = data.messages.map((m) => ({
-          id: m.id,
-          conversationId: m.conversationId,
-          role: m.role,
-          content: m.content,
-          toolCalls: m.toolCalls,
-          createdAt: m.createdAt,
-        }));
-
-        prependMessages(newMessages);
-        setPagination({
-          total: data.pagination.total,
-          hasMore: data.pagination.has_more,
-        });
-      } else {
-        toast.error("Failed to load more messages");
-      }
-    } catch (_error) {
-      toast.error("Failed to load more messages");
-    } finally {
-      setLoadingMore(false);
+    // Auto-detect language from transcript if available
+    if (language && (language === "en" || language === "ur" || language === "auto")) {
+      setLanguagePreference(language === "auto" ? "auto" : language as "auto" | "en" | "ur");
     }
+  }, [inputValue, setInputValue, setLanguagePreference]);
+
+  // Format conversation title
+  const formatConversationTitle = (conv: Conversation) => {
+    if (conv.title && conv.title !== "New Chat") return conv.title;
+    const date = new Date(conv.createdAt);
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -295,11 +374,27 @@ export function ChatPanel() {
                 <div>
                   <h2 className="text-white font-semibold text-sm">AI Assistant</h2>
                   <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
-                    Ask me to add tasks, plan your week...
+                    {conversationId ? "Continue chatting..." : "Start a new conversation"}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
+                {/* History button */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors relative"
+                  title="Conversation history"
+                >
+                  <History className="w-4 h-4 text-white/70" />
+                  {conversationsData?.conversations && conversationsData.conversations.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full bg-cyan-500">
+                      {conversationsData.conversations.length}
+                    </span>
+                  )}
+                </motion.button>
+
                 {/* Language toggle button (T079) */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -309,7 +404,6 @@ export function ChatPanel() {
                   title={`Language: ${languagePreference === "auto" ? "Auto-detect" : languagePreference === "en" ? "English" : "اردو"}`}
                 >
                   <Languages className="w-4 h-4 text-white/70" />
-                  {/* Language indicator badge */}
                   <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full"
                     style={{
                       background: languagePreference === "auto"
@@ -317,7 +411,7 @@ export function ChatPanel() {
                         : languagePreference === "en"
                           ? "rgba(0, 245, 255, 0.8)"
                           : "rgba(168, 85, 247, 0.8)",
-                      }}
+                    }}
                   >
                     {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
                   </span>
@@ -341,35 +435,67 @@ export function ChatPanel() {
               </div>
             </div>
 
+            {/* Conversation History Sidebar */}
+            <AnimatePresence>
+              {showHistory && !isMinimized && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                  style={{
+                    borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+                  }}
+                >
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-white/70">Conversations</span>
+                      <button
+                        onClick={handleNewConversation}
+                        className="p-1 rounded hover:bg-white/10 transition-colors"
+                        title="New conversation"
+                      >
+                        <Plus className="w-4 h-4 text-cyan-400" />
+                      </button>
+                    </div>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {conversationsData?.conversations && conversationsData.conversations.length > 0 ? (
+                        conversationsData.conversations.map((conv) => (
+                          <div
+                            key={conv.id}
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors group cursor-pointer"
+                            style={{
+                              background: conv.id === conversationId ? "rgba(0, 245, 255, 0.1)" : undefined,
+                            }}
+                          >
+                            <button
+                              onClick={() => handleLoadConversation(conv as Conversation)}
+                              className="flex-1 text-left text-sm text-white/80 truncate"
+                            >
+                              {formatConversationTitle(conv as Conversation)}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteConversation(conv.id)}
+                              className="p-1 rounded hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Delete conversation"
+                            >
+                              <Trash2 className="w-3 h-3 text-red-400" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-white/40 text-center py-2">No conversations yet</p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Messages Area */}
             {!isMinimized && (
               <>
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {/* Load more messages button (T118) */}
-                  {pagination.hasMore && messages.length > 0 && (
-                    <div className="flex justify-center">
-                      <button
-                        onClick={loadMoreMessages}
-                        disabled={pagination.loadingMore}
-                        className="px-4 py-2 rounded-full text-xs font-medium transition-all disabled:opacity-50"
-                        style={{
-                          background: "rgba(255, 255, 255, 0.05)",
-                          border: "1px solid rgba(255, 255, 255, 0.1)",
-                          color: "rgba(255, 255, 255, 0.7)",
-                        }}
-                      >
-                        {pagination.loadingMore ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Loading...
-                          </span>
-                        ) : (
-                          `Load older messages (${pagination.total - messages.length} remaining)`
-                        )}
-                      </button>
-                    </div>
-                  )}
-
                   {/* Welcome message */}
                   {messages.length === 0 && !isStreaming && (
                     <motion.div
@@ -429,6 +555,7 @@ export function ChatPanel() {
                     <ChatMessage
                       message={{
                         id: "streaming",
+                        conversationId: conversationId || "temp",
                         role: "assistant",
                         content: streamedContent,
                         createdAt: new Date().toISOString(),
@@ -461,19 +588,26 @@ export function ChatPanel() {
                   }}
                 >
                   <div
-                    className="flex items-center gap-2 px-4 py-3 rounded-xl"
+                    className="flex items-end gap-2 px-4 py-3 rounded-xl"
                     style={{
                       background: "rgba(255, 255, 255, 0.05)",
                       border: "1px solid rgba(255, 255, 255, 0.1)",
                     }}
                   >
+                    {/* Voice Input Button with Whisper API (T086-T091) */}
+                    <VoiceRecorder
+                      onTranscript={handleTranscript}
+                      disabled={isStreaming}
+                    />
+
+                    {/* Text Input */}
                     <textarea
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Ask me anything..."
                       disabled={isStreaming}
-                      className="flex-1 bg-transparent text-white placeholder-white/40 text-sm resize-none outline-none"
+                      className="flex-1 bg-transparent text-white placeholder-white/40 text-sm resize-none outline-none py-3"
                       style={{
                         fieldSizing: "content",
                         minHeight: "24px",
@@ -481,10 +615,14 @@ export function ChatPanel() {
                       }}
                       rows={1}
                     />
-                    <button
+
+                    {/* Send Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={handleSend}
                       disabled={!inputValue.trim() || isStreaming}
-                      className="p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-shrink-0 p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{
                         background: inputValue.trim() && !isStreaming
                           ? "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)"
@@ -496,7 +634,7 @@ export function ChatPanel() {
                       ) : (
                         <Send className="w-4 h-4 text-white" />
                       )}
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               </>

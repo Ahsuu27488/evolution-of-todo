@@ -17,6 +17,7 @@ export interface SSEEvent {
  * Options for handling SSE events.
  */
 export interface SSEEventHandlers {
+  onMessageStart?: (conversationId: string, correlationId: string) => void;
   onToken?: (content: string) => void;
   onToolCall?: (tool: string, args: Record<string, unknown>) => void;
   onToolResult?: (tool: string, output: string) => void;
@@ -98,7 +99,15 @@ function handleSSEEvent(
 ): void {
   switch (eventType) {
     case "message_start":
-      // Could be used to show conversation ID
+      if (typeof data === "object" && data !== null) {
+        const startData = data as { conversation_id?: string; correlation_id?: string };
+        if (startData.conversation_id) {
+          handlers.onMessageStart?.(
+            String(startData.conversation_id),
+            String(startData.correlation_id || "")
+          );
+        }
+      }
       break;
 
     case "token":

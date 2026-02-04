@@ -22,7 +22,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   toolCalls?: ToolCall[];
-  createdAt: string;
+  createdAt?: string | null;
 }
 
 export interface ToolCall {

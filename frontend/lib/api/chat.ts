@@ -48,6 +48,7 @@ export interface TranscriptionResult {
 // =============================================================================
 
 export interface ChatStreamOptions {
+  onMessageStart?: (conversationId: string, correlationId: string) => void;
   onToken: (token: string) => void;
   onToolCall: (tool: string, args: Record<string, unknown>) => void;
   onToolResult: (tool: string, output: string) => void;
@@ -103,6 +104,7 @@ export async function streamChat(
 
   // Use shared SSE parsing utility
   for await (const { eventType, data } of parseSSEStream(reader, {
+    onMessageStart: options.onMessageStart,
     onToken: options.onToken,
     onToolCall: options.onToolCall,
     onToolResult: options.onToolResult,

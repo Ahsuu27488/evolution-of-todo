@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sse_starlette.sse import EventSourceResponse
 from sqlmodel import Session
 
@@ -645,9 +645,9 @@ async def list_conversations(
     conversations = result.scalars().all()
 
     # Get total count
-    count_statement = select(Conversation).where(Conversation.user_id == user_id)
+    count_statement = select(func.count(Conversation.id)).where(Conversation.user_id == user_id)
     count_result = await session.execute(count_statement)
-    total = count_result.count()
+    total = count_result.scalar()
 
     return {
         "conversations": [
@@ -704,9 +704,18 @@ async def get_conversation(
     # Enforce max limit (T118: pagination support)
     limit = min(limit, 100)
 
+    # Validate conversation_id is a valid UUID
+    try:
+        conversation_uuid = uuid.UUID(conversation_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid conversation ID format: {conversation_id}",
+        )
+
     # Get conversation
     conv_statement = select(Conversation).where(
-        Conversation.id == uuid.UUID(conversation_id),
+        Conversation.id == conversation_uuid,
         Conversation.user_id == user_id,
     )
     conv_result = await session.execute(conv_statement)
@@ -747,7 +756,7 @@ async def get_conversation(
                 correlation_id=m.correlation_id,
                 role=m.role,
                 content=m.content,
-                tool_calls=m.tool_calls,
+                tool_calls=m.tool_calls or [],
                 created_at=m.created_at,
             )
             for m in messages
@@ -781,9 +790,18 @@ async def delete_conversation(
     Example:
         DELETE /api/chat/conversations/123e4567-e89b-12d3-a456-426614174000
     """
+    # Validate conversation_id is a valid UUID
+    try:
+        conversation_uuid = uuid.UUID(conversation_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid conversation ID format: {conversation_id}",
+        )
+
     # Get conversation (verifies ownership)
     conv_statement = select(Conversation).where(
-        Conversation.id == uuid.UUID(conversation_id),
+        Conversation.id == conversation_uuid,
         Conversation.user_id == user_id,
     )
     conv_result = await session.execute(conv_statement)
