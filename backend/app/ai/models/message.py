@@ -5,13 +5,14 @@ Represents individual messages in a conversation with
 support for tool calls and correlation tracking.
 """
 
+import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field as PydanticField
+from pydantic import BaseModel, ConfigDict, Field as PydanticField, model_validator
 from sqlalchemy import Column, DateTime, Enum as SQLEnum, JSON, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlmodel import Field, SQLModel
@@ -111,7 +112,7 @@ class Message(SQLModel, table=True):
         description="Tools invoked by assistant (for role=assistant)",
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
 
@@ -121,13 +122,28 @@ class Message(SQLModel, table=True):
 # =============================================================================
 
 class ToolCallSchema(BaseModel):
-    """Schema for tool call data."""
+    """Schema for tool call data.
+
+    Database stores tools as {tool, arguments} but API uses {name, parameters}.
+    Field serializer handles conversion during serialization.
+    """
 
     name: str
     parameters: dict[str, Any]
     result: Any | None = None
     error: str | None = None
     duration_ms: float | None = None
+
+    @classmethod
+    def from_db_format(cls, data: dict[str, Any]) -> "ToolCallSchema":
+        """Convert database format {tool, arguments} to API format {name, parameters}."""
+        return cls(
+            name=data.get("tool", data.get("name", "")),
+            parameters=data.get("arguments", data.get("parameters", {})),
+            result=data.get("result"),
+            error=data.get("error"),
+            duration_ms=data.get("duration_ms"),
+        )
 
 
 class MessageBase(BaseModel):
@@ -150,6 +166,8 @@ class MessagePublic(MessageBase):
 
     Uses camelCase aliases for JSON serialization to match frontend expectations.
     Python attributes remain snake_case per PEP 8.
+
+    Handles conversion from database format {tool, arguments} to API format {name, parameters}.
     """
 
     model_config = ConfigDict(
@@ -162,6 +180,62 @@ class MessagePublic(MessageBase):
     correlation_id: str | None = PydanticField(alias="correlationId")
     tool_calls: list[ToolCallSchema] = PydanticField(alias="toolCalls", default_factory=list)
     created_at: datetime = PydanticField(alias="createdAt")
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_tool_calls_format(cls, data: Any) -> Any:
+        """Convert tool_calls from database format to API format before validation.
+
+        Database stores: [{tool: str, arguments: dict}] or None
+        API expects: [{name: str, parameters: dict}] or []
+
+        This validator runs BEFORE Pydantic validation, so it can handle None values
+        and format mismatches that would otherwise cause validation errors.
+
+        Handles edge case where arguments/parameters is stored as JSON string instead of dict.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        # Handle tool_calls conversion
+        tool_calls_raw = data.get("tool_calls")
+        if tool_calls_raw is None:
+            data["tool_calls"] = []
+        elif isinstance(tool_calls_raw, list):
+            # Convert each tool call from {tool, arguments} to {name, parameters}
+            converted_calls = []
+            for item in tool_calls_raw:
+                if isinstance(item, dict):
+                    # Already has correct format
+                    if "name" in item and "parameters" in item:
+                        converted_calls.append(item)
+                    # Has database format {tool, arguments}
+                    elif "tool" in item or "arguments" in item:
+                        # Get arguments value - may be dict or JSON string
+                        arguments_value = item.get("arguments", item.get("parameters", {}))
+
+                        # Parse JSON string if needed (fixes double-serialization bug)
+                        if isinstance(arguments_value, str):
+                            try:
+                                arguments_value = json.loads(arguments_value)
+                            except json.JSONDecodeError:
+                                # If parsing fails, keep as-is and let Pydantic handle validation error
+                                pass
+
+                        converted_calls.append({
+                            "name": item.get("tool", ""),
+                            "parameters": arguments_value,
+                            "result": item.get("result"),
+                            "error": item.get("error"),
+                            "duration_ms": item.get("duration_ms"),
+                        })
+                    else:
+                        converted_calls.append(item)
+                else:
+                    converted_calls.append(item)
+            data["tool_calls"] = converted_calls
+
+        return data
 
 
 class MessageList(BaseModel):

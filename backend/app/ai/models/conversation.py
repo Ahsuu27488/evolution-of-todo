@@ -5,7 +5,7 @@ Represents a chat session with message history, metadata,
 and user preferences.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
@@ -37,7 +37,7 @@ class Conversation(SQLModel, table=True):
     Attributes:
         id: Unique conversation identifier (UUID)
         user_id: User ID from JWT 'sub' claim
-        title: Conversation title (auto-generated after 3 messages)
+        title: Conversation title (first message initially, AI-generated at message 3)
         language_preference: User's language preference (en/ur/auto)
         message_count: Number of messages in conversation
         created_at: Conversation creation timestamp
@@ -74,12 +74,16 @@ class Conversation(SQLModel, table=True):
         description="Number of messages in this conversation",
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=datetime.utcnow),
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            onupdate=lambda: datetime.now(timezone.utc),
+        ),
     )
     deleted_at: Optional[datetime] = Field(
         default=None,
