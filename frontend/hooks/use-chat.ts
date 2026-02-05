@@ -99,7 +99,7 @@ export function useSendMessage() {
       onToolCall: (tool: string, args: Record<string, unknown>) => void;
       onAgentHandoff: (from: string, to: string) => void;
       onDone: (output: string, agent: string) => void;
-      onError: (error: string) => void;
+      onError: (error: string, conversationId?: string) => void;
     }) => {
       // Cancel any existing request
       if (abortControllerRef.current) {
@@ -166,8 +166,9 @@ export function useSendMessage() {
 
               switch (eventType) {
                 case "message_start":
-                  if (onMessageStart && data.conversationId) {
-                    onMessageStart(data.conversationId, data.correlationId || "");
+                  // Backend sends conversation_id (snake_case), not conversationId (camelCase)
+                  if (onMessageStart && data.conversation_id) {
+                    onMessageStart(data.conversation_id, data.correlation_id || "");
                   }
                   break;
                 case "token":
@@ -183,7 +184,7 @@ export function useSendMessage() {
                   onDone(data.final_output || "", data.agent || "TodoAgent");
                   break;
                 case "error":
-                  onError(data.message || "Unknown error");
+                  onError(data.message || "Unknown error", data.conversation_id);
                   break;
               }
             } catch {

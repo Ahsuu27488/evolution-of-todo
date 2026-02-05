@@ -121,6 +121,7 @@
   /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-noto-nastaliq-urdu: var(--font-noto-nastaliq-urdu);
 
   /* Colors - Reference CSS custom properties that respond to class changes */
   --color-background: var(--custom-background);

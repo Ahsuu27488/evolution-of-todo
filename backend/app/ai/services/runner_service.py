@@ -270,6 +270,15 @@ class RunnerService:
                             tool_name = event.item.raw_item.name
                             tool_args = event.item.raw_item.arguments
 
+                            # Parse JSON string to dict for storage (OpenAI SDK returns string)
+                            # This prevents double-serialization issues when loading from DB
+                            if isinstance(tool_args, str):
+                                try:
+                                    tool_args = json.loads(tool_args)
+                                except json.JSONDecodeError:
+                                    # If parsing fails, keep as-is
+                                    pass
+
                             yield StreamEvent(
                                 event=StreamEventType.TOOL_CALL,
                                 data={

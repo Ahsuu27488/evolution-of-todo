@@ -278,7 +278,74 @@ async def chat(
         content=sanitized_message,  # Use sanitized message
     )
     session.add(user_message)
+
+    # Update conversation message_count immediately after saving user message
+    # This ensures message_count is accurate even if streaming fails later
+    conversation.message_count += 1
+    conversation.updated_at = datetime.utcnow()
     await session.commit()
+
+    # Auto-generate conversation title
+    # - Message 1: Use first user message directly as initial title (truncated to 50 chars)
+    # - Message 3: Generate AI-powered title with full context (rename)
+    try:
+        if conversation.message_count == 1 and conversation.title == "New Chat":
+            # First message - use it directly as title for immediate feedback
+            # Truncate to 50 chars and add ellipsis if needed
+            initial_title = sanitized_message[:50].rstrip()
+            if len(sanitized_message) > 50:
+                initial_title += "..."
+            conversation.title = initial_title
+            await session.commit()
+
+            logger.info(
+                "Set initial conversation title from first message",
+                conversation_id=str(conversation.id),
+                title=initial_title,
+                message_count=conversation.message_count,
+            )
+
+        elif conversation.message_count == 3:
+            # Third message - generate AI-powered title with full context
+            # Get the first 3 messages to generate a better title
+            title_messages = await session.execute(
+                select(Message)
+                .where(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at.asc())
+                .limit(3)
+            )
+            messages_list = title_messages.scalars().all()
+
+            # Build conversation summary for title generation
+            summary_parts = []
+            for m in messages_list:
+                role_prefix = "User" if m.role == MessageRole.USER else "AI"
+                summary_parts.append(f"{role_prefix}: {m.content[:100]}")
+            conversation_summary = " | ".join(summary_parts)
+
+            # Generate title using OpenAI
+            openai_service = OpenAIService(api_key=os.getenv("OPENAI_API_KEY"))
+            generated_title = await openai_service.generate_title(conversation_summary)
+
+            # Update conversation with generated title (rename)
+            old_title = conversation.title
+            conversation.title = generated_title
+            await session.commit()
+
+            logger.info(
+                "Renamed conversation with AI-generated title",
+                conversation_id=str(conversation.id),
+                old_title=old_title,
+                new_title=generated_title,
+                message_count=conversation.message_count,
+            )
+    except Exception as e:
+        # Title generation is best-effort - log but don't fail the request
+        logger.warning(
+            "Failed to generate conversation title",
+            conversation_id=str(conversation.id),
+            error=str(e),
+        )
 
     # Detect language
     language_detection = detect_language(sanitized_message)  # Use sanitized message
@@ -296,11 +363,13 @@ async def chat(
 
         async with conv_lock:
             # Create TodoContext for agent execution
+            # Include current date so agent knows what "today" is (fixes "tomorrow" parsing)
             context = TodoContext(
                 user_id=user_id,
                 conversation_id=str(conversation.id),
                 correlation_id=correlation_id,
                 language_preference=conversation.language_preference,
+                current_date=datetime.utcnow().date(),  # Agent needs to know current date
                 session=session,
             )
 
@@ -321,32 +390,29 @@ async def chat(
             history_messages = msg_result.scalars().all()
 
             # Build conversation history in OpenAI format
-            # Include tool_calls for assistant messages and tool results for context
-            conversation_history = []
+            # IMPORTANT: OpenAI's API only supports these roles: 'user', 'assistant', 'system', 'developer'
+            # It does NOT support 'tool' role - tool messages are for frontend display only
+
+            # First, add a system message with current date context
+            # This fixes the bug where "tomorrow" parses to the model's birth date (e.g., 6-7-24)
+            today = datetime.utcnow().date()
+            system_message = {
+                "role": "system",
+                "content": f"Today's date is {today.strftime('%A, %B %d, %Y')}. "
+                          f"Use this date as reference when parsing relative dates like 'tomorrow', 'next week', etc.",
+            }
+
+            conversation_history = [system_message]
+
             for m in history_messages:
-                # Handle tool messages (tool results)
-                if m.role == MessageRole.TOOL:
-                    # Parse the stored JSON format
-                    try:
-                        result_data = json.loads(m.content)
-                        # Format as tool result for OpenAI API
-                        # Note: tool_call_id would be ideal but requires schema change
-                        # Using a simplified format for now
-                        msg_dict = {
-                            "role": "tool",
-                            "content": result_data.get("output", ""),
-                        }
-                    except json.JSONDecodeError:
-                        # Fallback for malformed tool results
-                        msg_dict = {"role": "tool", "content": m.content}
-                    conversation_history.append(msg_dict)
-                else:
-                    # Handle user and assistant messages
+                # Only include user and assistant messages in conversation history
+                # Skip tool role messages - they cause OpenAI API 400 errors
+                if m.role in (MessageRole.USER, MessageRole.ASSISTANT):
                     msg_dict = {"role": m.role.value, "content": m.content}
-                    # Include tool_calls for assistant messages (important for context)
-                    if m.role == MessageRole.ASSISTANT and m.tool_calls:
-                        msg_dict["tool_calls"] = m.tool_calls
+                    # Note: Don't include tool_calls - OpenAI's Responses API (used by Agents SDK)
+                    # doesn't support the legacy tool_calls format.
                     conversation_history.append(msg_dict)
+                # TOOL messages are skipped - they're for frontend context only
 
             # Create Runner service
             runner_service = RunnerService(
@@ -391,63 +457,71 @@ async def chat(
                 final_output = strip_system_instructions(final_output)
 
                 # Create assistant message
-                if final_output:
-                    assistant_message = Message(
-                        conversation_id=conversation.id,
-                        correlation_id=correlation_id,
-                        role=MessageRole.ASSISTANT,
-                        content=final_output,
-                        tool_calls=tool_calls_list if tool_calls_list else None,
-                    )
-                    session.add(assistant_message)
+                # Always save a response, even if empty (error case) - prevents dangling user messages
+                response_to_save = final_output if final_output else "I'm sorry, I wasn't able to generate a response. Please try again."
 
-                    # Update conversation
-                    conversation.message_count += 2
-                    conversation.updated_at = datetime.utcnow()
+                assistant_message = Message(
+                    conversation_id=conversation.id,
+                    correlation_id=correlation_id,
+                    role=MessageRole.ASSISTANT,
+                    content=response_to_save,
+                    tool_calls=tool_calls_list if tool_calls_list else None,
+                )
+                # DEBUG: Log what's being stored
+                logger.info(
+                    f"[DEBUG] Saving assistant message: "
+                    f"tool_calls_count={len(tool_calls_list) if tool_calls_list else 0}, "
+                    f"tool_calls_data={tool_calls_list}"
+                )
+                session.add(assistant_message)
+
+                # Update conversation (increment by 1 since user message was already counted)
+                conversation.message_count += 1
+                conversation.updated_at = datetime.utcnow()
+                await session.commit()
+
+                # Save tool results as messages for conversation context (fixes agent memory)
+                # Tool results maintain context between requests so agent knows what happened
+                if tool_results_list:
+                    for tool_result in tool_results_list:
+                        # Format tool result as JSON string for storage
+                        result_content = json.dumps({
+                            "tool": tool_result.get("tool", "unknown"),
+                            "output": tool_result.get("output", ""),
+                        })
+                        tool_message = Message(
+                            conversation_id=conversation.id,
+                            correlation_id=correlation_id,
+                            role=MessageRole.TOOL,  # New TOOL role for conversation context
+                            content=result_content,
+                        )
+                        session.add(tool_message)
+                        conversation.message_count += 1
                     await session.commit()
 
-                    # Save tool results as messages for conversation context (fixes agent memory)
-                    # Tool results maintain context between requests so agent knows what happened
-                    if tool_results_list:
-                        for tool_result in tool_results_list:
-                            # Format tool result as JSON string for storage
-                            result_content = json.dumps({
-                                "tool": tool_result.get("tool", "unknown"),
-                                "output": tool_result.get("output", ""),
-                            })
-                            tool_message = Message(
-                                conversation_id=conversation.id,
-                                correlation_id=correlation_id,
-                                role=MessageRole.TOOL,  # New TOOL role for conversation context
-                                content=result_content,
-                            )
-                            session.add(tool_message)
-                            conversation.message_count += 1
-                        await session.commit()
+                # Log handoffs if any (T109, T110: Handoff tracking and storage)
+                if handoffs_list:
+                    for handoff in handoffs_list:
+                        # Capture context snapshot for debugging (LOG-033)
+                        context_snapshot = {
+                            "user_id": user_id,
+                            "conversation_id": str(conversation.id),
+                            "correlation_id": correlation_id,
+                            "timestamp": datetime.utcnow().isoformat(),
+                            "message_count": conversation.message_count,
+                        }
+                        handoff_record = AgentHandoff(
+                            conversation_id=conversation.id,
+                            from_agent=handoff.get("from_agent", ""),
+                            to_agent=handoff.get("to_agent", ""),
+                            reason=handoff.get("reason", "Agent handoff during conversation"),
+                            context_snapshot=context_snapshot,
+                            success=True,
+                        )
+                        session.add(handoff_record)
+                    await session.commit()
 
-                    # Log handoffs if any (T109, T110: Handoff tracking and storage)
-                    if handoffs_list:
-                        for handoff in handoffs_list:
-                            # Capture context snapshot for debugging (LOG-033)
-                            context_snapshot = {
-                                "user_id": user_id,
-                                "conversation_id": str(conversation.id),
-                                "correlation_id": correlation_id,
-                                "timestamp": datetime.utcnow().isoformat(),
-                                "message_count": conversation.message_count,
-                            }
-                            handoff_record = AgentHandoff(
-                                conversation_id=conversation.id,
-                                from_agent=handoff.get("from_agent", ""),
-                                to_agent=handoff.get("to_agent", ""),
-                                reason=handoff.get("reason", "Agent handoff during conversation"),
-                                context_snapshot=context_snapshot,
-                                success=True,
-                            )
-                            session.add(handoff_record)
-                        await session.commit()
-
-                    logger.info(
+                logger.info(
                         "Chat response completed",
                         event_type="request_end",
                         user_id=user_id,
@@ -496,10 +570,12 @@ async def chat(
                     handoffs_count=len(handoffs_list),
                 )
 
-                # Send error event
+                # Send error event with conversation_id so frontend can still track the conversation
+                # This fixes the bug where errors cause new conversations to be created on each message
                 yield {
                     "event": "error",
                     "data": {
+                        "conversation_id": str(conversation.id),  # Always include so frontend can resume
                         "error": type(e).__name__,
                         "message": "Sorry, I encountered an error. Please try again.",
                     },
@@ -781,12 +857,66 @@ async def get_conversation(
     msg_result = await session.execute(msg_statement)
     messages = msg_result.scalars().all()
 
+    # Serialize conversation with camelCase aliases
+    try:
+        conversation_public = ConversationPublic.model_validate(conversation)
+    except Exception as e:
+        logger.error(f"Failed to validate conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to serialize conversation: {str(e)}",
+        )
+
+    # Serialize messages with camelCase aliases
+    messages_public = []
+    for m in messages:
+        try:
+            # DEBUG: Log raw message data before validation
+            logger.info(
+                f"[DEBUG] Processing message: id={m.id}, role={m.role}, "
+                f"content_length={len(m.content) if m.content else 0}, "
+                f"tool_calls={type(m.tool_calls)}, tool_calls_value={m.tool_calls}"
+            )
+            # Convert SQLModel to dict first to trigger model_validator
+            # Use snake_case keys to match model field names, then let Pydantic handle alias conversion
+            message_dict = {
+                "id": m.id,
+                "conversation_id": str(m.conversation_id),
+                "correlation_id": m.correlation_id,
+                "role": m.role.value,
+                "content": m.content,
+                "tool_calls": m.tool_calls if m.tool_calls else [],  # Use snake_case to trigger validator
+                "created_at": m.created_at,
+            }
+            validated = MessagePublic.model_validate(message_dict)
+            messages_public.append(validated)
+            logger.info(f"[DEBUG] Successfully validated message {m.id}")
+        except Exception as e:
+            logger.error(
+                f"[DEBUG] Failed to validate message {m.id}: {type(e).__name__}: {e}. "
+                f"Message data: role={m.role.value}, content={m.content[:100] if m.content else 'None'}...",
+                exc_info=True
+            )
+            # Skip problematic message rather than failing entire request
+            continue
+
+    # DEBUG: Log summary and sample message structure
+    if messages_public:
+        sample_msg = messages_public[0].model_dump(mode="json", by_alias=True)
+        logger.info(
+            f"[DEBUG] get_conversation summary: "
+            f"conversation_id={conversation_id}, "
+            f"total_messages_in_db={total_messages}, "
+            f"messages_returned={len(messages_public)}, "
+            f"sample_message_keys={list(sample_msg.keys())}, "
+            f"has_createdAt={'createdAt' in sample_msg}, "
+            f"has_created_at={'created_at' in sample_msg}"
+        )
+
+    # Explicitly serialize with by_alias=True to ensure camelCase keys
     return {
-        "conversation": ConversationPublic.model_validate(conversation),
-        "messages": [
-            MessagePublic.model_validate(m)  # Uses camelCase aliases
-            for m in messages
-        ],
+        "conversation": conversation_public.model_dump(mode="json", by_alias=True),
+        "messages": [m.model_dump(mode="json", by_alias=True) for m in messages_public],
         "pagination": {
             "limit": limit,
             "offset": offset,

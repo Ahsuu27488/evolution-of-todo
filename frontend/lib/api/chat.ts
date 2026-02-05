@@ -163,27 +163,43 @@ export async function getConversation(
     return { success: false, error: { message: "Authentication required" } };
   }
 
-  const response = await fetch(
-    `${API_URL}/api/chat/conversations/${id}?limit=${limit}&offset=${offset}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
+  try {
+    const response = await fetch(
+      `${API_URL}/api/chat/conversations/${id}?limit=${limit}&offset=${offset}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    },
-  );
+    );
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return {
+        success: false,
+        error: {
+          message: "Failed to load conversation",
+          statusCode: response.status,
+        },
+      };
+    }
+
+    const data = await response.json();
+    console.log("[DEBUG] getConversation raw response:", JSON.stringify(data, null, 2));
+    return { success: true, data };
+  } catch (error) {
+    console.error("[getConversation] Network error:", {
+      id,
+      API_URL,
+      error: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : "Unknown",
+    });
     return {
       success: false,
       error: {
-        message: "Failed to load conversation",
-        statusCode: response.status,
+        message: `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
       },
     };
   }
-
-  const data = await response.json();
-  return { success: true, data };
 }
 
 export async function deleteConversation(id: string): Promise<Result<void>> {

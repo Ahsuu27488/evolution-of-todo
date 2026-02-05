@@ -22,7 +22,7 @@ import { createContext, useContext, useState, useCallback, ReactNode, createElem
 export interface ChatMessage {
   id: string
   conversationId: string
-  role: "user" | "assistant" | "system"
+  role: "user" | "assistant" | "system" | "tool"
   content: string
   toolCalls?: Array<{
     tool: string

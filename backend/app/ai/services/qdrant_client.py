@@ -290,8 +290,10 @@ class QdrantService:
             if not await self.health_check():
                 return False
 
+            # Use task_id as integer (not string) for Qdrant point ID
+            # Qdrant expects: unsigned integer OR valid UUID string
             point = PointStruct(
-                id=str(task_id),
+                id=task_id,
                 vector=embedding,
                 payload={
                     "user_id": user_id,
@@ -342,7 +344,7 @@ class QdrantService:
 
             self.client.delete(
                 collection_name=self.collection_name,
-                points_selector=[str(task_id)],
+                points_selector=[task_id],  # Use integer, not string
             )
 
             self.circuit_breaker.record_success()
@@ -410,14 +412,17 @@ class QdrantService:
                 return SearchResponse(results=[], total=0, duration_ms=0)
 
             # Search with user_id filter (FR-039)
-            response = self.client.search(
+            # Note: Qdrant client v1.16+ uses query_points instead of search
+            from qdrant_client.models import Filter
+
+            response = self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=query_embedding,
-                query_filter={
-                    "must": [
+                query=query_embedding,  # Dense vector for nearest search
+                query_filter=Filter(
+                    must=[
                         {"key": "user_id", "match": {"value": user_id}},
                     ]
-                },
+                ),
                 limit=limit,
                 score_threshold=score_threshold,
             )
@@ -425,14 +430,14 @@ class QdrantService:
             duration_ms = (time.time() - start_time) * 1000
 
             # Convert to search results
-            results = [
-                SearchResult(
+            # QueryResponse has a .points attribute containing ScoredPoint list
+            results = []
+            for point in response.points:
+                results.append(SearchResult(
                     task_id=int(point.id),
                     score=point.score,
                     payload=point.payload or {},
-                )
-                for point in response
-            ]
+                ))
 
             # Log response (LOG-041)
             self.logger.info(
@@ -490,7 +495,7 @@ class QdrantService:
 
             points = [
                 PointStruct(
-                    id=str(task_id),
+                    id=task_id,  # Use integer, not string
                     vector=emb,
                     payload={
                         "user_id": user_id,

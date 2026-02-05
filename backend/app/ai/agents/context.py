@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import contextvars
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 # =============================================================================
@@ -92,6 +93,9 @@ class TodoContext:
     language_preference: str = "auto"  # auto, en, ur
     timezone: str = "UTC"
 
+    # Current date for agent awareness (fixes "tomorrow" parsing to model's birth date)
+    current_date: date | None = None
+
     # Runtime state (not persisted)
     session: Any = None  # Database session for MCP tools
     tool_results: dict[str, Any] = field(default_factory=dict)
@@ -105,6 +109,7 @@ class TodoContext:
             "correlation_id": self.correlation_id,
             "language_preference": self.language_preference,
             "timezone": self.timezone,
+            "current_date": str(self.current_date) if self.current_date else None,
         }
 
     @classmethod
@@ -116,4 +121,5 @@ class TodoContext:
             correlation_id=data["correlation_id"],
             language_preference=data.get("language_preference", "auto"),
             timezone=data.get("timezone", "UTC"),
+            current_date=data.get("current_date"),
         )

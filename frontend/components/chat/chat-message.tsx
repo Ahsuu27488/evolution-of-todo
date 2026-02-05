@@ -16,9 +16,93 @@ import { motion } from "framer-motion";
 import { User, Bot, Wrench } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo } from "react";
+import ReactMarkdown from "react-markdown";
 import type { Task } from "@/types/task";
 import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
+
+// =============================================================================
+// Mixed Language Text Renderer
+// =============================================================================
+
+/**
+ * Urdu/Arabic Unicode pattern for detection.
+ */
+const URDU_PATTERN = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/**
+ * Split text into segments, marking which contain Urdu characters.
+ * Returns array of { text, isUrdu } segments.
+ */
+function splitTextByLanguage(text: string): Array<{ text: string; isUrdu: boolean }> {
+  const segments: Array<{ text: string; isUrdu: boolean }> = [];
+  let currentSegment = "";
+  let currentIsUrdu = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const isUrduChar = URDU_PATTERN.test(char);
+
+    if (i === 0) {
+      currentSegment = char;
+      currentIsUrdu = isUrduChar;
+    } else if (isUrduChar === currentIsUrdu) {
+      currentSegment += char;
+    } else {
+      segments.push({ text: currentSegment, isUrdu: currentIsUrdu });
+      currentSegment = char;
+      currentIsUrdu = isUrduChar;
+    }
+  }
+
+  if (currentSegment) {
+    segments.push({ text: currentSegment, isUrdu: currentIsUrdu });
+  }
+
+  return segments;
+}
+
+/**
+ * Render mixed language text with Urdu words in Nastaliq font.
+ * Handles strings, arrays (from markdown elements like <br>), and React nodes.
+ */
+function renderMixedLanguageText(content: any): React.ReactNode {
+  // Handle null/undefined
+  if (content == null) return content;
+
+  // Handle string directly
+  if (typeof content === "string") {
+    const segments = splitTextByLanguage(content);
+    return segments.map((segment, idx) => {
+      if (segment.isUrdu) {
+        return (
+          <span
+            key={idx}
+            style={{
+              fontFamily: "'Noto Nastaliq Urdu', serif",
+              lineHeight: "2",
+            }}
+          >
+            {segment.text}
+          </span>
+        );
+      }
+      return <span key={idx}>{segment.text}</span>;
+    });
+  }
+
+  // Handle array (e.g., ["text", <br />, "more text"])
+  if (Array.isArray(content)) {
+    return content.map((item, idx) =>
+      typeof item === "string"
+        ? <span key={idx}>{renderMixedLanguageText(item)}</span>
+        : <span key={idx}>{item}</span>
+    );
+  }
+
+  // Handle React elements (like <br />, <strong>, etc.)
+  return content;
+}
 
 // =============================================================================
 // Safe Date Utilities
@@ -137,7 +221,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
-  // Detect text direction for Urdu support (T077)
+  // Detect text direction for alignment (40%+ Urdu = RTL)
   const textDirection = useMemo(() => getTextDirection(message.content), [message.content]);
 
   // System messages are styled differently
@@ -209,17 +293,87 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                 }
           }
         >
-          <p
-            className="whitespace-pre-wrap break-words"
+          <div
             dir={textDirection}
-            style={{
-              // Urdu-friendly font settings (T077)
-              fontFamily: textDirection === "rtl" ? "'Noto Nastaliq Urdu', 'Amiri', serif" : "inherit",
-              lineHeight: textDirection === "rtl" ? "2" : "1.5",
-            }}
           >
-            {message.content}
-          </p>
+            <ReactMarkdown
+              components={{
+                // Custom text renderer for mixed language support
+                p: ({ children }) => (
+                  <p style={{ marginBottom: "0.5rem" }}>
+                    {renderMixedLanguageText(children)}
+                  </p>
+                ),
+                li: ({ children }) => (
+                  <li style={{ marginBottom: "0.15rem" }}>
+                    {renderMixedLanguageText(children)}
+                  </li>
+                ),
+                strong: ({ children }) => (
+                  <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "#00f5ff" }}>
+                    {renderMixedLanguageText(children)}
+                  </strong>
+                ),
+                // Style links
+                a: ({ ...props }) => (
+                  <a
+                    {...props}
+                    style={{
+                      color: isUser ? "#0ea5e9" : "#00f5ff",
+                      textDecoration: "underline",
+                    }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                ),
+                // Style unordered lists
+                ul: ({ ...props }) => (
+                  <ul
+                    {...props}
+                    style={{
+                      listStyleType: "disc",
+                      marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
+                      marginRight: textDirection === "rtl" ? "1.2rem" : "0",
+                      paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
+                      listStylePosition: "inside",
+                      marginTop: "0.25rem",
+                      marginBottom: "0.25rem",
+                    }}
+                  />
+                ),
+                // Style ordered lists
+                ol: ({ ...props }) => (
+                  <ol
+                    {...props}
+                    style={{
+                      listStyleType: "decimal",
+                      marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
+                      marginRight: textDirection === "rtl" ? "1.2rem" : "0",
+                      paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
+                      listStylePosition: "inside",
+                      marginTop: "0.25rem",
+                      marginBottom: "0.25rem",
+                    }}
+                  />
+                ),
+                // Style code (inline)
+                code: ({ inline, ...props }: { inline?: boolean } & any) => (
+                  <code
+                    {...props}
+                    style={{
+                      background: isUser ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)",
+                      padding: inline ? "2px 6px" : "0.5rem",
+                      borderRadius: inline ? "4px" : "8px",
+                      fontSize: "0.9em",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  />
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          </div>
 
           {/* Streaming cursor */}
           {isStreaming && (

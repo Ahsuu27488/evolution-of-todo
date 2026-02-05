@@ -839,7 +839,9 @@ class TaskTools:
                         user_id=user_id,
                         query_embedding=query_embedding,
                         limit=limit,
-                        score_threshold=0.5,  # Minimum similarity threshold
+                        # Lower threshold for better recall (0.3 instead of 0.5)
+                        # This captures semantically related tasks even with lower similarity
+                        score_threshold=0.3,
                     )
 
                     if search_response.results:
@@ -849,6 +851,7 @@ class TaskTools:
                             user_id=user_id,
                             result_count=len(search_response.results),
                             mode="semantic",
+                            scores=[round(r.score, 3) for r in search_response.results],
                         )
 
                         return ToolResponse(
@@ -862,6 +865,15 @@ class TaskTools:
                                 for r in search_response.results
                             ],
                             message=f"Found {len(search_response.results)} semantically similar tasks",
+                        )
+                    else:
+                        # Log when Qdrant returns no results (helps debug threshold issues)
+                        self.logger.info(
+                            "Qdrant semantic search returned no results (check score_threshold)",
+                            tool_name="semantic_search",
+                            user_id=user_id,
+                            query=query[:100],
+                            score_threshold=0.3,
                         )
 
                 except Exception as e:

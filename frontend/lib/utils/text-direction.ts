@@ -22,15 +22,40 @@ export function isUrduText(text: string): boolean {
 }
 
 /**
- * Get text direction based on content.
- *
- * Returns "rtl" for Urdu/Arabic text, "ltr" otherwise.
+ * Calculate the ratio of Urdu/Arabic characters in text.
  *
  * @param text - The text to analyze
- * @returns "rtl" for Urdu/Arabic text, "ltr" otherwise
+ * @returns Number between 0 and 1 (1 = all Urdu)
+ */
+function getUrduRatio(text: string): number {
+  if (!text) return 0;
+
+  // Remove whitespace and punctuation for cleaner counting
+  const cleanText = text.replace(/[\s\p{P}]/gu, "");
+  if (cleanText.length === 0) return 0;
+
+  // Count Urdu/Arabic characters
+  const urduPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g;
+  const urduMatches = cleanText.match(urduPattern);
+  const urduCount = urduMatches ? urduMatches.length : 0;
+
+  return urduCount / cleanText.length;
+}
+
+/**
+ * Get text direction based on DOMINANT content.
+ *
+ * Returns "rtl" only if Urdu/Arabic is the majority language (>40%),
+ * otherwise returns "ltr". This prevents mixed English-Urdu messages
+ * from being fully right-aligned.
+ *
+ * @param text - The text to analyze
+ * @returns "rtl" for Urdu-dominant text, "ltr" otherwise
  */
 export function getTextDirection(text: string): "rtl" | "ltr" {
-  return isUrduText(text) ? "rtl" : "ltr";
+  const urduRatio = getUrduRatio(text);
+  // Use 40% threshold to account for mixed content
+  return urduRatio > 0.4 ? "rtl" : "ltr";
 }
 
 /**

@@ -198,8 +198,14 @@ export function ChatPanel() {
           });
           resetStream();
         },
-        onError: (error) => {
-          console.error("Chat error:", error);
+        onError: (error, newConversationId) => {
+          console.error("Chat error:", error, newConversationId);
+          // Even on error, if we received a conversation_id, update the store
+          // This fixes the bug where errors cause new conversations on each message
+          if (!conversationId && newConversationId) {
+            setStoreConversationId(newConversationId);
+            console.log("Error but received conversation_id:", newConversationId);
+          }
           toast.error(error || "Failed to send message");
           resetStream();
         },
@@ -227,21 +233,42 @@ export function ChatPanel() {
   // Load an existing conversation
   const handleLoadConversation = useCallback(async (conv: Conversation) => {
     try {
+      console.log("[DEBUG] Loading conversation:", conv.id, conv.title);
       const result = await chatApi.getConversation(conv.id);
+      console.log("[DEBUG] API result success:", result.success);
       if (result.success && result.data) {
+        console.log("[DEBUG] Raw messages from API:", result.data.messages.length, result.data.messages);
+        // Log first message's structure to diagnose timestamp issue
+        if (result.data.messages.length > 0) {
+          const firstMsg = result.data.messages[0] as any;
+          console.log("[DEBUG] First message structure:", {
+            id: firstMsg.id,
+            role: firstMsg.role,
+            createdAt: firstMsg.createdAt,
+            created_at: (firstMsg as any).created_at,
+            allKeys: Object.keys(firstMsg),
+          });
+        }
         setStoreConversationId(conv.id);
-        // Convert API messages to store format
-        const loadedMessages = result.data.messages.map((m) => ({
-          id: m.id,
-          conversationId: m.conversationId,
-          role: m.role,
-          content: m.content,
-          toolCalls: m.toolCalls,
-          createdAt: m.createdAt,
-        }));
+        // Convert API messages to store format, filtering out tool messages
+        // Tool messages are used for context but shouldn't be displayed to users
+        const loadedMessages = result.data.messages
+          .filter((m) => m.role !== "tool")
+          .map((m) => ({
+            id: m.id,
+            conversationId: m.conversationId,
+            role: m.role,
+            content: m.content,
+            toolCalls: m.toolCalls,
+            createdAt: m.createdAt ?? (m as any).created_at ?? new Date().toISOString(),
+          }));
+        console.log("[DEBUG] Filtered messages (non-tool):", loadedMessages.length, loadedMessages);
         // Clear and set messages (reverse to show newest at bottom)
         clearMessages();
-        loadedMessages.forEach((msg) => addMessage(msg));
+        loadedMessages.forEach((msg) => {
+          console.log("[DEBUG] Adding message:", msg.role, msg.content?.substring(0, 50));
+          addMessage(msg);
+        });
         setShowHistory(false);
       }
     } catch (error) {

@@ -51,6 +51,30 @@ else:
     def get_openai_service() -> Optional[object]:
         return None
 
+# Phase III: Import Qdrant service for semantic search embeddings (if Qdrant URL available)
+if os.getenv("QDRANT_URL"):
+    from app.ai.services.qdrant_client import QdrantService
+    _qdrant_service: Optional[QdrantService] = None
+
+    def get_qdrant_service() -> Optional[QdrantService]:
+        global _qdrant_service
+        if _qdrant_service is None:
+            _qdrant_service = QdrantService()
+            # Initialize in background when first accessed
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(_qdrant_service.initialize())
+                else:
+                    loop.run_until_complete(_qdrant_service.initialize())
+            except Exception:
+                pass  # Will be initialized on first use
+        return _qdrant_service
+else:
+    def get_qdrant_service() -> Optional[object]:
+        return None
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -337,6 +361,40 @@ async def create_task(
             # Don't fail task creation if summary generation fails
             logger.warning(f"Failed to generate AI summary for task {task.id}: {e}")
 
+    # Phase III: Generate embedding for semantic search (non-blocking)
+    # This enables the AI chatbot to find tasks via natural language queries
+    qdrant_service = get_qdrant_service()
+    openai_service = get_openai_service()
+    if qdrant_service and openai_service:
+        try:
+            # Generate embedding from task title and description
+            text_to_embed = f"{task.title}. {task.description or ''}"
+            embedding_response = await openai_service.generate_embedding(text_to_embed)
+
+            # Store in Qdrant
+            success = await qdrant_service.upsert_task_embedding(
+                task_id=task.id,
+                user_id=current_user_id,
+                embedding=embedding_response.embedding,
+                payload={
+                    "title": task.title,
+                    "description": task.description or "",
+                    "completed": task.completed,
+                },
+            )
+
+            if success:
+                # Update task with embedding_id
+                task.embedding_id = str(task.id)
+                await session.commit()
+                await session.refresh(task)
+                logger.info(f"Embedding created for task: id={task.id}")
+            else:
+                logger.warning(f"Failed to create embedding in Qdrant for task {task.id}")
+        except Exception as e:
+            # Don't fail task creation if embedding generation fails
+            logger.warning(f"Failed to create embedding for task {task.id}: {e}")
+
     logger.info(f"Task created: id={task.id}, user={current_user_id}")
 
     return TaskPublic.model_validate(task)
@@ -550,6 +608,35 @@ async def update_task(
     )
     await session.commit()
 
+    # Phase III: Update embedding if title or description changed
+    if "title" in changed_fields or "description" in changed_fields:
+        qdrant_service = get_qdrant_service()
+        openai_service = get_openai_service()
+        if qdrant_service and openai_service:
+            try:
+                # Generate new embedding
+                text_to_embed = f"{task.title}. {task.description or ''}"
+                embedding_response = await openai_service.generate_embedding(text_to_embed)
+
+                # Update in Qdrant
+                success = await qdrant_service.upsert_task_embedding(
+                    task_id=task.id,
+                    user_id=current_user_id,
+                    embedding=embedding_response.embedding,
+                    payload={
+                        "title": task.title,
+                        "description": task.description or "",
+                        "completed": task.completed,
+                    },
+                )
+
+                if success:
+                    logger.info(f"Embedding updated for task: id={task.id}")
+                else:
+                    logger.warning(f"Failed to update embedding in Qdrant for task {task.id}")
+            except Exception as e:
+                logger.warning(f"Failed to update embedding for task {task.id}: {e}")
+
     logger.info(f"Task updated: id={task.id}")
 
     return TaskPublic.model_validate(task)
@@ -603,6 +690,18 @@ async def delete_task(
     await session.execute(
         sql_delete(TaskLog).where(TaskLog.task_id == task_id)
     )
+
+    # Phase III: Delete embedding from Qdrant
+    qdrant_service = get_qdrant_service()
+    if qdrant_service:
+        try:
+            success = await qdrant_service.delete_task_embedding(task_id)
+            if success:
+                logger.info(f"Embedding deleted for task: id={task_id}")
+            else:
+                logger.warning(f"Failed to delete embedding from Qdrant for task {task_id}")
+        except Exception as e:
+            logger.warning(f"Failed to delete embedding for task {task_id}: {e}")
 
     # 5. Now delete the task (no foreign keys remain)
     await session.delete(task)

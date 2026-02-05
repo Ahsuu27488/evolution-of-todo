@@ -13,7 +13,7 @@
 // Message Types
 // =============================================================================
 
-export type MessageRole = "user" | "assistant" | "system";
+export type MessageRole = "user" | "assistant" | "system" | "tool";
 
 export interface Message {
   id: string;
@@ -108,6 +108,7 @@ export interface MessageDoneData {
 }
 
 export interface ErrorData {
+  conversationId?: string;  // Include conversation_id so frontend can track conversation even on error
   error: string;
   message: string;
 }

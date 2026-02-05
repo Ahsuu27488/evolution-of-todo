@@ -97,6 +97,17 @@ class TaskBase(SQLModel):
         description="Recurring task pattern (DAILY, WEEKLY, MONTHLY)",
     )
 
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, v: Any) -> list[Tag]:
+        """Convert None to empty list for tags field.
+
+        Handles legacy data where tags column is NULL in database.
+        """
+        if v is None:
+            return []
+        return v
+
 
 class Task(TaskBase, table=True):
     """Database model for tasks.
