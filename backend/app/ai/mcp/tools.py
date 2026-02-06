@@ -162,6 +162,7 @@ class TaskTools:
                     "priority": task.priority.value,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
                     "completed": task.completed,
+                    "tags": [t for t in (task.tags or [])],  # Include applied tags
                 },
                 message=f"Task '{title}' created successfully",
             )
@@ -221,7 +222,10 @@ class TaskTools:
                 payload={
                     "title": task.title,
                     "description": task.description or "",
+                    "priority": task.priority.value,
+                    "due_date": task.due_date.isoformat() if task.due_date else None,
                     "completed": task.completed,
+                    "tags": [t for t in (task.tags or [])],  # Include tags for search
                 },
             )
 
@@ -402,6 +406,7 @@ class TaskTools:
                         "priority": task.priority.value,
                         "due_date": task.due_date.isoformat() if task.due_date else None,
                         "completed": task.completed,
+                        "tags": [t for t in (task.tags or [])],  # Include tags
                     }
                     for task in tasks
                 ],
@@ -475,7 +480,7 @@ class TaskTools:
 
             # Update Qdrant embedding to reflect completed status (T040)
             # Re-embed task so semantic search filters it out from pending tasks
-            await self._create_task_embedding(task, user_id)
+            await self._generate_and_store_embedding(task, user_id)
 
             self.logger.info(
                 "MCP tool completed: complete_task",
@@ -489,7 +494,11 @@ class TaskTools:
                 data={
                     "task_id": task.id,
                     "title": task.title,
+                    "description": task.description,
+                    "priority": task.priority.value,
+                    "due_date": task.due_date.isoformat() if task.due_date else None,
                     "completed": True,
+                    "tags": [t for t in (task.tags or [])],
                 },
                 message=f"Task '{task.title}' marked as complete",
             )
@@ -558,6 +567,17 @@ class TaskTools:
             # Delete task embedding from Qdrant first (FR-034)
             await self._delete_task_embedding(task_id)
 
+            # Capture task data before deletion
+            task_data = {
+                "task_id": task.id,
+                "title": task.title,
+                "description": task.description,
+                "priority": task.priority.value,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "completed": task.completed,
+                "tags": [t for t in (task.tags or [])],
+            }
+
             # Delete task
             await self.session.delete(task)
             await self.session.commit()
@@ -571,8 +591,8 @@ class TaskTools:
 
             return ToolResponse(
                 status="success",
-                data={"task_id": task_id},
-                message=f"Task '{task.title}' deleted",
+                data=task_data,
+                message=f"Task '{task_data['title']}' deleted",
             )
 
         except Exception as e:
@@ -701,6 +721,8 @@ class TaskTools:
                     "description": task.description,
                     "priority": task.priority.value,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
+                    "completed": task.completed,
+                    "tags": [t for t in (task.tags or [])],  # Include applied tags
                 },
                 message=f"Task '{task.title}' updated",
             )
@@ -879,8 +901,11 @@ class TaskTools:
                                     "task_id": r.task_id,
                                     "score": round(r.score, 3),
                                     "title": r.payload.get("title", ""),
-                                    "completed": r.payload.get("completed", False),
                                     "description": r.payload.get("description", ""),
+                                    "priority": r.payload.get("priority", "MEDIUM"),
+                                    "due_date": r.payload.get("due_date"),
+                                    "completed": r.payload.get("completed", False),
+                                    "tags": r.payload.get("tags", []),  # Include tags from payload
                                 }
                                 for r in pending_results
                             ],
@@ -946,7 +971,9 @@ class TaskTools:
                         "title": task.title,
                         "description": task.description,
                         "priority": task.priority.value,
+                        "due_date": task.due_date.isoformat() if task.due_date else None,
                         "completed": task.completed,
+                        "tags": [t for t in (task.tags or [])],  # Include tags
                     }
                     for task in tasks
                 ],
