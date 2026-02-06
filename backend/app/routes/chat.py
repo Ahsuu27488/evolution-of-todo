@@ -127,6 +127,7 @@ class ChatRequest(BaseModel):
 
     message: str
     conversation_id: str | None = None
+    language_preference: LanguagePreference | None = None  # Per-message language mode
 
     class Config:
         json_schema_extra = {
@@ -134,6 +135,7 @@ class ChatRequest(BaseModel):
                 {
                     "message": "Add a task to buy groceries tomorrow at 5pm",
                     "conversation_id": None,
+                    "language_preference": "auto",
                 }
             ]
         }
@@ -152,7 +154,7 @@ class TranscriptionResponse(BaseModel):
     """Response schema for transcription endpoint."""
 
     text: str
-    language: str
+    language: str | None = None  # Whisper API doesn't return language by default
     duration: float | None = None
 
 
@@ -347,12 +349,38 @@ async def chat(
             error=str(e),
         )
 
-    # Detect language
+    # Detect language from input message
     language_detection = detect_language(sanitized_message)  # Use sanitized message
     logger.debug(
-        "Language detected",
+        "Language detected from input",
         language=language_detection.language.value,
         confidence=language_detection.confidence,
+    )
+
+    # Determine response language based on mode and detection
+    # - auto: respond in detected language (English → English, Urdu → Urdu)
+    # - en: always respond in English, regardless of input
+    # - ur: always respond in Urdu, regardless of input
+    request_mode = request.language_preference or conversation.language_preference
+
+    if request_mode == LanguagePreference.AUTO:
+        # Auto mode: respond in detected language
+        response_language = language_detection.language
+    elif request_mode == LanguagePreference.EN:
+        # English mode: always respond in English
+        response_language = language_detection.language  # Keep detection for logging
+    elif request_mode == LanguagePreference.UR:
+        # Urdu mode: always respond in Urdu
+        response_language = language_detection.language  # Keep detection for logging
+    else:
+        # Fallback to detected language
+        response_language = language_detection.language
+
+    logger.info(
+        "Language mode determined",
+        request_mode=request_mode.value if request_mode else "auto",
+        detected_language=language_detection.language.value,
+        response_language=response_language.value,
     )
 
     async def event_generator():
@@ -368,7 +396,8 @@ async def chat(
                 user_id=user_id,
                 conversation_id=str(conversation.id),
                 correlation_id=correlation_id,
-                language_preference=conversation.language_preference,
+                language_preference=request_mode.value if request_mode else conversation.language_preference.value,
+                response_language=response_language.value,  # The actual language to respond in
                 current_date=datetime.utcnow().date(),  # Agent needs to know current date
                 session=session,
             )
@@ -617,7 +646,7 @@ async def transcribe_audio(
             "duration": 3.2
         }
     """
-    correlation_id = bind_correlation_id()[0]
+    correlation_id = bind_correlation_id()["correlation_id"]
 
     logger.info(
         "Transcription request received",
@@ -668,19 +697,25 @@ async def transcribe_audio(
             temp_path = temp_file.name
             await temp_file.write(content)
 
+        # Transcription language handling:
+        # - If language is specified, use it (en/ur)
+        # - If not specified, let Whisper auto-detect (None)
+        # This allows transcription to be independent of chat language mode
+        transcription_language = language  # None = auto-detect
+
         logger.info(
             "Transcribing audio file",
             user_id=user_id,
             temp_file_path=temp_path,
             file_size=len(content),
-            language=language or "auto",
+            language=transcription_language,
         )
 
         # Call OpenAI Whisper API via OpenAIService
         openai_service = OpenAIService()
         transcription = await openai_service.transcribe_audio(
             audio_file_path=temp_path,
-            language=language,  # None for auto-detection
+            language=transcription_language,
         )
 
         # Clean up temp file

@@ -193,6 +193,27 @@ class RunnerService:
 
             # Build input with history
             messages = conversation_history or []
+
+            # Inject response language instruction based on context
+            # This ensures the agent responds in the correct language regardless of input detection
+            if context.response_language:
+                if context.response_language == "ur":
+                    language_instruction = {
+                        "role": "system",
+                        "content": "RESPONSE LANGUAGE: You must respond in Urdu (اردو). Always reply in Urdu script, regardless of the language the user uses in their message."
+                    }
+                elif context.response_language == "en":
+                    language_instruction = {
+                        "role": "system",
+                        "content": "RESPONSE LANGUAGE: You must respond in English only. Always reply in English, regardless of the language the user uses in their message."
+                    }
+                else:
+                    # Auto mode - let agent detect
+                    language_instruction = None
+
+                if language_instruction:
+                    messages.append(language_instruction)
+
             messages.append({"role": "user", "content": user_message})
 
             # Set context variable so tool functions can access user_id and session

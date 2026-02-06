@@ -7,7 +7,7 @@
  * Per spec.md FR-001 through FR-010.
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { API_URL } from "@/lib/config/api";
@@ -85,6 +85,7 @@ export function useSendMessage() {
     mutationFn: async ({
       message,
       conversationId,
+      languagePreference,
       onMessageStart,
       onToken,
       onToolCall,
@@ -94,6 +95,7 @@ export function useSendMessage() {
     }: {
       message: string;
       conversationId: string | null;
+      languagePreference?: "auto" | "en" | "ur";
       onMessageStart?: (conversationId: string, correlationId: string) => void;
       onToken: (token: string) => void;
       onToolCall: (tool: string, args: Record<string, unknown>) => void;
@@ -124,6 +126,7 @@ export function useSendMessage() {
         body: JSON.stringify({
           message,
           conversation_id: conversationId,
+          language_preference: languagePreference,
         }),
         signal: abortControllerRef.current.signal,
       });

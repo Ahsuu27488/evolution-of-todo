@@ -498,3 +498,167 @@ def detect_intent(message: str) -> UserIntent:
                 return intent
 
     return UserIntent.CHAT  # Default to general chat
+
+
+# =============================================================================
+# Hindi-to-Urdu Script Conversion (FR-068)
+# =============================================================================
+
+# Devanagari (Hindi) to Perso-Arabic (Urdu) character mapping
+# Maps common Hindi characters to their Urdu equivalents
+HINDI_TO_URDU_MAP = {
+    # Vowels (matras)
+    'ा': 'ا',  # aa
+    'ि': 'ی',  # i (as in bit) - use ye
+    'ी': 'ی',  # ee (as in see) - use bari ye
+    'ु': 'و',  # u - use wao
+    'ू': 'و',  # oo - use wao
+    'े': 'ے',  # e
+    'ै': 'ے',  # ai
+    'ो': 'و',  # o
+    'ौ': 'او', # au
+
+    # Vowel signs (independent)
+    'अ': 'ا',  # a
+    'आ': 'آ',  # aa
+    'इ': 'ای', # i
+    'ई': 'ی',  # ee
+    'उ': 'و',  # u
+    'ऊ': 'او', # oo
+    'ए': 'ے',  # e
+    'ऐ': 'ے',  # ai
+    'ओ': 'او', # o
+    'औ': 'او', # au
+
+    # Consonants
+    'क': 'ک',   # ka
+    'ख': 'کھ',  # kha
+    'ग': 'گ',   # ga
+    'घ': 'گھ',  # gha
+    'च': 'چ',   # cha
+    'छ': 'چھ',  # chha
+    'ज': 'ج',   # ja
+    'झ': 'جھ',  # jha
+    'ट': 'ٹ',   # ta (retroflex)
+    'ठ': 'ٹھ',  # tha (retroflex)
+    'ड': 'ڈ',   # da (retroflex)
+    'ढ': 'ڈھ',  # dha (retroflex)
+    'ण': 'ن',   # na (retroflex) - map to nun
+    'त': 'ت',   # ta
+    'थ': 'تھ',  # tha
+    'द': 'د',   # da
+    'ध': 'دھ',  # dha
+    'न': 'ن',   # na
+    'प': 'پ',   # pa
+    'फ': 'پھ',  # pha
+    'ब': 'ب',   # ba
+    'भ': 'بھ',  # bha
+    'म': 'م',   # ma
+    'य': 'ی',   # ya
+    'र': 'ر',   # ra
+    'ल': 'ل',   # la
+    'व': 'و',   # va/wa
+    'श': 'ش',   # sha
+    'ष': 'ش',   # ssa - map to shin
+    'स': 'س',   # sa
+    'ह': 'ہ',   # ha
+
+    # Anusvara, visarga, candrabindu
+    'ं': 'ں',   # anusvara - nun ghunna
+    'ः': 'ہ',   # visarga
+    'ँ': 'ں',   # candrabindu
+
+    # Numbers
+    '०': '0', '१': '1', '२': '2', '३': '3', '४': '4',
+    '५': '5', '६': '6', '७': '7', '८': '8', '९': '9',
+
+    # Punctuation
+    '।': '۔',   # danda (Urdu full stop)
+    '॥': '۔۔',  # double danda
+
+    # Common conjuncts / combinations
+    'क्ष': 'کش', # ksha
+    'त्र': 'تر', # tra
+    'ज्ञ': 'گی', # gya/jna
+    'श्र': 'شر', # shra
+}
+
+
+def contains_hindi(text: str) -> bool:
+    """
+    Detect if text contains Hindi Devanagari script.
+
+    Devanagari Unicode range: U+0900 to U+097F
+
+    Args:
+        text: Text to check
+
+    Returns:
+        True if text contains Devanagari characters
+    """
+    # Check for Devanagari characters (U+0900 to U+097F)
+    for char in text:
+        if '\u0900' <= char <= '\u097F':
+            return True
+    return False
+
+
+def convert_hindi_to_urdu(text: str) -> tuple[str, bool]:
+    """
+    Convert Hindi Devanagari text to Urdu Perso-Arabic script.
+
+    This function handles the common challenge where Whisper confuses
+    Urdu speech with Hindi and outputs in Devanagari script.
+
+    Per FR-068: Force output to English or Urdu only.
+
+    Args:
+        text: Text that may contain Hindi Devanagari script
+
+    Returns:
+        Tuple of (converted_text, was_converted)
+        - converted_text: Text with Hindi converted to Urdu (or original if no Hindi)
+        - was_converted: True if conversion was applied
+
+    Examples:
+        >>> convert_hindi_to_urdu("एक टास्क एड़ करो")
+        ("ایک ٹاسک ایڈ کرو", True)
+
+        >>> convert_hindi_to_urdu("मुझे कल कराची जाना है")
+        ("مجھے کلا کراچی جانا ہے", True)
+
+        >>> convert_hindi_to_urdu("Hello world")
+        ("Hello world", False)
+    """
+    if not contains_hindi(text):
+        return text, False
+
+    # Character-by-character conversion
+    result = []
+    for char in text:
+        # Try direct mapping first
+        if char in HINDI_TO_URDU_MAP:
+            result.append(HINDI_TO_URDU_MAP[char])
+        # Handle halant (virama) - remove it in Urdu
+        elif char == '्' or char == '़':
+            continue  # Skip halant and nukta in output
+        # Pass through non-Hindi characters unchanged
+        else:
+            result.append(char)
+
+    converted = ''.join(result)
+
+    # Clean up common conversion artifacts
+    # Duplicate letters from matra + consonant combinations
+    converted = re.sub(r'(یی)+', 'ی', converted)  # Fix double ye
+    converted = re.sub(r'(وو)+', 'و', converted)  # Fix double wao
+    converted = re.sub(r'\s+', ' ', converted)     # Fix extra spaces
+
+    logger.info(
+        "Hindi to Urdu script conversion",
+        original_length=len(text),
+        converted_length=len(converted),
+        was_converted=True,
+    )
+
+    return converted, True

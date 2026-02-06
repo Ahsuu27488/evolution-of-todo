@@ -79,4 +79,6 @@ frontend/.env*.local
 # Claude Code & MCP
 .playwright-mcp/
 testing prompts
-report.md
+report.mdbackend/server_output.log
+backend/server_output.logcd
+notes.txt

@@ -68,6 +68,7 @@ export async function streamChat(
   message: string,
   conversationId: string | null,
   options: ChatStreamOptions,
+  languagePreference?: "auto" | "en" | "ur",
   signal?: AbortSignal,
 ): Promise<void> {
   // Get auth token
@@ -86,6 +87,7 @@ export async function streamChat(
     body: JSON.stringify({
       message,
       conversation_id: conversationId,
+      language_preference: languagePreference,
     }),
     signal,
   });

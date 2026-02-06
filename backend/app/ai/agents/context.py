@@ -91,6 +91,7 @@ class TodoContext:
 
     # Optional preferences
     language_preference: str = "auto"  # auto, en, ur
+    response_language: str | None = None  # Actual language to respond in (overrides detection)
     timezone: str = "UTC"
 
     # Current date for agent awareness (fixes "tomorrow" parsing to model's birth date)
@@ -108,6 +109,7 @@ class TodoContext:
             "conversation_id": self.conversation_id,
             "correlation_id": self.correlation_id,
             "language_preference": self.language_preference,
+            "response_language": self.response_language,
             "timezone": self.timezone,
             "current_date": str(self.current_date) if self.current_date else None,
         }

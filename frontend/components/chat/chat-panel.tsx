@@ -169,6 +169,7 @@ export function ChatPanel() {
       await sendMessage.mutateAsync({
         message,
         conversationId: conversationId, // ← FIXED: Use actual conversationId, not null!
+        languagePreference, // ← Send language preference per message
         onMessageStart: (newConversationId) => {
           // Update store when backend creates a new conversation
           if (!conversationId && newConversationId) {
@@ -295,6 +296,13 @@ export function ChatPanel() {
     }
   }, [conversationId, deleteConversationApi, handleNewConversation, refetchConversations]);
 
+  // Handle transcript from voice recording
+  const handleTranscript = useCallback((text: string, _language?: string) => {
+    // Transcription is independent of language mode
+    // Just append the transcribed text to input
+    setInputValue(inputValue ? `${inputValue} ${text}` : text);
+  }, [inputValue, setInputValue]);
+
   // Handle task actions from inline task cards (T116, T117)
   const handleTaskAction = async (action: "complete" | "delete" | "edit", task: Task) => {
     try {
@@ -326,17 +334,6 @@ export function ChatPanel() {
       toast.error("Failed to perform action on task");
     }
   };
-
-  // Handle transcript from voice recording
-  const handleTranscript = useCallback((text: string, language?: string) => {
-    // Append transcript to current input value
-    setInputValue(inputValue ? `${inputValue} ${text}` : text);
-
-    // Auto-detect language from transcript if available
-    if (language && (language === "en" || language === "ur" || language === "auto")) {
-      setLanguagePreference(language === "auto" ? "auto" : language as "auto" | "en" | "ur");
-    }
-  }, [inputValue, setInputValue, setLanguagePreference]);
 
   // Format conversation title
   const formatConversationTitle = (conv: Conversation) => {

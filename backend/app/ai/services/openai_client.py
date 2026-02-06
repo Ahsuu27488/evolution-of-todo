@@ -100,7 +100,7 @@ class TranscriptionResponse:
     """Response from OpenAI Whisper API."""
 
     text: str
-    language: str
+    language: str | None  # Whisper API doesn't return language by default
     duration: float
     duration_ms: float
     cost: float
@@ -394,6 +394,7 @@ class OpenAIService:
             cost = (duration / 60) * WHISPER_COST_PER_MINUTE
 
             # Log response (LOG-042)
+            # Note: Whisper API doesn't return detected language without word-level timestamps
             self.logger.info(
                 "OpenAI transcription response",
                 event_type="openai_response",
@@ -401,13 +402,13 @@ class OpenAIService:
                 endpoint_type="audio",
                 duration_seconds=round(duration, 2),
                 duration_ms=round(duration_ms, 2),
-                detected_language=response.language,
+                detected_language=language or "auto",
                 cost_estimate=round(cost, 6),
             )
 
             return TranscriptionResponse(
                 text=response.text,
-                language=response.language,
+                language=language,  # Use the requested language (or None for auto-detect)
                 duration=duration,
                 duration_ms=duration_ms,
                 cost=cost,

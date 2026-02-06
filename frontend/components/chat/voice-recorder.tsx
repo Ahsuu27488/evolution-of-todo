@@ -205,8 +205,15 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       const formData = new FormData();
       formData.append("file", state.audioBlob, "audio.webm");
 
-      // Determine language parameter from preference
-      // const language = languagePreference === "auto" ? "auto" : languagePreference;
+      // Transcription is independent of language mode
+      // - Auto mode: Let Whisper auto-detect (no language param)
+      // - EN mode: Force English transcription
+      // - UR mode: Force Urdu transcription
+      // This ensures transcription captures what was actually spoken
+      const language = languagePreference === "auto" ? undefined : languagePreference;
+      if (language) {
+        formData.append("language", language);
+      }
 
       // Fetch with progress tracking (T089)
       const response = await fetch(`${API_URL}/api/chat/transcribe`, {

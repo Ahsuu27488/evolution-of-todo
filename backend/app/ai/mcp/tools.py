@@ -118,7 +118,7 @@ class TaskTools:
                 description=description,
                 priority=Priority(priority.upper()),
                 due_date=due_date,
-                tags=[Tag(**t) for t in (tags or [])],
+                tags=[t for t in (tags or [])],  # Store as dicts, not Tag objects
                 completed=False,
                 transcription_text=transcription_text,  # T083: Store voice transcription
             )
@@ -472,6 +472,10 @@ class TaskTools:
             # Mark complete
             task.completed = True
             await self.session.commit()
+
+            # Update Qdrant embedding to reflect completed status (T040)
+            # Re-embed task so semantic search filters it out from pending tasks
+            await self._create_task_embedding(task, user_id)
 
             self.logger.info(
                 "MCP tool completed: complete_task",
@@ -845,11 +849,19 @@ class TaskTools:
                     )
 
                     if search_response.results:
+                        # Filter out completed tasks from results (T040)
+                        # The AI should only see pending tasks when deciding what to complete
+                        pending_results = [
+                            r for r in search_response.results
+                            if not r.payload.get("completed", False)
+                        ]
+
                         self.logger.info(
                             "MCP tool completed: semantic_search (Qdrant)",
                             tool_name="semantic_search",
                             user_id=user_id,
                             result_count=len(search_response.results),
+                            pending_count=len(pending_results),
                             mode="semantic",
                             scores=[round(r.score, 3) for r in search_response.results],
                         )
@@ -861,10 +873,12 @@ class TaskTools:
                                     "task_id": r.task_id,
                                     "score": round(r.score, 3),
                                     "title": r.payload.get("title", ""),
+                                    "completed": r.payload.get("completed", False),
+                                    "description": r.payload.get("description", ""),
                                 }
-                                for r in search_response.results
+                                for r in pending_results
                             ],
-                            message=f"Found {len(search_response.results)} semantically similar tasks",
+                            message=f"Found {len(pending_results)} pending tasks (filtered from {len(search_response.results)} total)",
                         )
                     else:
                         # Log when Qdrant returns no results (helps debug threshold issues)
@@ -892,7 +906,10 @@ class TaskTools:
             )
 
             # Build keyword search query
-            statement = select(Task).where(Task.user_id == user_id)
+            statement = select(Task).where(
+                (Task.user_id == user_id) &
+                (Task.completed == False)  # Only search pending tasks (T040)
+            )
 
             # Search in title and description
             search_pattern = f"%{query}%"

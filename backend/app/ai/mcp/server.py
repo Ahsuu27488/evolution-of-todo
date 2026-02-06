@@ -37,7 +37,7 @@ mcp_server = Server("todo-task-manager")
 TOOLS: list[Tool] = [
     Tool(
         name="add_task",
-        description="Create a new task for the user",
+        description="Create a new task. IMPORTANT: Extract meaningful tags from user input including locations (Karachi, Lahore, etc.), categories (work, shopping, travel, personal, study), activities (meeting, class, appointment), and action items (buy, call, email). Tags help organize and find tasks later.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -67,11 +67,12 @@ TOOLS: list[Tool] = [
                     "items": {
                         "type": "object",
                         "properties": {
-                            "name": {"type": "string"},
-                            "color": {"type": "string"},
+                            "name": {"type": "string", "description": "Tag name (e.g., 'karachi', 'work', 'shopping')"},
+                            "color": {"type": "string", "description": "Hex color code (e.g., '#00f5ff' for cyan, '#a855f7' for purple)"},
                         },
+                        "required": ["name", "color"],
                     },
-                    "description": "Optional tags with colors",
+                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #00f5ff (cyan), #a855f7 (purple), #f59e0b (amber), #10b981 (green), #ef4444 (red).",
                 },
             },
             "required": ["user_id", "title"],
