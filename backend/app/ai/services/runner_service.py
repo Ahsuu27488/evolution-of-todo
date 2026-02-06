@@ -238,8 +238,8 @@ class RunnerService:
                 async for event in result.stream_events():
                     event_count += 1
 
-                    # Debug: log all event types to understand the SDK's structure
-                    self.logger.info(
+                    # Debug: log all event types (debug level to avoid log spam)
+                    self.logger.debug(
                         "Stream event received",
                         event_type=event.type,
                         event_data_type=type(event.data).__name__ if hasattr(event, 'data') else None,
@@ -249,7 +249,8 @@ class RunnerService:
                     if event.type == "raw_response_event":
                         # Token-by-token streaming
                         if isinstance(event.data, ResponseTextDeltaEvent):
-                            self.logger.info(f"Yielding TOKEN event: {repr(event.data.delta)}")
+                            # Debug level for per-token logging (very verbose)
+                            self.logger.debug(f"Yielding TOKEN event: {repr(event.data.delta)}")
                             yield StreamEvent(
                                 event=StreamEventType.TOKEN,
                                 data={"content": event.data.delta},
@@ -313,8 +314,8 @@ class RunnerService:
                             })
 
                         elif event.item.type == "tool_call_output_item":
-                            # Debug: log the item structure to understand available attributes
-                            self.logger.info(
+                            # Debug: log the item structure (debug level - verbose)
+                            self.logger.debug(
                                 "Tool call output item received",
                                 item_type=type(event.item).__name__,
                                 item_dir=[x for x in dir(event.item) if not x.startswith('_')],
