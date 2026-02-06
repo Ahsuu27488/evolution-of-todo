@@ -53,7 +53,7 @@ def _get_user_id_and_session(ctx: Any) -> tuple[str, Any]:
     Extract user_id and session from execution context.
 
     Args:
-        ctx: TodoContext or similar execution context (unused, kept for compatibility)
+        ctx: TodoContext, dict with user_id/session, or similar execution context
 
     Returns:
         Tuple of (user_id, session)
@@ -64,22 +64,50 @@ def _get_user_id_and_session(ctx: Any) -> tuple[str, Any]:
     Note:
         Uses contextvars (get_current_context) because the OpenAI Agents SDK
         doesn't automatically inject context into @function_tool decorated functions.
+
+        Handles both object format (ctx.user_id) and dict format (ctx['user_id'])
+        since the agent may pass either.
     """
     from app.ai.agents.context import get_current_context
 
-    # Try context variable first (primary method)
+    # Method 1: Try context variable first (primary method, most reliable)
     context = get_current_context()
     if context and context.user_id and context.session:
         return context.user_id, context.session
 
-    # Fallback to ctx parameter for backward compatibility
-    user_id = getattr(ctx, "user_id", None) if ctx else None
-    session = getattr(ctx, "session", None) if ctx else None
+    # Method 2: Handle dict format from agent (e.g., {'user_id': 'xxx', 'session': xxx})
+    if ctx and isinstance(ctx, dict):
+        user_id = ctx.get("user_id")
+        session = ctx.get("session")
+        if user_id and user_id != "default" and session:
+            return user_id, session
+        # If dict has default values, continue to other methods
+        if user_id == "default":
+            # Agent hallucinated default values - ignore and try other methods
+            pass
 
-    if not user_id or not session:
-        raise ValueError("Tool execution requires user_id and session in context")
+    # Method 3: Handle object format with attributes (backward compatibility)
+    if ctx and hasattr(ctx, "user_id"):
+        user_id = getattr(ctx, "user_id", None)
+        session = getattr(ctx, "session", None)
+        if user_id and user_id != "default" and session:
+            return user_id, session
 
-    return user_id, session
+    # Method 4: Last resort - try accessing ctx as dict-like with get()
+    if ctx and hasattr(ctx, "get"):
+        try:
+            user_id = ctx.get("user_id")
+            session = ctx.get("session")
+            if user_id and user_id != "default" and session:
+                return user_id, session
+        except (AttributeError, TypeError):
+            pass
+
+    # All methods failed - provide helpful error message
+    raise ValueError(
+        "Tool execution requires user_id and session in context. "
+        "Ensure the TodoContext is properly set via set_context() before calling tools."
+    )
 
 
 def _format_tool_result(result: Any, tool_name: str) -> str:
@@ -238,15 +266,18 @@ if AGENT_AVAILABLE:
         """
         Mark a task as complete.
 
+        CRITICAL: Before calling this tool, you MUST obtain valid task_id from
+        list_tasks or semantic_search. NEVER make up or guess task IDs.
+
         Args:
             ctx: Execution context with user_id and session
-            task_id: ID of the task to mark complete
+            task_id: ID of the task to mark complete (must be from list_tasks result)
 
         Returns:
             Success message or error message
 
         Examples:
-            complete_task(ctx, 123)
+            complete_task(ctx, 123)  # where 123 came from list_tasks result
         """
         from app.ai.mcp.tools import TaskTools
 
@@ -708,7 +739,10 @@ Your capabilities:
   - Present in a clear, scannable format
 
 - **Complete tasks**: Mark tasks as done
+  - CRITICAL: Always call list_tasks FIRST to get actual task IDs before completing
+  - NEVER make up task IDs - always use IDs from list_tasks or semantic_search results
   - Confirm task ID or title before completing
+  - For "mark all tasks as completed": FIRST call list_tasks, THEN complete each returned task
 
 - **Update tasks**: Modify existing task properties
   - Title, description, priority, due date, **tags**
