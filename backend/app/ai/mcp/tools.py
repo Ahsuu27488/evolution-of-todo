@@ -56,16 +56,27 @@ class TaskTools:
     - Return structured response
 
     Per FR-029: Validate user owns task before operations (404 if not).
+
+    Session Management:
+    - When autocommit=False (default): Caller is responsible for committing the session.
+      This is used when called from the OpenAI agent where the session is managed
+      by the FastAPI route handler.
+    - When autocommit=True: This class commits after each operation.
+      This is used for standalone tool calls via direct HTTP/MCP access.
     """
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession, autocommit: bool = False):
         """
         Initialize task tools.
 
         Args:
             session: Database session for operations
+            autocommit: If True, commit after each operation. If False (default),
+                       the caller must commit the session. Use False when the session
+                       is managed by an outer context (e.g., FastAPI route).
         """
         self.session = session
+        self.autocommit = autocommit
         self.logger = get_logger("mcp", "TaskTools")
 
     async def add_task(
@@ -124,7 +135,8 @@ class TaskTools:
             )
 
             self.session.add(task)
-            await self.session.commit()
+            if self.autocommit:
+                await self.session.commit()
             await self.session.refresh(task)
 
             # Generate AI summary if description is long (T094, T096-T098)
@@ -135,14 +147,16 @@ class TaskTools:
                     priority=priority,
                     tags=tags,
                 )
-                await self.session.commit()
+                if self.autocommit:
+                    await self.session.commit()
 
             # Generate embedding for semantic search (T062, FR-034)
             await self._generate_and_store_embedding(task, user_id)
 
             # Update embedding_id in task
             if task.embedding_id or task.ai_summary:
-                await self.session.commit()
+                if self.autocommit:
+                    await self.session.commit()
 
             # Log success (LOG-021)
             self.logger.info(
@@ -476,7 +490,8 @@ class TaskTools:
 
             # Mark complete
             task.completed = True
-            await self.session.commit()
+            if self.autocommit:
+                await self.session.commit()
 
             # Update Qdrant embedding to reflect completed status (T040)
             # Re-embed task so semantic search filters it out from pending tasks
@@ -580,7 +595,8 @@ class TaskTools:
 
             # Delete task
             await self.session.delete(task)
-            await self.session.commit()
+            if self.autocommit:
+                await self.session.commit()
 
             self.logger.info(
                 "MCP tool completed: delete_task",
@@ -688,7 +704,8 @@ class TaskTools:
                 # Replace existing tags with new tags
                 task.tags = [t for t in tags]
 
-            await self.session.commit()
+            if self.autocommit:
+                await self.session.commit()
 
             # Regenerate AI summary if description changed (T095)
             if description_changed and task.description and len(task.description) > 100:
@@ -698,13 +715,15 @@ class TaskTools:
                     priority=task.priority.value,
                     tags=[t.model_dump() for t in task.tags],
                 )
-                await self.session.commit()
+                if self.autocommit:
+                    await self.session.commit()
 
             # Regenerate embedding if text changed (T064, FR-034)
             if text_changed:
                 await self._generate_and_store_embedding(task, user_id)
                 if task.embedding_id or task.ai_summary:
-                    await self.session.commit()
+                    if self.autocommit:
+                        await self.session.commit()
 
             self.logger.info(
                 "MCP tool completed: update_task",

@@ -276,13 +276,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     session: AsyncSession | None = arguments.pop("_session", None)
 
     if not session:
-        # Create a temporary session for this tool call
+        # Create a temporary session for this tool call with autocommit=True
+        # because this session is not managed by an outer transaction
         from app.db import get_session
 
         async with get_session() as temp_session:
-            return await _execute_tool_call(name, arguments, temp_session, logger)
+            return await _execute_tool_call(name, arguments, temp_session, logger, autocommit=True)
 
-    return await _execute_tool_call(name, arguments, session, logger)
+    return await _execute_tool_call(name, arguments, session, logger, autocommit=False)
 
 
 async def _execute_tool_call(
@@ -290,14 +291,23 @@ async def _execute_tool_call(
     arguments: dict,
     session: AsyncSession,
     logger,
+    autocommit: bool = False,
 ) -> list[TextContent]:
     """
     Execute the actual tool call with a valid session.
 
     Per T103: Tool timeout handling with 30-second limit.
+
+    Args:
+        name: Tool name to invoke
+        arguments: Tool parameters
+        session: Database session
+        logger: Logger instance
+        autocommit: If True, TaskTools will commit after operations.
+                    Use True for standalone tool calls, False for integrated sessions.
     """
 
-    tools = TaskTools(session)
+    tools = TaskTools(session, autocommit=autocommit)
     TOOL_TIMEOUT = 30.0  # seconds per spec.md T103
 
     # Route to appropriate tool method with timeout
