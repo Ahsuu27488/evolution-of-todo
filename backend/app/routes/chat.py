@@ -703,6 +703,11 @@ async def transcribe_audio(
         # This allows transcription to be independent of chat language mode
         transcription_language = language  # None = auto-detect
 
+        # Prompt to bias Whisper away from Devanagari output
+        # Include Urdu script so Whisper knows to output Urdu for Urdu speech, not Hindi/Devanagari
+        # This is critical because Urdu and Hindi sound identical but use different scripts
+        URDU_BIAS_PROMPT = "اردو میں بولیں۔ آج کا دن اچھا ہے۔ Task. Add. Complete."
+
         logger.info(
             "Transcribing audio file",
             user_id=user_id,
@@ -716,6 +721,7 @@ async def transcribe_audio(
         transcription = await openai_service.transcribe_audio(
             audio_file_path=temp_path,
             language=transcription_language,
+            prompt=URDU_BIAS_PROMPT,  # Always include - prevents Devanagari output
         )
 
         # Clean up temp file

@@ -337,6 +337,7 @@ class OpenAIService:
         audio_file_path: str,
         language: str | None = None,
         model: str | None = None,
+        prompt: str | None = None,
     ) -> TranscriptionResponse:
         """
         Transcribe audio file using Whisper API.
@@ -345,11 +346,13 @@ class OpenAIService:
         - Uses whisper-1 model
         - Supports multiple languages including Urdu
         - Auto-detects language if not specified
+        - Prompt biases Whisper away from Devanagari output for Urdu speech
 
         Args:
             audio_file_path: Path to audio file (mp3, mp4, mpeg, mpga, m4a, wav, webm)
             language: ISO-639-1 language code (auto-detect if None)
             model: Whisper model (defaults to whisper-1)
+            prompt: Optional prompt to guide transcription (biases output script)
 
         Returns:
             TranscriptionResponse with text, detected language, timing, cost
@@ -383,6 +386,7 @@ class OpenAIService:
                     model=model,
                     file=audio_file,
                     language=language,
+                    prompt=prompt,  # Biases Whisper toward Urdu script, away from Devanagari
                 )
 
             duration_ms = (time.time() - start_time) * 1000
