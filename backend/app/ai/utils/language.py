@@ -31,7 +31,7 @@ class LanguageDetectionResult:
     language: LanguageCode
     confidence: float  # 0.0 to 1.0
     has_code_switching: bool
-    dominant_script: Literal["latin", "arabic", "mixed"]
+    dominant_script: Literal["latin", "arabic", "devanagari", "mixed"]
 
 
 # Unicode ranges for language detection
@@ -39,6 +39,9 @@ ARABIC_UNICODE_RANGE = (0x0600, 0x06FF)
 ARABIC_EXTENDED_RANGE = (0x0750, 0x077F)
 ARABIC_PRESENTATION_RANGE = (0xFB50, 0xFDFF)
 ARABIC_PRESENTATION_EXTENDED_RANGE = (0xFE70, 0xFEFF)
+
+# Devanagari Unicode range (Hindi, Marathi, Sanskrit, etc.)
+DEVANAGARI_UNICODE_RANGE = (0x0900, 0x097F)
 
 # Urdu-specific character ranges (includes additional characters)
 URDU_RANGES = [
@@ -69,11 +72,19 @@ def _is_arabic_char(char: str) -> bool:
     return False
 
 
+def _is_devanagari_char(char: str) -> bool:
+    """Check if character is in Devanagari Unicode range (Hindi, etc.)."""
+    code_point = ord(char)
+    start, end = DEVANAGARI_UNICODE_RANGE
+    return start <= code_point <= end
+
+
 def detect_language(text: str) -> LanguageDetectionResult:
     """
     Detect the language of input text.
 
     Per FR-042: If >30% of characters are in Arabic Unicode block, classify as Urdu.
+    Per requirement: Hindi (Devanagari) input maps to Urdu response language.
 
     Args:
         text: Input text to analyze
@@ -87,6 +98,9 @@ def detect_language(text: str) -> LanguageDetectionResult:
 
         >>> detect_language("مجھے ایک ٹاسک شامل کرو")
         LanguageDetectionResult(language=LanguageCode.URDU, confidence=0.95, ...)
+
+        >>> detect_language("एक टास्क जोड़ें")  # Hindi
+        LanguageDetectionResult(language=LanguageCode.URDU, confidence=0.9, ...)  # Maps to Urdu
 
         >>> detect_language("Add a task for آج")
         LanguageDetectionResult(language=LanguageCode.ENGLISH, confidence=0.7, has_code_switching=True, ...)
@@ -103,6 +117,7 @@ def detect_language(text: str) -> LanguageDetectionResult:
     total_chars = 0
     arabic_chars = 0
     latin_chars = 0
+    devanagari_chars = 0
     other_chars = 0
 
     # Count words
@@ -123,6 +138,8 @@ def detect_language(text: str) -> LanguageDetectionResult:
 
         if _is_arabic_char(char):
             arabic_chars += 1
+        elif _is_devanagari_char(char):
+            devanagari_chars += 1
         elif char.isalpha():
             latin_chars += 1
         else:
@@ -140,17 +157,35 @@ def detect_language(text: str) -> LanguageDetectionResult:
     # Calculate script ratios
     arabic_ratio = arabic_chars / total_chars if total_chars > 0 else 0
     latin_ratio = latin_chars / total_chars if total_chars > 0 else 0
+    devanagari_ratio = devanagari_chars / total_chars if total_chars > 0 else 0
 
     # Determine dominant script
     if arabic_ratio > 0.7:
         dominant_script = "arabic"
+    elif devanagari_ratio > 0.7:
+        dominant_script = "devanagari"
     elif latin_ratio > 0.7:
         dominant_script = "latin"
     else:
         dominant_script = "mixed"
 
     # Check for code-switching (both scripts present significantly)
-    has_code_switching = arabic_ratio > 0.2 and latin_ratio > 0.2
+    has_code_switching = (arabic_ratio > 0.2 and latin_ratio > 0.2) or \
+                         (devanagari_ratio > 0.2 and latin_ratio > 0.2)
+
+    # Detect Hindi/Devanagari - map to Urdu response
+    # Per requirement: Hindi input gets Urdu response
+    if devanagari_ratio > 0.15:  # More than 15% Devanagari = Hindi
+        confidence = min(0.95, devanagari_ratio + 0.3)
+        if has_code_switching:
+            confidence = confidence * 0.85
+
+        return LanguageDetectionResult(
+            language=LanguageCode.URDU,  # Map Hindi to Urdu for response
+            confidence=round(confidence, 2),
+            has_code_switching=has_code_switching,
+            dominant_script=dominant_script,
+        )
 
     # Detect language per FR-042 (>30% Arabic = Urdu)
     if arabic_ratio > 0.3:

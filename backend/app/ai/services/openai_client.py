@@ -437,18 +437,19 @@ class OpenAIService:
         """
         Generate a conversation title from summary.
 
-        Per spec.md: Auto-generate titles after 3 messages.
+        Per spec.md: Auto-generate titles after 2 messages.
+        Title is ALWAYS in English regardless of conversation language.
 
         Args:
             conversation_summary: Summary of conversation messages
 
         Returns:
-            Generated title (max 50 characters)
+            Generated title in English (max 50 characters)
         """
         try:
             response = await self.chat(
-                message=f"Generate a concise title (max 50 chars) for this conversation: {conversation_summary}",
-                system_prompt="You are a title generator. Return only the title, no quotes or punctuation.",
+                message=f"Generate a concise title in ENGLISH (max 50 chars) for this conversation: {conversation_summary}",
+                system_prompt="You are a title generator. Always generate titles in ENGLISH, regardless of the input language. Return only the title, no quotes or punctuation.",
                 max_tokens=50,
                 temperature=0.3,
             )

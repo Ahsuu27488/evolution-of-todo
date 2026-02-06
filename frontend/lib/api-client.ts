@@ -359,6 +359,21 @@ class ApiClient {
   }
 
   /**
+   * Regenerate AI summary for a task.
+   *
+   * Per T096: Allows users to request a new summary if the original
+   * wasn't helpful or if task details changed significantly.
+   */
+  async regenerateTaskSummary(taskId: number): Promise<Result<Task>> {
+    const result = await this.request<Task>(
+      `/api/tasks/${taskId}/summary/regenerate`,
+      { method: "POST" }
+    )
+    if (!result.success) return result
+    return ok(result.data.data)
+  }
+
+  /**
    * Search tasks by query string.
    */
   async searchTasks(query: string): Promise<Result<TaskList>> {

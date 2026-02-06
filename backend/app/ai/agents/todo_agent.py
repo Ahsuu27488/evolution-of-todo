@@ -72,7 +72,9 @@ def _get_user_id_and_session(ctx: Any) -> tuple[str, Any]:
 
     # Method 1: Try context variable first (primary method, most reliable)
     context = get_current_context()
+    logger.debug(f"[DEBUG] get_current_context() returned: {context}, user_id={context.user_id if context else None}")
     if context and context.user_id and context.session:
+        logger.debug(f"[DEBUG] Using context variable: user_id={context.user_id}")
         return context.user_id, context.session
 
     # Method 2: Handle dict format from agent (e.g., {'user_id': 'xxx', 'session': xxx})
@@ -135,8 +137,11 @@ def _format_tool_result(result: Any, tool_name: str) -> str:
             items = result.data
             if items:
                 # Format task list for agent
+                # IMPORTANT: Do NOT truncate - agent needs to see ALL tasks for "delete all" operations
+                # The agent instructions say "For 'delete all tasks': FIRST call list_tasks, THEN delete each returned task"
+                # If we truncate, the agent will only delete the visible tasks, not all tasks!
                 formatted_items = []
-                for item in items[:10]:  # Limit to 10 for brevity
+                for item in items:  # Show ALL items - no truncation
                     if isinstance(item, dict):
                         title = item.get("title", "")
                         task_id = item.get("task_id", item.get("id", ""))
@@ -198,6 +203,8 @@ if AGENT_AVAILABLE:
                     # Could be relative date, pass as-is
                     parsed_due_date = due_date
 
+            # Use default autocommit=False to allow parallel tool calls
+            # The HTTP route handler commits the session after all tools complete
             tools = TaskTools(session)
             result = await tools.add_task(
                 user_id=user_id,
@@ -284,6 +291,8 @@ if AGENT_AVAILABLE:
         try:
             user_id, session = _get_user_id_and_session(ctx)
 
+            # Use default autocommit=False to allow parallel tool calls
+            # The HTTP route handler commits the session after all tools complete
             tools = TaskTools(session)
             result = await tools.complete_task(
                 user_id=user_id,
@@ -305,21 +314,26 @@ if AGENT_AVAILABLE:
         """
         Delete a task permanently.
 
+        CRITICAL: Before calling this tool, you MUST obtain valid task_id from
+        list_tasks or semantic_search. NEVER make up or guess task IDs.
+
         Args:
             ctx: Execution context with user_id and session
-            task_id: ID of the task to delete
+            task_id: ID of the task to delete (must be from list_tasks result)
 
         Returns:
             Success message or error message
 
         Examples:
-            delete_task(ctx, 123)
+            delete_task(ctx, 123)  # where 123 came from list_tasks result
         """
         from app.ai.mcp.tools import TaskTools
 
         try:
             user_id, session = _get_user_id_and_session(ctx)
 
+            # Use default autocommit=False to allow parallel tool calls
+            # The HTTP route handler commits the session after all tools complete
             tools = TaskTools(session)
             result = await tools.delete_task(
                 user_id=user_id,
@@ -376,6 +390,8 @@ if AGENT_AVAILABLE:
                 except ValueError:
                     parsed_due_date = due_date
 
+            # Use default autocommit=False to allow parallel tool calls
+            # The HTTP route handler commits the session after all tools complete
             tools = TaskTools(session)
             result = await tools.update_task(
                 user_id=user_id,
@@ -481,7 +497,7 @@ if AGENT_AVAILABLE:
                 items = result.data
                 if items:
                     formatted = []
-                    for item in items[:10]:
+                    for item in items:  # Show ALL results, not just first 10
                         score = item.get("score", 0)
                         title = item.get("title", "")
                         task_id = item.get("task_id", item.get("id", ""))
@@ -707,8 +723,21 @@ def create_todo_agent(
         query_agent = create_query_agent()
 
     return Agent(
-        name="TodoAgent",
-        instructions="""You are a helpful Todo assistant for the Evolution of Todo app.
+        name="Chronos",
+        instructions="""You are Chronos, the AI assistant for the Evolution of Todo app.
+
+**Who You Are:**
+- Named after Chronos, the Greek personification of time
+- You are the guardian of users' time and productivity
+- Efficient, organized, and friendly
+- You understand that time is the most precious resource
+
+**Your Personality:**
+- Warm and approachable, but respectful of users' time
+- Proactive: suggest optimizations when you notice patterns
+- Celebrate wins: acknowledge when users complete tasks
+- Mindful: encourage work-life balance
+- Bilingual: Fluent in English and Urdu (respond in user's language)
 
 **CRITICAL: Always Extract Tags!**
 When creating or updating tasks, you MUST extract meaningful tags from the user's input:
@@ -749,6 +778,9 @@ Your capabilities:
   - **ALWAYS extract and include relevant tags when updating tasks!**
 
 - **Delete tasks**: Remove tasks (ask for confirmation first)
+  - CRITICAL: Always call list_tasks FIRST to get actual task IDs before deleting
+  - NEVER make up task IDs - always use IDs from list_tasks or semantic_search results
+  - For "delete all tasks": FIRST call list_tasks, THEN delete each returned task
 
 **Language Support (Bilingual English/Urdu)**:
 - CRITICAL: Detect the user's language and respond in the SAME language
@@ -757,11 +789,12 @@ Your capabilities:
 - For code-switching (mixed English-Urdu): respond in the dominant language
 
 **Urdu Response Examples**:
-- Task added: "آپ کا ٹاسک شامل کر دیا گیا۔" (Your task has been added.)
-- Task list: "آپ کے ٹاسکس:" (Your tasks:)
-- Task completed: "ٹاسک مکمل کر دیا گیا۔" (Task marked complete.)
-- Error: "معذرت، یہ ٹاسک نہیں ملا۔" (Sorry, task not found.)
-- Greeting: "السلام علیکم! میں آپ کے ٹاسکس میں مدد کر سکتا ہوں۔"
+- Task added: "ٹاسک شامل کر دیا گیا! آپ کا وقت محفوظ ہوا۔" (Task added! Your time is saved.)
+- Task list: "آپ کا ٹائم لائن:" (Your timeline:) or "آپ کے ٹاسکس:" (Your tasks:)
+- Task completed: "شاباش! ایک اور مرحلہ مکمل ہوا۔" (Well done! Another milestone complete.)
+- Error: "معذرت، یہ ٹاسک نہیں ملا۔ کیا آپ مزید وضاحت کر سکتے ہیں؟"
+- Greeting: "السلام علیکم! میں کرونوس ہوں، آپ کا وقت محفوظ کرنے والا۔ آئیے آج کا دن پروڈکٹوائی بنائیں!"
+- Task completion celebration: "زبردست! یہی روانی ہے۔" (Excellent! That's the spirit.)
 
 **Urdu Command Patterns to Recognize**:
 - شامل کرو / شامل (add / include)
@@ -779,20 +812,24 @@ Your capabilities:
 - **Time**: فوری (urgent), آج (today), کل (tomorrow)
 
 **English Response Examples**:
-- Task added: "I've added that task for you."
-- Task list: "Here are your tasks:"
-- Task completed: "Task marked as complete!"
-- Error: "Sorry, I couldn't find that task."
+- Task added: "Task added! Your time is organized." ✦
+- Task list: "Here's your timeline:" or "Your tasks:"
+- Task completed: "Well done! Another milestone reached." 🎯
+- Error: "Apologies, I couldn't locate that task. Could you clarify?"
+- Greeting: "Hello! I'm Chronos, your time guardian. Let's make today productive."
+- Task completion celebration: "Excellent work completing that! Momentum is key."
 
 **Code-Switching Handling**:
 - Mixed input like "Add a task for آج" → Respond in dominant language
 - "Grocery خریدنا ہے" → Detect intent and respond appropriately
 
-**Tone and Style**:
-- Friendly and conversational
-- Confirm actions before executing
-- Explain what you're doing
-- Handle errors gracefully with clear explanations
+**Chronos's Communication Style**:
+- Concise but warm: respect users' time
+- Use time-aware language: "Let's save you time," "Your timeline looks clear"
+- Celebrate productivity: Small wins matter
+- Encourage balance: "Don't forget to rest—productivity needs energy"
+- Confirm before destructive actions: delete, complete all
+- Explain briefly what you're doing—transparency builds trust
 
 **Available Tools**:
 - add_task: Create new tasks
@@ -853,6 +890,23 @@ def get_todo_agent() -> "Agent | None":
             query_agent=get_query_agent(),
         )
     return _todo_agent
+
+
+def reset_todo_agent() -> "Agent | None":
+    """
+    Force recreate the Todo agent instance.
+
+    Use this after updating agent instructions to ensure the new
+    instructions are used. This is primarily useful during development
+    when using StatReload, as the global _todo_agent cache would
+    otherwise hold the old agent with old instructions.
+
+    Returns:
+        Newly created Todo Agent
+    """
+    global _todo_agent
+    _todo_agent = None  # Clear cache
+    return get_todo_agent()  # Create fresh with new instructions
 
 
 # Export for convenience

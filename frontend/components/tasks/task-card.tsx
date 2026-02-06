@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { TaskActions } from "./task-actions"
 import { toggleTaskComplete } from "@/app/actions/tasks"
+import { api } from "@/lib/api-client"
 import { taskCompletionConfetti } from "@/components/confetti"
 import { taskCard, taskComplete } from "@/lib/animations"
 import type { Task } from "@/types/task"
@@ -100,19 +101,12 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
     setIsRegeneratingSummary(true)
 
     try {
-      const response = await fetch(`/api/tasks/${task.id}/summary/regenerate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
+      const result = await api.regenerateTaskSummary(task.id)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Failed to regenerate summary")
+      if (!result.success) {
+        toast.error(result.error?.message || "Failed to regenerate summary")
+        return
       }
-
-      await response.json()
 
       // Invalidate queries to get updated task
       queryClient.invalidateQueries({ queryKey: ["tasks"] })

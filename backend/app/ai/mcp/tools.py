@@ -58,25 +58,20 @@ class TaskTools:
     Per FR-029: Validate user owns task before operations (404 if not).
 
     Session Management:
-    - When autocommit=False (default): Caller is responsible for committing the session.
-      This is used when called from the OpenAI agent where the session is managed
-      by the FastAPI route handler.
-    - When autocommit=True: This class commits after each operation.
-      This is used for standalone tool calls via direct HTTP/MCP access.
+    - The caller is responsible for committing the session.
+    - All operations use flush() to persist objects without closing transactions.
+    - This allows multiple parallel tool calls to share the same session.
     """
 
-    def __init__(self, session: AsyncSession, autocommit: bool = False):
+    def __init__(self, session: AsyncSession):
         """
         Initialize task tools.
 
         Args:
-            session: Database session for operations
-            autocommit: If True, commit after each operation. If False (default),
-                       the caller must commit the session. Use False when the session
-                       is managed by an outer context (e.g., FastAPI route).
+            session: Database session for operations. The caller must commit
+                   the session after all operations complete.
         """
         self.session = session
-        self.autocommit = autocommit
         self.logger = get_logger("mcp", "TaskTools")
 
     async def add_task(
@@ -135,8 +130,9 @@ class TaskTools:
             )
 
             self.session.add(task)
-            if self.autocommit:
-                await self.session.commit()
+            # Flush to persist to DB so refresh() works and task.id is available
+            # Note: Caller (HTTP route handler) will commit the transaction
+            await self.session.flush()
             await self.session.refresh(task)
 
             # Generate AI summary if description is long (T094, T096-T098)
@@ -147,16 +143,9 @@ class TaskTools:
                     priority=priority,
                     tags=tags,
                 )
-                if self.autocommit:
-                    await self.session.commit()
 
             # Generate embedding for semantic search (T062, FR-034)
             await self._generate_and_store_embedding(task, user_id)
-
-            # Update embedding_id in task
-            if task.embedding_id or task.ai_summary:
-                if self.autocommit:
-                    await self.session.commit()
 
             # Log success (LOG-021)
             self.logger.info(
@@ -490,8 +479,7 @@ class TaskTools:
 
             # Mark complete
             task.completed = True
-            if self.autocommit:
-                await self.session.commit()
+            # Note: Caller (HTTP route handler) will commit the transaction
 
             # Update Qdrant embedding to reflect completed status (T040)
             # Re-embed task so semantic search filters it out from pending tasks
@@ -579,10 +567,7 @@ class TaskTools:
                     message=f"Task {task_id} doesn't exist or was deleted",
                 )
 
-            # Delete task embedding from Qdrant first (FR-034)
-            await self._delete_task_embedding(task_id)
-
-            # Capture task data before deletion
+            # Store task data before deletion for the response
             task_data = {
                 "task_id": task.id,
                 "title": task.title,
@@ -593,10 +578,44 @@ class TaskTools:
                 "tags": [t for t in (task.tags or [])],
             }
 
-            # Delete task
-            await self.session.delete(task)
-            if self.autocommit:
-                await self.session.commit()
+            # Delete task embedding from Qdrant first (FR-034)
+            await self._delete_task_embedding(task_id)
+
+            # Delete dependent records first (foreign key constraints)
+            # Order matters: delete in reverse order of dependency
+            # Chain: tasks → notifications → email_delivery_logs
+            from sqlalchemy import delete as sql_delete
+
+            from app.models.notification import Notification
+            from app.models.email_delivery_log import EmailDeliveryLog
+
+            # 1. Find all notification IDs that reference this task
+            notification_ids_result = await self.session.execute(
+                select(Notification.id).where(Notification.related_task_id == task_id)
+            )
+            notification_ids = [row[0] for row in notification_ids_result.all()]
+
+            # 2. Delete email_delivery_logs that reference those notifications
+            if notification_ids:
+                await self.session.execute(
+                    sql_delete(EmailDeliveryLog).where(
+                        EmailDeliveryLog.notification_id.in_(notification_ids)
+                    )
+                )
+
+            # 3. Delete notifications that reference this task
+            # This handles: notifications_related_task_id_fkey constraint
+            await self.session.execute(
+                sql_delete(Notification).where(Notification.related_task_id == task_id)
+            )
+
+            # 4. Delete task - task_logs are automatically deleted by ON DELETE CASCADE
+            # NOTE: Do NOT commit here. Let the caller (HTTP route handler) manage
+            # the transaction. This prevents conflicts when multiple tools are called
+            # in parallel by the agent.
+            await self.session.execute(
+                sql_delete(Task).where(Task.id == task_id)
+            )
 
             self.logger.info(
                 "MCP tool completed: delete_task",
@@ -704,8 +723,7 @@ class TaskTools:
                 # Replace existing tags with new tags
                 task.tags = [t for t in tags]
 
-            if self.autocommit:
-                await self.session.commit()
+            # Note: Caller (HTTP route handler) will commit the transaction
 
             # Regenerate AI summary if description changed (T095)
             if description_changed and task.description and len(task.description) > 100:
@@ -713,17 +731,12 @@ class TaskTools:
                     title=task.title,
                     description=task.description,
                     priority=task.priority.value,
-                    tags=[t.model_dump() for t in task.tags],
+                    tags=[t for t in (task.tags or [])],  # Tags are already dicts from JSONB
                 )
-                if self.autocommit:
-                    await self.session.commit()
 
             # Regenerate embedding if text changed (T064, FR-034)
             if text_changed:
                 await self._generate_and_store_embedding(task, user_id)
-                if task.embedding_id or task.ai_summary:
-                    if self.autocommit:
-                        await self.session.commit()
 
             self.logger.info(
                 "MCP tool completed: update_task",
@@ -814,7 +827,7 @@ class TaskTools:
                     "priority": task.priority.value,
                     "due_date": task.due_date.isoformat() if task.due_date else None,
                     "completed": task.completed,
-                    "tags": [t.model_dump() for t in task.tags],
+                    "tags": [t for t in (task.tags or [])],  # Tags are already dicts from JSONB
                 },
                 message=f"Task '{task.title}' retrieved",
             )

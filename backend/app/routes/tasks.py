@@ -371,7 +371,7 @@ async def create_task(
             text_to_embed = f"{task.title}. {task.description or ''}"
             embedding_response = await openai_service.generate_embedding(text_to_embed)
 
-            # Store in Qdrant
+            # Store in Qdrant with full payload for semantic search
             success = await qdrant_service.upsert_task_embedding(
                 task_id=task.id,
                 user_id=current_user_id,
@@ -380,6 +380,9 @@ async def create_task(
                     "title": task.title,
                     "description": task.description or "",
                     "completed": task.completed,
+                    "priority": task.priority.value,
+                    # Include tags in payload for better semantic matching
+                    "tags": [tag.get("name", "") for tag in tags_as_dicts],
                 },
             )
 
@@ -608,8 +611,13 @@ async def update_task(
     )
     await session.commit()
 
-    # Phase III: Update embedding if title or description changed
-    if "title" in changed_fields or "description" in changed_fields:
+    # CRITICAL: Update Qdrant embedding when any semantic field changes
+    # This includes: title, description, completed status, or tags
+    # Without this, semantic_search will have stale data and return incorrect results
+    fields_affecting_semantics = {"title", "description", "completed", "tags"}
+    should_update_embedding = any(key in changed_fields for key in fields_affecting_semantics)
+
+    if should_update_embedding:
         qdrant_service = get_qdrant_service()
         openai_service = get_openai_service()
         if qdrant_service and openai_service:
@@ -618,7 +626,7 @@ async def update_task(
                 text_to_embed = f"{task.title}. {task.description or ''}"
                 embedding_response = await openai_service.generate_embedding(text_to_embed)
 
-                # Update in Qdrant
+                # Update in Qdrant with full payload including completed status
                 success = await qdrant_service.upsert_task_embedding(
                     task_id=task.id,
                     user_id=current_user_id,
@@ -627,6 +635,9 @@ async def update_task(
                         "title": task.title,
                         "description": task.description or "",
                         "completed": task.completed,
+                        "priority": task.priority.value,
+                        # Include tags in payload for better semantic matching
+                        "tags": [t.get("name", "") for t in (task.tags or [])],
                     },
                 )
 
@@ -686,11 +697,7 @@ async def delete_task(
         sql_delete(Notification).where(Notification.related_task_id == task_id)
     )
 
-    # 4. Delete audit logs
-    await session.execute(
-        sql_delete(TaskLog).where(TaskLog.task_id == task_id)
-    )
-
+    # 4. Delete task - task_logs are automatically deleted by ON DELETE CASCADE
     # Phase III: Delete embedding from Qdrant
     qdrant_service = get_qdrant_service()
     if qdrant_service:
@@ -703,7 +710,7 @@ async def delete_task(
         except Exception as e:
             logger.warning(f"Failed to delete embedding for task {task_id}: {e}")
 
-    # 5. Now delete the task (no foreign keys remain)
+    # 5. Now delete the task (no foreign keys remain except task_logs with CASCADE)
     await session.delete(task)
     await session.commit()
 
@@ -748,6 +755,20 @@ async def toggle_task_complete(
         changed_fields={"completed": {"old": old_completed, "new": new_completed}},
     )
     await session.commit()
+
+    # CRITICAL: Update Qdrant embedding to reflect the new completed status
+    # This prevents stale data in Qdrant where completed status doesn't match database
+    # Without this, semantic_search will incorrectly filter out pending tasks (or include completed ones)
+    qdrant_service = get_qdrant_service()
+    if qdrant_service and qdrant_service.is_available():
+        try:
+            from app.ai.mcp.tools import TaskTools
+            # Re-generate and store embedding with updated completed status
+            await TaskTools(session)._generate_and_store_embedding(task, current_user_id)
+            logger.info(f"Qdrant embedding updated for task: id={task.id}, completed={new_completed}")
+        except Exception as e:
+            # Non-fatal: log but don't fail the request
+            logger.warning(f"Failed to update Qdrant embedding for task {task.id}: {e}")
 
     # [Task]: T052 - Create notification for task completion
     # Send notification when task is marked complete

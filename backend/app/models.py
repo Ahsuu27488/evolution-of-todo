@@ -15,7 +15,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_serializer, field_validator
-from sqlalchemy import Column, DateTime, func, case as sql_case
+from sqlalchemy import Column, DateTime, func, case as sql_case, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import SQLModel, Field as SQLField, Relationship
 
@@ -154,7 +154,12 @@ class Task(TaskBase, table=True):
     )
 
     # Relationships
-    logs: list["TaskLog"] = Relationship(back_populates="task")
+    # passive_deletes="all" prevents SQLAlchemy from trying to cascade updates
+    # to task_logs when a task is deleted. We handle deletion manually in tasks.py.
+    logs: list["TaskLog"] = Relationship(
+        back_populates="task",
+        passive_deletes="all",
+    )
     # Note: Notification relationship omitted to avoid circular import.
     # Notifications link to tasks via related_task_id foreign key.
 
@@ -182,9 +187,15 @@ class TaskLog(TaskLogBase, table=True):
     __tablename__ = "task_logs"
 
     id: Optional[int] = SQLField(default=None, primary_key=True)
+    # Use explicit ForeignKey with ondelete CASCADE for proper cascade behavior
+    # When a task is deleted, its logs are automatically deleted at the DB level.
+    # This prevents SQLAlchemy from trying to NULL out task_id before deletion.
     task_id: int = SQLField(
-        foreign_key="tasks.id",
-        index=True,
+        sa_column=Column(
+            Integer,
+            ForeignKey("tasks.id", ondelete="CASCADE"),
+            index=True,
+        ),
         description="Related task ID",
     )
     user_id: str = SQLField(
