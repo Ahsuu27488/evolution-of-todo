@@ -143,7 +143,7 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="update_task",
-        description="Update an existing task",
+        description="Update an existing task. Extract and add meaningful tags from user input including locations (Karachi, Lahore, Islamabad, etc.), categories (work, shopping, travel, personal, study, health), activities (meeting, class, appointment, call, email), and action items (buy, call, email, review). Tags help organize and find tasks later.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -171,6 +171,18 @@ TOOLS: list[Tool] = [
                 "due_date": {
                     "type": "string",
                     "description": "New due date in ISO format",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Tag name (e.g., 'karachi', 'work', 'shopping', 'urgent')"},
+                            "color": {"type": "string", "description": "Hex color code (e.g., '#00f5ff' for cyan, '#a855f7' for purple)"},
+                        },
+                        "required": ["name", "color"],
+                    },
+                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #00f5ff (cyan), #a855f7 (purple), #f59e0b (amber), #10b981 (green), #ef4444 (red), #ec4899 (pink), #8b5cf6 (violet).",
                 },
             },
             "required": ["user_id", "task_id"],

@@ -598,6 +598,7 @@ class TaskTools:
         description: str | None = None,
         priority: str | None = None,
         due_date: datetime | None = None,
+        tags: list[dict[str, str]] | None = None,
     ) -> ToolResponse:
         """
         Update a task.
@@ -613,6 +614,7 @@ class TaskTools:
             description: New description (optional)
             priority: New priority (optional)
             due_date: New due date (optional)
+            tags: New tags to replace existing tags (optional)
 
         Returns:
             ToolResponse with updated task data
@@ -622,6 +624,7 @@ class TaskTools:
                 user_id="user123",
                 task_id=42,
                 title="Updated title",
+                tags=[{"name": "urgent", "color": "#ef4444"}],
             )
         """
         try:
@@ -661,6 +664,9 @@ class TaskTools:
                 task.priority = Priority(priority.upper())
             if due_date is not None:
                 task.due_date = due_date
+            if tags is not None:
+                # Replace existing tags with new tags
+                task.tags = [t for t in tags]
 
             await self.session.commit()
 

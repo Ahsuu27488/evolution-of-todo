@@ -310,6 +310,7 @@ if AGENT_AVAILABLE:
         description: str | None = None,
         priority: str | None = None,
         due_date: str | None = None,
+        tags: list[dict[str, str]] | None = None,
     ) -> str:
         """
         Update an existing task's properties.
@@ -321,6 +322,7 @@ if AGENT_AVAILABLE:
             description: New description for the task
             priority: New priority - HIGH, MEDIUM, or LOW
             due_date: New due date in ISO format
+            tags: List of tags with name and color - IMPORTANT: Extract tags from user input!
 
         Returns:
             Success message with updated task or error message
@@ -328,6 +330,7 @@ if AGENT_AVAILABLE:
         Examples:
             update_task(ctx, 123, priority="HIGH")
             update_task(ctx, 123, title="New title", description="New description")
+            update_task(ctx, 123, tags=[{"name": "urgent", "color": "#ef4444"}])
         """
         from app.ai.mcp.tools import TaskTools
 
@@ -350,6 +353,7 @@ if AGENT_AVAILABLE:
                 description=description,
                 priority=priority,
                 due_date=parsed_due_date,
+                tags=tags,
             )
 
             return _format_tool_result(result, "update_task")
@@ -675,12 +679,24 @@ def create_todo_agent(
         name="TodoAgent",
         instructions="""You are a helpful Todo assistant for the Evolution of Todo app.
 
+**CRITICAL: Always Extract Tags!**
+When creating or updating tasks, you MUST extract meaningful tags from the user's input:
+- **Locations**: Karachi, Lahore, Islamabad, Rawalpindi, etc.
+- **Categories**: work, shopping, travel, personal, study, health, finance, home
+- **Activities**: meeting, class, appointment, call, email, buy, review
+- **Time-based**: urgent, today, tomorrow, this-week, weekend
+
+**Tag Format**: Always include both name and color:
+- tags=[{"name": "karachi", "color": "#00f5ff"}, {"name": "work", "color": "#a855f7"}]
+- Use these colors: #00f5ff (cyan), #a855f7 (purple), #f59e0b (amber), #10b981 (green), #ef4444 (red), #ec4899 (pink), #8b5cf6 (violet)
+
 Your capabilities:
 - **Add tasks**: Extract task details from natural language
   - Title (required)
   - Description (optional)
   - Priority: HIGH, MEDIUM, LOW (default: MEDIUM)
   - Due date: extract from phrases like "tomorrow", "next week", "Friday at 5pm"
+  - **Tags: ALWAYS extract and include tags based on user input!**
 
 - **Search tasks**: Find tasks by meaning using semantic search
   - Natural language queries work best: "grocery items", "work tasks", "urgent things"
@@ -695,7 +711,8 @@ Your capabilities:
   - Confirm task ID or title before completing
 
 - **Update tasks**: Modify existing task properties
-  - Title, description, priority, due date
+  - Title, description, priority, due date, **tags**
+  - **ALWAYS extract and include relevant tags when updating tasks!**
 
 - **Delete tasks**: Remove tasks (ask for confirmation first)
 
@@ -720,6 +737,12 @@ Your capabilities:
 - اپ ڈیٹ (update)
 - خریدنا (buy)
 - کام کا (work-related)
+
+**Urdu Tag Examples to Extract**:
+- **Locations**: کراچی (karachi), لاہور (lahore), اسلام آباد (islamabad)
+- **Categories**: کام (work), خریداری (shopping), پڑھائی (study), صحت (health)
+- **Activities**: میٹنگ (meeting), کال (call), ای میل (email)
+- **Time**: فوری (urgent), آج (today), کل (tomorrow)
 
 **English Response Examples**:
 - Task added: "I've added that task for you."
