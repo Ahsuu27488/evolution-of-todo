@@ -8,7 +8,7 @@
 This is a **5-phase evolution** demonstrating Spec-Driven Development:
 - **Phase I** (Complete): In-memory Python console app
 - **Phase II** (Complete): Full-stack web app (Next.js + FastAPI + Neon DB)
-- **Phase III** (Pending): AI chatbot with OpenAI Agents SDK + MCP
+- **Phase III** (Complete): **AI chatbot "Chronos" with OpenAI Agents SDK + MCP** ⭐
 - **Phase IV** (Pending): Local K8s deployment with Minikube/Helm
 - **Phase V** (Pending): Cloud deployment with Kafka/Dapr
 
@@ -198,27 +198,122 @@ When working on a phase, **do not modify** other phases' code unless:
 
 ## Extension Points
 
-### Phase III: AI Integration
+### Extension Points
 
-The following are pre-provisioned:
+### Phase III: AI Integration ⭐ COMPLETE
+
+**Meet Chronos — Your AI Time Guardian**
+
+Phase III introduces a sophisticated multi-agent AI system named **Chronos** (Greek: Χρόνος, personification of time). Built with the **OpenAI Agents SDK** and **Model Context Protocol (MCP)**, Chronos represents the cutting edge of agentic AI technology.
+
+#### Chronos's Identity
+
+| Attribute | Value |
+|-----------|-------|
+| **Name** | Chronos (Time Guardian) |
+| **Origin** | Greek mythology — personification of time |
+| **Role** | Guardian of users' productivity and time |
+| **Personality** | Warm, efficient, proactive, bilingual |
+| **Core Model** | gpt-4o-mini |
+| **Specialists** | PlanningAgent (weekly scheduling), QueryAgent (semantic search) |
+| **Languages** | English + Urdu (اردو) with RTL support |
+
+#### Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    CHRONOS (Main Agent)                          │
+│                   Name: Chronos (Time Guardian)                  │
+├─────────────────────────────────────────────────────────────────┤
+│  Personality: Warm but respectful of time, proactive             │
+│  Celebrates: Task completions with encouraging messages         │
+│  Balance: Encourages work-life balance and rest                 │
+│  Bilingual: Detects and responds in English or Urdu (اردو)      │
+├─────────────────────────────────────────────────────────────────┤
+│  MCP Tools (7 total):                                             │
+│    ├── add_task (with auto-tag extraction from natural language) │
+│    ├── list_tasks (with status, priority filters)               │
+│    ├── complete_task (with task ID validation)                  │
+│    ├── update_task (modify properties, tags, priority)           │
+│    ├── delete_task (with confirmation)                           │
+│    ├── get_task (detailed task information)                     │
+│    └── semantic_search (vector embeddings via Qdrant)           │
+├─────────────────────────────────────────────────────────────────┤
+│  Handoffs to Specialists:                                         │
+│    ├── PlanningAgent — Weekly planning, prioritization          │
+│    └── QueryAgent — Semantic search, complex filters            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### AI-Ready Fields (Now Active)
+
+The following pre-provisioned fields are now fully utilized:
 
 ```python
-# Backend (app/models.py)
-task.transcription_text  # Voice input storage
-task.ai_summary         # LLM-generated summary
-task.embedding_id       # Vector search ID
+# Backend (backend/app/models.py)
+task.transcription_text  # Voice input storage (Whisper API)
+task.ai_summary         # LLM-generated summary (planned)
+task.embedding_id       # Vector search ID (Qdrant integration active)
 ```
 
 ```typescript
 // Frontend (types/task.ts)
 export interface Task {
-  transcription_text: string | null
-  ai_summary: string | null
-  embedding_id: string | null
+  transcription_text: string | null  // Transcribed voice memos
+  ai_summary: string | null          // AI-generated summaries
+  embedding_id: string | null        // Vector embeddings for search
 }
 ```
 
-### Phase IV: Kubernetes
+#### Phase III Technologies
+
+| Technology | Purpose | Location |
+|------------|---------|----------|
+| **OpenAI Agents SDK** | Multi-agent orchestration | `backend/app/ai/agents/` |
+| **gpt-4o-mini** | Main chat model | OpenAI API |
+| **text-embedding-3-small** | Vector embeddings (1536 dims) | Qdrant storage |
+| **Whisper API (whisper-1)** | Voice transcription | `backend/app/ai/services/openai_client.py` |
+| **Qdrant Cloud** | Vector database for semantic search | `backend/app/ai/services/qdrant_client.py` |
+| **MCP SDK** | Model Context Protocol for tool calling | `backend/app/ai/mcp/` |
+| **langdetect** | English/Urdu language detection | `backend/app/ai/utils/language.py` |
+| **structlog** | Structured JSON logging | `backend/app/ai/utils/logging.py` |
+
+#### Key Features
+
+1. **Natural Language Task Management**: Chat with Chronos to create, complete, update, and delete tasks
+2. **Semantic Search**: Find tasks by meaning using vector embeddings ("grocery items" finds "buy milk", "eggs")
+3. **Voice Input**: Record voice memos (30s limit) transcribed via Whisper API
+4. **Bilingual Support**: Full English and Urdu (اردو) support with RTL rendering
+5. **Agent Handoffs**: Chronos delegates to PlanningAgent and QueryAgent for specialized tasks
+6. **SSE Streaming**: Real-time token-by-token responses in the chat interface
+7. **Auto-Tag Extraction**: Chronos automatically extracts tags (locations, categories, activities) from natural language
+
+#### Agent Files
+
+| File | Purpose |
+|------|---------|
+| `backend/app/ai/agents/todo_agent.py` | Main Chronos agent with personality |
+| `backend/app/ai/agents/context.py` | Agent execution context management |
+| `backend/app/ai/mcp/tools.py` | MCP tool implementations (7 tools) |
+| `backend/app/ai/services/openai_client.py` | OpenAI API (chat, embeddings, Whisper) |
+| `backend/app/ai/services/qdrant_client.py` | Vector database client |
+| `backend/app/ai/services/runner_service.py` | Agent execution with streaming |
+| `backend/app/ai/utils/language.py` | Urdu/English detection |
+| `backend/routes/chat.py` | Chat API endpoints (SSE streaming) |
+
+#### Frontend Chat Files
+
+| File | Purpose |
+|------|---------|
+| `frontend/components/chat/chat-panel.tsx` | Main chat interface |
+| `frontend/components/chat/chat-message.tsx` | Message display with RTL support |
+| `frontend/components/chat/voice-recorder.tsx` | Whisper voice recording |
+| `frontend/lib/api/chat.ts` | Chat API client with SSE parsing |
+| `frontend/lib/utils/sse.ts` | Shared SSE streaming utilities |
+| `frontend/lib/utils/text-direction.ts` | RTL/Urdu text detection |
+| `frontend/lib/stores/chat-store.ts` | React Context for chat UI state |
+
+### Phase IV: Kubernetes (Pending)
 
 Helm chart structure (planned):
 ```
@@ -365,9 +460,27 @@ eventSource.addEventListener('notification', (event) => {
 ```
 
 ## Recent Changes
-- 012-ai-chatbot-phase3: Added Python 3.13+ (STRICT per constitution §V.1.1)
+- **012-ai-chatbot-phase3** (Complete): ⭐ **Chronos AI Assistant** — Multi-agent system with OpenAI Agents SDK, semantic search (Qdrant), voice input (Whisper), bilingual English/Urdu support, SSE streaming
 - 012-notification-system: Comprehensive multi-channel notification system with SSE, push, email
 - 011-timezone-support: User timezone field for accurate digest scheduling
 
 ## Active Technologies
-- Python 3.13+ (STRICT per constitution §V.1.1) (012-ai-chatbot-phase3)
+- **Python 3.13+** (STRICT per constitution §V.1.1) (012-ai-chatbot-phase3)
+- **OpenAI Agents SDK** — Multi-agent orchestration
+- **gpt-4o-mini** — Main chat model
+- **Qdrant** — Vector database for semantic search
+- **Whisper API** — Voice transcription
+
+---
+
+## ★ Insight ─────────────────────────────────────
+
+**Chronos — A New Paradigm in AI-Powered Task Management:**
+
+1. **Agentic Architecture**: Chronos isn't just a chatbot — it's a multi-agent system with specialized agents (PlanningAgent, QueryAgent) that coordinate through the OpenAI Agents SDK. This allows Chronos to delegate complex tasks to specialists while maintaining a coherent conversation.
+
+2. **Semantic Understanding**: Unlike traditional keyword search, Chronos uses vector embeddings (text-embedding-3-small) stored in Qdrant to find tasks by *meaning*. When users search for "grocery items," Chronos finds tasks containing "buy milk," "eggs," "bread" — even without those exact words.
+
+3. **Cultural & Language Sensitivity**: Chronos detects and responds in Urdu (اردو) with proper RTL rendering, including Roman Urdu support. The Whisper transcription includes Urdu biasing to prevent Devanagari output — a critical feature for Urdu speakers who often get Hindi script instead.
+
+─────────────────────────────────────────────────────────
