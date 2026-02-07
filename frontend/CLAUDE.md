@@ -8,9 +8,22 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 - User authentication via Better Auth
 - Task management UI with filtering, sorting, search
 - Real-time state synchronization with backend
-- Comprehensive notification system (SSE, push, email)
 - **AI Chatbot with natural language task management** (Phase III)
 - Dark mode and responsive design
+
+---
+
+## ★ Insight ─────────────────────────────────────
+
+**Key Architectural Evolution (Phase II → Phase III):**
+
+1. **Shared Auth Token Pattern**: Phase III introduced `lib/auth/token.ts` - a centralized `getAuthToken()` utility. This eliminates code duplication across API clients (`api-client.ts`, `api/chat.ts`, `use-chat.ts`).
+
+2. **SSE Streaming Utilities**: Phase III added `lib/utils/sse.ts` with `parseSSEStream()` - a reusable async generator for parsing Server-Sent Events. This is used by both notification streaming and chat streaming.
+
+3. **React Context over Zustand for Chat**: The chat UI state uses React Context (`lib/stores/chat-store.ts`) instead of Zustand. This prevents infinite re-render loops that occur with Zustand object selectors in SSR/hydration scenarios.
+
+─────────────────────────────────────────────────────────
 
 ## Architecture Overview
 
@@ -30,8 +43,8 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │  Notification│  │  Task Components│  │ Chat Components  ││
 │  │  - Bell      │  │  - task-card │  │  - chat-panel    │  │
-│  │  - Dropdown  │  │  - task-list │  │  - chat-input    │  │
-│  │  - SSE       │  │  - forms     │  │  - voice-recorder│  │
+│  │  - Dropdown  │  │  - task-list │  │  - voice-recorder│  │
+│  │  - SSE       │  │  - forms     │  │  - chat-input    │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -51,20 +64,22 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      Data Layer                              │
-│  ┌──────────────────┐         ┌──────────────────────────┐ │
-│  │   API Client     │────────▶│   FastAPI Backend        │ │
+│  ┌──────────────────┐         ┌──────────────────────────┐ │ │
+│  │   API Client     │────────▶│   FastAPI Backend        │ │ │
 │  │  (lib/api-client)│         │   (JWT auth)             │  │
-│  └──────────────────┘         └──────────────────────────┘ │
-│  ┌──────────────────┐         ┌──────────────────────────┐ │
-│  │   Chat API       │────────▶│   OpenAI Agents Backend │  │
-│  │  (lib/api/chat) │         │   (MCP tools)            │  │
-│  └──────────────────┘         └──────────────────────────┘ │
-│  ┌──────────────────┐         ┌──────────────────────────┐ │
-│  │   Better Auth    │────────▶│   Neon PostgreSQL        │ │
+│  └──────────────────┘         └──────────────────────────┘ │ │
+│  ┌──────────────────┐         ┌──────────────────────────┐ │ │
+│  │   Chat API       │────────▶│   OpenAI Agents Backend │  │ │
+│  │  (lib/api/chat) │         │   (MCP tools)            │  │ │
+│  └──────────────────┘         └──────────────────────────┘ │ │
+│  ┌──────────────────┐         ┌──────────────────────────┐ │ │
+│  │   Better Auth    │────────▶│   Neon PostgreSQL        │ │ │
 │  │  (lib/auth.ts)   │         │   (user sessions)        │  │
-│  └──────────────────┘         └──────────────────────────┘ │
+│  └──────────────────┘         └──────────────────────────┘ │ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## Key File Locations
 
@@ -72,8 +87,8 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 
 | File | Purpose | Key Details |
 |------|---------|-------------|
-| `app/layout.tsx` | Root layout | Font config, Providers wrapper, ViewTransitions |
-| `app/providers.tsx` | App providers | TanStack Query, ThemeProvider, Toaster |
+| `app/layout.tsx` | Root layout | Font config (Geist, Noto Nastaliq Urdu), Providers wrapper |
+| `app/providers.tsx` | App providers | TanStack Query, ThemeProvider, Toaster, ChatProvider |
 | `lib/auth.ts` | Better Auth config | JWT plugin, Neon DB connection |
 | `lib/api-client.ts` | Backend client | JWT token fetching, retry logic, error handling |
 | `lib/auth-client.ts` | Client auth helpers | Sign in/up with backend integration |
@@ -90,6 +105,9 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 | `components/notifications/notification-bell.tsx` | Bell icon | Unread badge, Dropdown trigger |
 | `components/notifications/notification-dropdown.tsx` | Dropdown | Notification list, filters, actions |
 | `components/notifications/sse-stream-provider.tsx` | SSE client | EventSource connection, cache updates |
+| `components/notifications/email-preferences.tsx` | Email settings | Per-channel toggles, test email |
+| `components/notifications/push-settings.tsx` | Push settings | Subscribe/unsubscribe, test |
+| `components/notifications/push-permission-modal.tsx` | Permission modal | User-friendly permission request |
 
 ### Phase III (AI Chatbot)
 
@@ -108,6 +126,8 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 | `components/chat/chat-message.tsx` | Message display | User/assistant styling, RTL support |
 | `components/chat/voice-recorder.tsx` | Voice recording | MediaRecorder API, Whisper transcription |
 | `components/chat/task-card.tsx` | Task cards in chat | Inline task display for AI-created tasks |
+
+---
 
 ## Architecture Patterns
 
@@ -237,6 +257,8 @@ class ApiClient {
 }
 ```
 
+---
+
 ## Coding Conventions
 
 ### Type-Safe API Calls
@@ -286,6 +308,8 @@ async function getAuthToken() { /* ... */ }
 - Utilities: `*.ts` in `lib/utils/`
 - Config: `*.ts` in `lib/config/`
 
+---
+
 ## Notification System Architecture
 
 ### Components
@@ -318,6 +342,8 @@ enum NotificationType {
 | `notification` | Notification object | Add to list, increment unread |
 | `notification_read` | `{ id: number }` | Mark as read, decrement unread |
 | `ping` | `{ timestamp: string }` | Keep connection alive |
+
+---
 
 ## Chat System Architecture (Phase III)
 
@@ -380,6 +406,8 @@ export function useChatStore() {
 - Applied to chat messages and input placeholders
 ```
 
+---
+
 ## Auth Configuration
 
 ### Better Auth JWT Settings
@@ -401,6 +429,8 @@ jwt({
 1. Frontend (Better Auth signing)
 2. Backend (FastAPI verification)
 
+---
+
 ## State Management Split
 
 | State Type | Library | Examples |
@@ -414,6 +444,8 @@ jwt({
 - Use React Context for interactive component state (chat, modals)
 - Use Zustand for persistent client-side preferences (filters)
 - Never persist server state in client stores
+
+---
 
 ## Styling Conventions
 
@@ -454,6 +486,8 @@ const buttonVariants = cva(
 )
 ```
 
+---
+
 ## Error Handling
 
 ### Error Hierarchy
@@ -477,6 +511,8 @@ import { toast } from "sonner"
 toast.success("Task created")
 toast.error("Failed to create task")
 ```
+
+---
 
 ## Important Constraints
 
