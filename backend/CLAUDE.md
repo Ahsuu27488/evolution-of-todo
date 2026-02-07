@@ -89,6 +89,36 @@ FastAPI REST API serving the Evolution of Todo application with:
 
 ---
 
+## Task Implementation Guidelines (CRITICAL for Long-Running Sessions)
+
+**IMPORTANT**: When implementing multiple tasks (e.g., via `/sp.implement`), follow this pattern to prevent context loss and hallucinations during session compactions:
+
+1. **Complete ONE task at a time** — Finish implementing, testing, and verifying a single task before moving to the next
+2. **Mark task as complete immediately** — Update task status in `tasks.md` to `completed` before starting the next task
+3. **Re-read tasks.md after each task** — After marking complete, re-read `tasks.md` to refresh context on remaining tasks
+4. **Verify code state** — Before proceeding, confirm the current codebase state matches expected changes
+5. **Commit after logical checkpoints** — After every 2-3 completed tasks or when a milestone is reached
+
+**Why this matters:**
+- Session compaction after ~200K tokens compresses conversation history
+- Without checkpoints, the agent loses track of:
+  - Which tasks were already completed
+  - Current codebase state
+  - Decisions made during implementation
+- This leads to hallucinations, repeated work, or contradicting changes
+
+**Mandatory Pattern:**
+```
+1. Read task details from tasks.md
+2. Implement task
+3. Test/verify implementation
+4. Update tasks.md: change status to "completed"
+5. Re-read tasks.md to see remaining work
+6. Proceed to next task
+```
+
+---
+
 ## Debugging Workflow
 
 **IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when encountering bugs, errors, or unexpected behavior in the backend.

@@ -148,6 +148,34 @@ if (result.success) {
 
 ## Workflow Preferences
 
+### Task Implementation Guidelines (CRITICAL for Long-Running Sessions)
+
+**IMPORTANT**: When implementing multiple tasks (e.g., via `/sp.implement`), follow this pattern to prevent context loss and hallucinations during session compactions:
+
+1. **Complete ONE task at a time** — Finish implementing, testing, and verifying a single task before moving to the next
+2. **Mark task as complete immediately** — Update task status in `tasks.md` to `completed` before starting the next task
+3. **Re-read tasks.md after each task** — After marking complete, re-read `tasks.md` to refresh context on remaining tasks
+4. **Verify code state** — Before proceeding, confirm the current codebase state matches expected changes
+5. **Commit after logical checkpoints** — After every 2-3 completed tasks or when a milestone is reached
+
+**Why this matters:**
+- Session compaction after ~200K tokens compresses conversation history
+- Without checkpoints, the agent loses track of:
+  - Which tasks were already completed
+  - Current codebase state
+  - Decisions made during implementation
+- This leads to hallucinations, repeated work, or contradicting changes
+
+**Mandatory Pattern:**
+```
+1. Read task details from tasks.md
+2. Implement task
+3. Test/verify implementation
+4. Update tasks.md: change status to "completed"
+5. Re-read tasks.md to see remaining work
+6. Proceed to next task
+```
+
 ### When Debugging
 
 **IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when:
@@ -476,16 +504,13 @@ eventSource.addEventListener('notification', (event) => {
 ```
 
 ## Recent Changes
+- 013-ai-chat-ui-redesign: Added TypeScript (Next.js 15.2+ with App Router) + React 19, TanStack Query v5, Framer Motion, Sonner (toasts), Next.js 15
 - **012-ai-chatbot-phase3** (Complete): ⭐ **Chronos AI Assistant** — Multi-agent system with OpenAI Agents SDK, semantic search (Qdrant), voice input (Whisper), bilingual English/Urdu support, SSE streaming
 - 012-notification-system: Comprehensive multi-channel notification system with SSE, push, email
-- 011-timezone-support: User timezone field for accurate digest scheduling
 
 ## Active Technologies
-- **Python 3.13+** (STRICT per constitution §V.1.1) (012-ai-chatbot-phase3)
-- **OpenAI Agents SDK** — Multi-agent orchestration
-- **gpt-4o-mini** — Main chat model
-- **Qdrant** — Vector database for semantic search
-- **Whisper API** — Voice transcription
+- TypeScript (Next.js 15.2+ with App Router) + React 19, TanStack Query v5, Framer Motion, Sonner (toasts), Next.js 15 (013-ai-chat-ui-redesign)
+- N/A (frontend-only feature, uses existing backend SSE) (013-ai-chat-ui-redesign)
 
 ---
 

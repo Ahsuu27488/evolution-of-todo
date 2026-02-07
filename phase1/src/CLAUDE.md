@@ -34,35 +34,7 @@ This is the **foundation phase** of a 5-phase evolution. The code here is design
 │  │ TaskRepository◀────────│ InMemoryTaskRepo │             │
 │  │   (ABC)     │          │                  │             │
 │  └─────────────┘          └──────────────────┘             │
-└─────────────────────────I need you to perform a documentation overhaul. Please follow these steps sequentially.
-
-**Global Constraints:**
-- When reading directories, **strictly ignore** `node_modules`, `dist`, `build`, `coverage`, `.git`, and lock files (package-lock.json/yarn.lock).
-- "Industry Level README" means: clearly labeled badges, Tech Stack, Setup/Installation instructions, Environment Variables, API documentation (if applicable), and contribution guidelines.
-- `CLAUDE.md` should contain a summary of the architectural patterns, key file locations, and project-specific coding conventions found in that directory.
-
-**Step 1: Context Loading**
-Read `/home/ahsan/Dev/Hackathons/Hackathon-II/evolution-of-todo/Hackathon-docs/Hackathon2_doc.md` to understand the project goals.
-
-**Step 2: Backend Documentation**
-Read the source code files in `src/` (focusing on entry points, controllers, models, and config, every-file).
-- Create/Update `src/README.md` to an Industry Level standard.
-- Create `src/CLAUDE.md` with the backend context and conventions.
-
-**Step 3: Backend Documentation**
-Read the source code files in `backend/` (focusing on entry points, controllers, models, and config).
-- Create/Update `backend/README.md` to an Industry Level standard.
-- Create `backend/CLAUDE.md` with the backend context and conventions.
-
-**Step 4: Frontend Documentation**
-Read the source code files in `frontend/` (focusing on components, pages, hooks, and utils).
-- Create/Update `frontend/README.md` to an Industry Level standard.
-- Create `frontend/CLAUDE.md` with the frontend context and conventions.
-
-**Step 5: Project Root Documentation**
-Based on the context gathered from the previous steps:
-- Update the root `README.md` to be an entry point for the whole repo, linking to the sub-READMEs and explaining the overall architecture.
-- Update the root `CLAUDE.md` with high-level architectural rules and workflow preferences.────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
@@ -78,6 +50,34 @@ Based on the context gathered from the previous steps:
 │  │               └──▶ ValidationError                  │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
+```
+
+## Task Implementation Guidelines (CRITICAL for Long-Running Sessions)
+
+**IMPORTANT**: When implementing multiple tasks (e.g., via `/sp.implement`), follow this pattern to prevent context loss and hallucinations during session compactions:
+
+1. **Complete ONE task at a time** — Finish implementing, testing, and verifying a single task before moving to the next
+2. **Mark task as complete immediately** — Update task status in `tasks.md` to `completed` before starting the next task
+3. **Re-read tasks.md after each task** — After marking complete, re-read `tasks.md` to refresh context on remaining tasks
+4. **Verify code state** — Before proceeding, confirm the current codebase state matches expected changes
+5. **Commit after logical checkpoints** — After every 2-3 completed tasks or when a milestone is reached
+
+**Why this matters:**
+- Session compaction after ~200K tokens compresses conversation history
+- Without checkpoints, the agent loses track of:
+  - Which tasks were already completed
+  - Current codebase state
+  - Decisions made during implementation
+- This leads to hallucinations, repeated work, or contradicting changes
+
+**Mandatory Pattern:**
+```
+1. Read task details from tasks.md
+2. Implement task
+3. Test/verify implementation
+4. Update tasks.md: change status to "completed"
+5. Re-read tasks.md to see remaining work
+6. Proceed to next task
 ```
 
 ## Debugging Workflow
