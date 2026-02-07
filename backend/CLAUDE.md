@@ -89,6 +89,39 @@ FastAPI REST API serving the Evolution of Todo application with:
 
 ---
 
+## Debugging Workflow
+
+**IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when encountering bugs, errors, or unexpected behavior in the backend.
+
+### When to Use Systematic Debugging
+
+Invoke this skill before attempting to fix:
+- API endpoint errors (4xx/5xx responses)
+- Database query failures
+- Authentication/authorization issues
+- AI service failures (OpenAI, Qdrant, Whisper)
+- Notification delivery problems
+- Test failures
+
+### Debugging Backend Issues
+
+The systematic debugging skill will help you:
+
+1. **Gather Context**: Check logs (structlog JSON output), correlation IDs, error traces
+2. **Check Dependencies**: Verify database connectivity, external API status, environment variables
+3. **Form Hypotheses**: Based on error patterns and code flow
+4. **Test Locally**: Use Swagger UI (`/docs`) to reproduce issues
+5. **Implement Fix**: Make targeted changes based on evidence
+
+**Backend-Specific Debugging Tips**:
+- Check `/api/health` endpoint for service status
+- Review `structlog` output with correlation ID tracing
+- Verify JWT tokens with shared `BETTER_AUTH_SECRET`
+- Test database queries in the Python REPL
+- Use Swagger UI at `http://localhost:8000/docs` for manual API testing
+
+---
+
 ## Key File Locations
 
 ### Core Application

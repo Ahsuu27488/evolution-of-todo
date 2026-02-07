@@ -25,6 +25,42 @@ Next.js 15 App Router application serving as the web interface for the Chronos T
 
 ─────────────────────────────────────────────────────────
 
+## Debugging Workflow
+
+**IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when encountering bugs, errors, or unexpected behavior in the frontend.
+
+### When to Use Systematic Debugging
+
+Invoke this skill before attempting to fix:
+- Component rendering errors
+- State synchronization issues
+- API call failures
+- Authentication/JWT token problems
+- SSE streaming issues (notifications, chat)
+- Hydration errors
+- Styling/layout problems
+
+### Debugging Frontend Issues
+
+The systematic debugging skill will help you:
+
+1. **Gather Context**: Check browser console, Network tab, React DevTools
+2. **Check State**: Verify TanStack Query cache, Zustand stores, React Context
+3. **Form Hypotheses**: Based on error messages and behavior patterns
+4. **Test Isolated**: Reproduce issues in minimal reproduction
+5. **Implement Fix**: Make targeted changes based on evidence
+
+**Frontend-Specific Debugging Tips**:
+- Use React DevTools to inspect component state and props
+- Check Network tab for API request/response details
+- Verify JWT token in Application > Cookies
+- For SSE issues, check EventSource connection in Network tab
+- Use `console.log` with structured logging for state changes
+- Check browser console for hydration warnings
+- Verify `getAuthToken()` is returning valid tokens
+
+---
+
 ## Architecture Overview
 
 ```

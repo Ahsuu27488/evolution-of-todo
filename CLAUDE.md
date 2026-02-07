@@ -19,7 +19,6 @@ This is a **5-phase evolution** demonstrating Spec-Driven Development:
 | `src/` | Phase I console app | [`src/CLAUDE.md`](src/CLAUDE.md) |
 | `backend/` | Phase II FastAPI backend | [`backend/CLAUDE.md`](backend/CLAUDE.md) |
 | `frontend/` | Phase II Next.js frontend | [`frontend/CLAUDE.md`](frontend/CLAUDE.md) |
-| `specs/012-ai-chatbot-phase3/` | Phase III Chatbot Implementation | [specs/012-ai-chatbot-phase3/CLAUDE.md](specs/012-ai-chatbot-phase3/CLAUDE.md) |
 
 ## Cross-Phase Architectural Rules
 
@@ -148,6 +147,23 @@ if (result.success) {
 ```
 
 ## Workflow Preferences
+
+### When Debugging
+
+**IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when:
+- Encountering bugs or errors
+- Investigating unexpected behavior
+- Debugging test failures
+- Troubleshooting production issues
+
+This skill provides a structured approach to debugging:
+1. Gather information about the issue
+2. Form hypotheses about root causes
+3. Design tests to validate hypotheses
+4. Implement fixes systematically
+5. Verify solutions work
+
+**Usage**: Invoke the skill before attempting to fix any bug. The skill will guide you through proper investigation rather than jumping to conclusions.
 
 ### When Working on Backend
 

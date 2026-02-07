@@ -80,6 +80,38 @@ Based on the context gathered from the previous steps:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Debugging Workflow
+
+**IMPORTANT**: Always use the `superpowers:systematic-debugging` skill when encountering bugs, errors, or unexpected behavior in the console application.
+
+### When to Use Systematic Debugging
+
+Invoke this skill before attempting to fix:
+- CLI menu navigation issues
+- Task CRUD operation failures
+- Input validation errors
+- Recurrence calculation bugs
+- Display/output formatting problems
+
+### Debugging Console Application Issues
+
+The systematic debugging skill will help you:
+
+1. **Gather Context**: Check error messages, stack traces, user input
+2. **Check State**: Verify repository state, service layer behavior
+3. **Form Hypotheses**: Based on error patterns and code flow
+4. **Test Isolated**: Run specific functions in Python REPL
+5. **Implement Fix**: Make targeted changes based on evidence
+
+**Phase I-Specific Debugging Tips**:
+- Use Python debugger (`pdb.set_trace()`) for stepping through code
+- Test repository methods directly in REPL
+- Verify input validators are returning expected types
+- Check sentinel value handling (`_REMOVE_DUE_DATE`)
+- Verify enum display values are formatted correctly
+
+---
+
 ## Key File Locations
 
 | File | Purpose | Key Details |
