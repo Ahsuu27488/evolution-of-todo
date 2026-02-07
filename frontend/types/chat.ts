@@ -21,6 +21,7 @@ export interface Message {
   correlationId?: string;
   role: MessageRole;
   content: string;
+  messageType?: "text" | "voice";  // Distinguish voice from text messages
   toolCalls?: ToolCall[];
   createdAt?: string | null;
 }

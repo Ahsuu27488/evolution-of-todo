@@ -13,11 +13,12 @@
  */
 
 import { motion } from "framer-motion";
-import { User, Bot, Wrench } from "lucide-react";
+import { User, Bot, Wrench, Mic } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Task } from "@/types/task";
+import type { Message } from "@/types/chat";
 import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
 
@@ -66,6 +67,7 @@ function splitTextByLanguage(text: string): Array<{ text: string; isUrdu: boolea
  * Render mixed language text with Urdu words in Nastaliq font.
  * Handles strings, arrays (from markdown elements like <br>), and React nodes.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderMixedLanguageText(content: any): React.ReactNode {
   // Handle null/undefined
   if (content == null) return content;
@@ -181,17 +183,7 @@ function extractTaskFromToolCall(toolCall: {
 // =============================================================================
 
 interface ChatMessageProps {
-  message: {
-    id: string;
-    role: "user" | "assistant" | "system";
-    content: string;
-    toolCalls?: Array<{
-      tool: string;
-      arguments: Record<string, unknown>;
-      output?: string;
-    }>;
-    createdAt?: string | null;
-  };
+  message: Message;
   isStreaming?: boolean;
   onTaskAction?: (action: "complete" | "delete" | "edit", task: Task) => void;
 }
@@ -220,6 +212,7 @@ const messageVariants = {
 export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
+  const isVoice = message.messageType === "voice";
 
   // Detect text direction for alignment (40%+ Urdu = RTL)
   const textDirection = useMemo(() => getTextDirection(message.content), [message.content]);
@@ -276,26 +269,38 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
 
       {/* Message Content */}
       <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} max-w-[80%]`}>
-        <div
-          className={`px-4 py-2.5 rounded-2xl text-sm ${
-            isUser ? "rounded-tr-sm" : "rounded-tl-sm"
-          }`}
-          style={
-            isUser
-              ? {
-                  background: "linear-gradient(135deg, #00f5ff 0%, #00b4d8 100%)",
-                  color: "#0f172a",
-                }
-              : {
-                  background: "rgba(255, 255, 255, 0.1)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  color: "rgba(255, 255, 255, 0.9)",
-                }
-          }
-        >
+        {isVoice && isUser ? (
+          // Voice Message Indicator - Clean, minimal design
           <div
-            dir={textDirection}
+            className="px-4 py-3 rounded-2xl rounded-tr-sm flex items-center gap-2"
+            style={{
+              background: "linear-gradient(135deg, #00f5ff 0%, #00b4d8 100%)",
+              color: "#0f172a",
+            }}
           >
+            <Mic className="w-4 h-4" />
+            <span className="font-medium">Voice message</span>
+          </div>
+        ) : (
+          // Regular Text Message
+          <div
+            className={`px-4 py-2.5 rounded-2xl text-sm ${
+              isUser ? "rounded-tr-sm" : "rounded-tl-sm"
+            }`}
+            style={
+              isUser
+                ? {
+                    background: "linear-gradient(135deg, #00f5ff 0%, #00b4d8 100%)",
+                    color: "#0f172a",
+                  }
+                : {
+                    background: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    color: "rgba(255, 255, 255, 0.9)",
+                  }
+            }
+          >
+            <div dir={textDirection}>
             <ReactMarkdown
               components={{
                 // Custom text renderer for mixed language support
@@ -357,6 +362,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                   />
                 ),
                 // Style code (inline)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 code: ({ inline, ...props }: { inline?: boolean } & any) => (
                   <code
                     {...props}
@@ -387,6 +393,8 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
             />
           )}
         </div>
+        )}
+        {/* End voice/text conditional */}
 
         {/* Task Cards from Tool Calls (T116) */}
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (

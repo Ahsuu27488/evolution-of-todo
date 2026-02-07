@@ -20,6 +20,7 @@ from .message import (
     Message,
     MessagePublic,
     MessageRole,
+    MessageType,
     ToolCall,
 )
 from .agent_handoff import (
@@ -42,6 +43,7 @@ __all__ = [
     "Message",
     "MessagePublic",
     "MessageRole",
+    "MessageType",
     "ToolCall",
     # AgentHandoff
     "AgentHandoff",

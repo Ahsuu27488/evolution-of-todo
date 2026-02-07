@@ -34,7 +34,6 @@ import {
   useChatInputActions,
   useChatLanguagePreference,
   useChatLanguageActions,
-  useChatConversationsList,
   useChatConversationsActions,
 } from "@/lib/stores/chat-store";
 
@@ -99,12 +98,12 @@ export function ChatPanel() {
   // Conversation state
   const messages = useChatMessages();
   const conversationId = useChatConversationId();
-  const { addMessage, prependMessages, setConversationId: setStoreConversationId, clearMessages } = useChatConversationActions();
+  const { addMessage, setConversationId: setStoreConversationId, clearMessages } = useChatConversationActions();
   const { setConversations: setStoreConversations } = useChatConversationsActions();
 
   // Streaming state
   const { isStreaming, streamedContent } = useChatStreamingState();
-  const { resetStreamState: resetStream, appendStreamedContent, startStreaming, stopStreaming } = useChatStreamingActions();
+  const { resetStreamState: resetStream, appendStreamedContent, startStreaming } = useChatStreamingActions();
 
   // Input state
   const inputValue = useChatInputValue();
@@ -112,7 +111,7 @@ export function ChatPanel() {
 
   // Language state
   const languagePreference = useChatLanguagePreference();
-  const { toggleLanguage, setLanguagePreference } = useChatLanguageActions();
+  const { toggleLanguage } = useChatLanguageActions();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -170,6 +169,7 @@ export function ChatPanel() {
         message,
         conversationId: conversationId, // ← FIXED: Use actual conversationId, not null!
         languagePreference, // ← Send language preference per message
+        messageType: "text", // Regular text message
         onMessageStart: (newConversationId) => {
           // Update store when backend creates a new conversation
           if (!conversationId && newConversationId) {
@@ -187,7 +187,7 @@ export function ChatPanel() {
         onAgentHandoff: (from, to) => {
           console.log("Agent handoff:", from, "->", to);
         },
-        onDone: (output, _agent) => {
+        onDone: (output) => {
           // Add the final assistant message
           // Use actualConversationId which may have been updated by onMessageStart
           addMessage({
@@ -241,11 +241,12 @@ export function ChatPanel() {
         console.log("[DEBUG] Raw messages from API:", result.data.messages.length, result.data.messages);
         // Log first message's structure to diagnose timestamp issue
         if (result.data.messages.length > 0) {
-          const firstMsg = result.data.messages[0] as any;
+          const firstMsg = result.data.messages[0];
           console.log("[DEBUG] First message structure:", {
             id: firstMsg.id,
             role: firstMsg.role,
             createdAt: firstMsg.createdAt,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             created_at: (firstMsg as any).created_at,
             allKeys: Object.keys(firstMsg),
           });
@@ -260,7 +261,9 @@ export function ChatPanel() {
             conversationId: m.conversationId,
             role: m.role,
             content: m.content,
+            messageType: m.messageType,  // Preserve message type from API
             toolCalls: m.toolCalls,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             createdAt: m.createdAt ?? (m as any).created_at ?? new Date().toISOString(),
           }));
         console.log("[DEBUG] Filtered messages (non-tool):", loadedMessages.length, loadedMessages);
@@ -297,11 +300,84 @@ export function ChatPanel() {
   }, [conversationId, deleteConversationApi, handleNewConversation, refetchConversations]);
 
   // Handle transcript from voice recording
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTranscript = useCallback((text: string, _language?: string) => {
     // Transcription is independent of language mode
     // Just append the transcribed text to input
     setInputValue(inputValue ? `${inputValue} ${text}` : text);
   }, [inputValue, setInputValue]);
+
+  // Handle voice message auto-send (transcribed text sent directly to agent)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleVoiceMessageSend = useCallback(async (text: string, _language?: string) => {
+    if (!text.trim() || isStreaming) return;
+
+    // Add user message immediately with messageType: "voice"
+    addMessage({
+      id: `temp-${Date.now()}`,
+      conversationId: conversationId || "temp",
+      role: "user",
+      content: text,
+      messageType: "voice",  // Mark as voice message - UI will show indicator instead of text
+      createdAt: new Date().toISOString(),
+    });
+
+    // Start streaming
+    startStreaming();
+
+    try {
+      // Track the actual conversation ID (may be updated by onMessageStart)
+      let actualConversationId = conversationId;
+
+      // Send message with current conversationId (or null for new conversation)
+      await sendMessage.mutateAsync({
+        message: text,
+        conversationId: conversationId,
+        languagePreference,
+        messageType: "voice",  // Mark as voice message so backend stores it
+        onMessageStart: (newConversationId) => {
+          // Update store when backend creates a new conversation
+          if (!conversationId && newConversationId) {
+            actualConversationId = newConversationId;
+            setStoreConversationId(newConversationId);
+          }
+        },
+        onToken: (content) => {
+          appendStreamedContent(content);
+        },
+        onToolCall: (tool, args) => {
+          console.log("Tool called:", tool, args);
+        },
+        onAgentHandoff: (from, to) => {
+          console.log("Agent handoff:", from, "->", to);
+        },
+        onDone: (output) => {
+          // Add the final assistant message
+          addMessage({
+            id: `assistant-${Date.now()}`,
+            conversationId: actualConversationId || "temp",
+            role: "assistant",
+            content: output,
+            createdAt: new Date().toISOString(),
+          });
+          resetStream();
+        },
+        onError: (error, newConversationId) => {
+          console.error("Chat error:", error, newConversationId);
+          // Even on error, if we received a conversation_id, update the store
+          if (!conversationId && newConversationId) {
+            setStoreConversationId(newConversationId);
+          }
+          toast.error(error || "Failed to send message");
+          resetStream();
+        },
+      });
+    } catch (error) {
+      console.error("Send voice message error:", error);
+      resetStream();
+    }
+  }, [isStreaming, conversationId, addMessage, startStreaming, sendMessage, languagePreference,
+      setStoreConversationId, appendStreamedContent, resetStream]);
 
   // Handle task actions from inline task cards (T116, T117)
   const handleTaskAction = async (action: "complete" | "delete" | "edit", task: Task) => {
@@ -330,7 +406,7 @@ export function ChatPanel() {
           break;
         }
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to perform action on task");
     }
   };
@@ -548,16 +624,23 @@ export function ChatPanel() {
                           '"Show me my tasks for this week"',
                           '"Mark task 5 as complete"',
                         ].map((example, i) => (
-                          <div
+                          <button
                             key={i}
-                            className="px-3 py-2 rounded-lg text-sm text-white/80"
+                            onClick={() => {
+                              // Extract the text between quotes
+                              const match = example.match(/"([^"]+)"/);
+                              const textToInsert = match ? match[1] : example;
+                              setInputValue(textToInsert);
+                            }}
+                            className="w-full px-3 py-2 rounded-lg text-sm text-left text-white/80 hover:text-white transition-colors"
                             style={{
                               background: "rgba(255,255,255,0.05)",
                               border: "1px solid rgba(255,255,255,0.1)",
+                              cursor: "pointer",
                             }}
                           >
                             {example}
-                          </div>
+                          </button>
                         ))}
                       </div>
                     </motion.div>
@@ -621,6 +704,7 @@ export function ChatPanel() {
                     {/* Voice Input Button with Whisper API (T086-T091) */}
                     <VoiceRecorder
                       onTranscript={handleTranscript}
+                      onVoiceMessageSend={handleVoiceMessageSend}
                       disabled={isStreaming}
                     />
 

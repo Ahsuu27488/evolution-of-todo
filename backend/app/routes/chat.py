@@ -35,6 +35,7 @@ from app.ai.models import (
     Message,
     MessagePublic,
     MessageRole,
+    MessageType,
     AgentHandoff,
     LanguagePreference,
 )
@@ -128,6 +129,7 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
     language_preference: LanguagePreference | None = None  # Per-message language mode
+    message_type: MessageType | None = None  # Type of message (text/voice) for UI display
 
     class Config:
         json_schema_extra = {
@@ -136,6 +138,7 @@ class ChatRequest(BaseModel):
                     "message": "Add a task to buy groceries tomorrow at 5pm",
                     "conversation_id": None,
                     "language_preference": "auto",
+                    "message_type": "text",
                 }
             ]
         }
@@ -278,6 +281,7 @@ async def chat(
         correlation_id=correlation_id,
         role=MessageRole.USER,
         content=sanitized_message,  # Use sanitized message
+        message_type=request.message_type or MessageType.TEXT,  # Store message type for UI display
     )
     session.add(user_message)
 
@@ -288,57 +292,25 @@ async def chat(
     await session.commit()
 
     # Auto-generate conversation title
-    # - Message 1: Use first user message directly as initial title (truncated to 50 chars)
-    # - Message 3: Generate AI-powered title with full context (rename)
+    # - Message 1: Generate AI-powered title immediately (always in English)
     try:
         if conversation.message_count == 1 and conversation.title == "New Chat":
-            # First message - use it directly as title for immediate feedback
-            # Truncate to 50 chars and add ellipsis if needed
-            initial_title = sanitized_message[:50].rstrip()
-            if len(sanitized_message) > 50:
-                initial_title += "..."
-            conversation.title = initial_title
-            await session.commit()
-
-            logger.info(
-                "Set initial conversation title from first message",
-                conversation_id=str(conversation.id),
-                title=initial_title,
-                message_count=conversation.message_count,
-            )
-
-        elif conversation.message_count == 2:
-            # Second message - generate AI-powered title with full context
-            # Get the first 2 messages to generate a better title
-            title_messages = await session.execute(
-                select(Message)
-                .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.asc())
-                .limit(2)
-            )
-            messages_list = title_messages.scalars().all()
-
-            # Build conversation summary for title generation
-            summary_parts = []
-            for m in messages_list:
-                role_prefix = "User" if m.role == MessageRole.USER else "AI"
-                summary_parts.append(f"{role_prefix}: {m.content[:100]}")
-            conversation_summary = " | ".join(summary_parts)
+            # First message - generate AI-powered title immediately
+            # Build conversation summary from the user's first message
+            conversation_summary = f"User: {sanitized_message[:100]}"
 
             # Generate title using OpenAI
             openai_service = OpenAIService(api_key=os.getenv("OPENAI_API_KEY"))
             generated_title = await openai_service.generate_title(conversation_summary)
 
-            # Update conversation with generated title (rename)
-            old_title = conversation.title
+            # Update conversation with generated title
             conversation.title = generated_title
             await session.commit()
 
             logger.info(
-                "Renamed conversation with AI-generated title",
+                "Generated AI title for first message",
                 conversation_id=str(conversation.id),
-                old_title=old_title,
-                new_title=generated_title,
+                title=generated_title,
                 message_count=conversation.message_count,
             )
     except Exception as e:
@@ -937,6 +909,7 @@ async def get_conversation(
                 "correlation_id": m.correlation_id,
                 "role": m.role.value,
                 "content": m.content,
+                "message_type": m.message_type.value if hasattr(m, "message_type") else "text",  # Include message type
                 "tool_calls": m.tool_calls if m.tool_calls else [],  # Use snake_case to trigger validator
                 "created_at": m.created_at,
             }

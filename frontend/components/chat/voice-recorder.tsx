@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Voice Recorder - Audio recording with Whisper transcription.
  *
@@ -29,6 +28,7 @@ import { getAuthToken } from "@/lib/auth/token";
 
 interface VoiceRecorderProps {
   onTranscript: (text: string, language?: string) => void;
+  onVoiceMessageSend?: (text: string, language?: string) => void;  // Auto-send callback
   disabled?: boolean;
 }
 
@@ -68,7 +68,7 @@ function isAmbiguousTranscription(text: string): boolean {
 // Component
 // =============================================================================
 
-export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
+export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: VoiceRecorderProps) {
   const { languagePreference } = useChatLanguage();
 
   const [state, setState] = useState<RecordingState>({
@@ -243,7 +243,11 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
 
       if (isAmbiguousTranscription(result.text)) {
         setPendingTranscript(transcript);
+      } else if (onVoiceMessageSend) {
+        // Auto-send voice message directly to chat
+        onVoiceMessageSend(transcript.text, transcript.language);
       } else {
+        // Fallback: put in input field (original behavior)
         onTranscript(transcript.text, transcript.language);
       }
 
@@ -257,7 +261,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       setIsTranscribing(false);
       setUploadProgress(0);
     }
-  }, [state.audioBlob, onTranscript]);
+  }, [state.audioBlob, languagePreference, onTranscript, onVoiceMessageSend]);
 
   // T092: Confirm pending transcript
   const handleConfirmTranscript = useCallback(() => {

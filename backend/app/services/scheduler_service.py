@@ -45,6 +45,9 @@ WEEKLY_SUMMARY_TIME = time(9, 0)  # 9:00 AM
 TASK_CHECK_INTERVAL_MINUTES = 15
 CLEANUP_INTERVAL_HOURS = 24
 
+# Check interval for digest emails (hourly) - [Fix]: Approach A for global timezone support
+DIGEST_CHECK_INTERVAL_MINUTES = 60  # Check every hour for users whose digest time is now
+
 
 # =============================================================================
 # Helper Functions for Timezone-Aware Scheduling
@@ -121,12 +124,18 @@ def should_send_digest_now(
 ) -> bool:
     """Check if a digest should be sent to a user right now.
 
-    [Fix]: Timezone-aware digest scheduling check
+    [Fix]: Timezone-aware digest scheduling check for hourly wake pattern.
+    [From]: Approach A - Digest checker wakes every hour and calls this for each user.
+
+    This function is called every hour by the digest checker. It checks if
+    the user's local time is within the digest window (default 8 AM for daily,
+    Monday 9 AM for weekly). The 15-minute window ensures we don't miss the
+    scheduled time due to slight variations in when the job wakes.
 
     Args:
         user_timezone: User's IANA timezone string
         digest_type: Either 'daily' or 'weekly'
-        last_sent: When the digest was last sent (optional)
+        last_sent: When the digest was last sent (UTC timestamp) - prevents duplicates
 
     Returns:
         True if the digest should be sent now
@@ -155,9 +164,14 @@ def should_send_digest_now(
             return False
 
     # Check if we haven't sent it too recently (within 12 hours)
+    # This prevents duplicates when hot-reload creates multiple instances
     if last_sent:
         time_since_last = (now_utc - last_sent).total_seconds()
         if time_since_last < 12 * 3600:  # 12 hours
+            logger.debug(
+                f"Skipping {digest_type} digest for {user_timezone}: "
+                f"sent {time_since_last / 3600:.1f}h ago"
+            )
             return False
 
     return time_match
@@ -195,6 +209,31 @@ class SchedulerService:
         """Get or create the singleton instance."""
         return cls()
 
+    async def _sleep_with_cooperative_cancellation(self, seconds: float) -> bool:
+        """Sleep in short intervals to allow checking _running flag.
+
+        [Fix]: Allows graceful shutdown during long waits.
+        Instead of one long asyncio.sleep() that can't be interrupted,
+        we sleep in chunks and check _running flag each time.
+
+        Args:
+            seconds: Total seconds to sleep
+
+        Returns:
+            True if slept fully, False if stopped early due to _running=False
+        """
+        remaining = seconds
+        while remaining > 0 and self._running:
+            sleep_time = min(remaining, 60)  # Sleep max 60 seconds at a time
+            try:
+                await asyncio.sleep(sleep_time)
+            except asyncio.CancelledError:
+                logger.debug("Sleep cancelled during cooperative cancellation")
+                raise
+            remaining -= sleep_time
+
+        return self._running
+
     @classmethod
     async def start(cls) -> None:
         """Start the background scheduler.
@@ -214,9 +253,9 @@ class SchedulerService:
         logger.info("Starting scheduler service")
 
         # Launch background tasks
+        # [Fix]: Unified digest checker replaces separate daily/weekly jobs
         cls._tasks = [
-            asyncio.create_task(instance._daily_digest_job()),
-            asyncio.create_task(instance._weekly_summary_job()),
+            asyncio.create_task(instance._digest_checker_job()),  # Replaces 2 jobs
             asyncio.create_task(instance._task_reminder_job()),
             asyncio.create_task(instance._cleanup_job()),
         ]
@@ -228,28 +267,115 @@ class SchedulerService:
         """Stop the background scheduler.
 
         [From]: spec.md SC-003 - Graceful shutdown
+        [Fix]: Properly handle task cancellation with cooperative shutdown.
 
-        Cancels all running background tasks.
+        Changes:
+        1. Set _running=False BEFORE cancelling to signal tasks to exit gracefully
+        2. Use asyncio.wait with return_when=ALL_COMPLETED for proper cleanup
+        3. Increased timeout from 5 to 10 seconds
+        4. Handle any pending tasks after timeout
         """
         if not cls._running:
+            logger.debug("Scheduler not running, nothing to stop")
             return
 
         logger.info("Stopping scheduler service")
+
+        # Signal all tasks to stop FIRST - this allows cooperative cancellation
         cls._running = False
+
+        if not cls._tasks:
+            logger.info("No tasks to stop")
+            return
 
         # Cancel all tasks
         for task in cls._tasks:
-            task.cancel()
+            if not task.done():
+                task.cancel()
 
-        # Wait for tasks to complete (with timeout)
-        if cls._tasks:
-            await asyncio.wait(cls._tasks, timeout=5)
+        # Wait for tasks to complete with longer timeout
+        # Use gather with return_exceptions to collect CancelledErrors
+        try:
+            done, pending = await asyncio.wait(
+                cls._tasks,
+                timeout=10,  # Increased from 5 to 10 seconds
+                return_when=asyncio.ALL_COMPLETED
+            )
+
+            # Cancel any pending tasks (shouldn't happen, but safety)
+            for task in pending:
+                task.cancel()
+                try:
+                    await asyncio.wait_for(task, timeout=2)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+
+        except Exception as e:
+            logger.warning(f"Error while waiting for tasks to stop: {e}")
 
         cls._tasks.clear()
         logger.info("Scheduler stopped")
 
     # ==========================================================================
-    # Daily Digest Job
+    # Digest Checker Job (Unified Daily/Weekly)
+    # ==========================================================================
+
+    async def _digest_checker_job(self) -> None:
+        """Unified digest job that checks hourly for users whose digest time is now.
+
+        [Fix]: Replaces separate daily/weekly jobs with timezone-aware checker.
+        [From]: Approach A - Wake every hour, check for matching users
+
+        Instead of waking at a specific UTC time (which doesn't work globally),
+        this job wakes every hour and checks if any users have their digest time
+        in the current hour window.
+
+        Algorithm:
+        1. Wake every hour (on the hour)
+        2. Query all users with daily/weekly digest enabled
+        3. For each user, check if their local time is within 15 minutes of their scheduled time
+        4. Send digests to matching users
+        5. Track last_sent per user to prevent duplicates within 12 hours
+        """
+        logger.info("Digest checker job started")
+
+        # Track last sent times per user per digest type
+        # Format: {f"{user_id}:{digest_type}": datetime}
+        last_sent_cache: dict[str, datetime] = {}
+
+        while self._running:
+            try:
+                # Calculate time until next hour boundary
+                now = datetime.now(ZoneInfo("UTC"))
+                next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+                wait_seconds = (next_hour - now).total_seconds()
+
+                logger.info(
+                    f"Next digest check in {wait_seconds / 60:.1f} minutes "
+                    f"at {next_hour.strftime('%H:%M')} UTC"
+                )
+
+                # Sleep until next hour (with cooperative cancellation)
+                if not await self._sleep_with_cooperative_cancellation(wait_seconds):
+                    break
+
+                if not self._running:
+                    break
+
+                # Check for users who need digests now
+                await self._send_pending_digests(last_sent_cache)
+
+            except asyncio.CancelledError:
+                logger.info("Digest checker job cancelled")
+                break
+            except Exception as e:
+                logger.exception(f"Error in digest checker job: {e}")
+                # Wait 15 minutes before retrying on error
+                if not await self._sleep_with_cooperative_cancellation(15 * 60):
+                    break
+
+    # ==========================================================================
+    # Daily Digest Job (DEPRECATED - replaced by _digest_checker_job)
     # ==========================================================================
 
     async def _daily_digest_job(self) -> None:
@@ -297,6 +423,225 @@ class SchedulerService:
                 logger.exception(f"Error in daily digest job: {e}")
                 # Wait 1 hour before retrying on error
                 await asyncio.sleep(3600)
+
+    async def _send_daily_digest_to_user(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        user: User,
+        user_tz: str,
+    ) -> bool:
+        """Send daily digest to a specific user.
+
+        [Fix]: Extracted from _send_daily_digests for per-user processing.
+
+        Args:
+            session: Database session
+            user_id: User ID
+            user: User object with email
+            user_tz: User's timezone string
+
+        Returns:
+            True if email was sent, False if user had no pending tasks
+        """
+        tz = ZoneInfo(user_tz)
+        now_tz = datetime.now(tz)
+        today_start = datetime.combine(now_tz.date(), time(0, 0), tzinfo=tz)
+        today_end = today_start + timedelta(days=1)
+
+        # Convert to UTC for database query
+        today_start_utc = today_start.astimezone(ZoneInfo("UTC"))
+        today_end_utc = today_end.astimezone(ZoneInfo("UTC"))
+
+        # Get user's pending tasks
+        task_result = await session.execute(
+            select(Task).where(
+                Task.user_id == user_id,
+                Task.completed == False,
+                Task.due_date <= today_end_utc,
+            )
+        )
+
+        tasks = task_result.scalars().all()
+
+        if not tasks:
+            logger.debug(f"No tasks for daily digest for user {user_id} ({user_tz})")
+            return False
+
+        # Build task list for email
+        task_list = [
+            {
+                "title": task.title,
+                "due_date": task.due_date.strftime("%Y-%m-%d")
+                if task.due_date
+                else "No due date",
+                "completed": task.completed,
+            }
+            for task in tasks[:10]  # Limit to 10 tasks
+        ]
+
+        # Send digest email
+        result = await EmailService.send_daily_digest(
+            session=session,
+            user_id=user_id,
+            to=user.email,
+            tasks=task_list,
+        )
+
+        if result.get("success"):
+            logger.info(
+                f"Daily digest sent to {user_id} ({user_tz}) at {now_tz.strftime('%H:%M')} local time"
+            )
+        else:
+            logger.warning(
+                f"Failed to send daily digest to {user_id}: {result.get('message')}"
+            )
+
+        return result.get("success", False)
+
+    async def _send_weekly_summary_to_user(
+        self,
+        session: AsyncSession,
+        user_id: str,
+        user: User,
+        user_tz: str,
+    ) -> bool:
+        """Send weekly summary to a specific user.
+
+        [Fix]: Extracted from _send_weekly_summaries for per-user processing.
+
+        Args:
+            session: Database session
+            user_id: User ID
+            user: User object with email
+            user_tz: User's timezone string
+
+        Returns:
+            True if email was sent successfully
+        """
+        # Get all tasks for stats
+        task_result = await session.execute(
+            select(Task).where(Task.user_id == user_id)
+        )
+
+        all_tasks = task_result.scalars().all()
+
+        # Calculate stats using user's timezone
+        tz = ZoneInfo(user_tz)
+        now_tz = datetime.now(tz)
+        today = now_tz.date()
+
+        completed = sum(1 for t in all_tasks if t.completed)
+        pending = sum(
+            1
+            for t in all_tasks
+            if not t.completed
+            and t.due_date
+            and t.due_date.date() >= today
+        )
+        overdue = sum(
+            1
+            for t in all_tasks
+            if not t.completed
+            and t.due_date
+            and t.due_date.date() < today
+        )
+
+        stats = {
+            "completed": completed,
+            "pending": pending,
+            "overdue": overdue,
+        }
+
+        # Send summary email
+        result = await EmailService.send_weekly_summary(
+            session=session,
+            user_id=user_id,
+            to=user.email,
+            stats=stats,
+        )
+
+        if result.get("success"):
+            logger.info(
+                f"Weekly summary sent to {user_id} ({user_tz}) at {now_tz.strftime('%H:%M')} local time"
+            )
+        else:
+            logger.warning(
+                f"Failed to send weekly summary to {user_id}: {result.get('message')}"
+            )
+
+        return result.get("success", False)
+
+    async def _send_pending_digests(
+        self,
+        last_sent_cache: dict[str, datetime],
+    ) -> None:
+        """Send digest emails to users whose scheduled time is now.
+
+        [Fix]: Timezone-aware digest sending with duplicate prevention.
+        This method is called hourly by the digest checker job.
+
+        Args:
+            last_sent_cache: Cache tracking last sent times per user per digest type
+                              Format: {f"{user_id}:{digest_type}": datetime}
+        """
+        logger.info("Checking for pending digests to send")
+
+        async with async_session_maker() as session:
+            try:
+                # Get all users with email digests enabled (daily or weekly)
+                result = await session.execute(
+                    select(NotificationPreference, User)
+                    .join(User, NotificationPreference.user_id == User.id)
+                    .where(
+                        NotificationPreference.email_enabled == True,
+                        NotificationPreference.frequency.in_([
+                            EmailFrequency.DAILY,
+                            EmailFrequency.WEEKLY,
+                        ]),
+                    )
+                )
+
+                rows = result.all()
+                logger.info(f"Found {len(rows)} users with digest enabled")
+
+                now_utc = datetime.now(ZoneInfo("UTC"))
+
+                for pref, user in rows:
+                    try:
+                        user_id = user.id
+                        user_tz = getattr(user, "timezone", "UTC")
+                        digest_type = "daily" if pref.frequency == EmailFrequency.DAILY else "weekly"
+
+                        # Check cache key for duplicate prevention
+                        cache_key = f"{user_id}:{digest_type}"
+                        last_sent = last_sent_cache.get(cache_key)
+
+                        # Check if we should send digest NOW (timezone-aware)
+                        if not should_send_digest_now(user_tz, digest_type, last_sent):
+                            continue
+
+                        # Send the appropriate digest
+                        if digest_type == "daily":
+                            await self._send_daily_digest_to_user(session, user_id, user, user_tz)
+                        else:
+                            await self._send_weekly_summary_to_user(session, user_id, user, user_tz)
+
+                        # Update cache
+                        last_sent_cache[cache_key] = now_utc
+
+                        # Small delay between sends
+                        await asyncio.sleep(1)
+
+                    except Exception as e:
+                        logger.exception(f"Error sending digest to user {user.id}: {e}")
+                        await session.rollback()
+
+                logger.info("Digest check complete")
+
+            except Exception as e:
+                logger.exception(f"Error in _send_pending_digests: {e}")
+                await session.rollback()
 
     async def _send_daily_digests(self) -> None:
         """Send daily digest emails to all users with daily frequency.
@@ -398,7 +743,7 @@ class SchedulerService:
                 await session.rollback()
 
     # ==========================================================================
-    # Weekly Summary Job
+    # Weekly Summary Job (DEPRECATED - replaced by _digest_checker_job)
     # ==========================================================================
 
     async def _weekly_summary_job(self) -> None:
@@ -554,6 +899,7 @@ class SchedulerService:
 
         [Task]: T046
         [From]: spec.md FR-002 - Task due notifications
+        [Fix]: Added cooperative cancellation for graceful shutdown.
 
         Runs every hour to check for tasks due within 1 hour.
         """
@@ -561,8 +907,11 @@ class SchedulerService:
 
         while self._running:
             try:
-                # Wait 1 hour between checks
-                await asyncio.sleep(TASK_CHECK_INTERVAL_MINUTES * 60)
+                # Wait between checks (with cooperative cancellation)
+                if not await self._sleep_with_cooperative_cancellation(
+                    TASK_CHECK_INTERVAL_MINUTES * 60
+                ):
+                    break
 
                 if not self._running:
                     break
@@ -574,7 +923,9 @@ class SchedulerService:
                 break
             except Exception as e:
                 logger.exception(f"Error in task reminder job: {e}")
-                await asyncio.sleep(3600)
+                # Wait before retrying on error
+                if not await self._sleep_with_cooperative_cancellation(3600):
+                    break
 
     async def _check_and_send_reminders(self) -> None:
         """Check for tasks due soon and send reminder notifications.
@@ -661,6 +1012,7 @@ class SchedulerService:
         """Background job to clean up old notifications.
 
         [From]: spec.md FR-035 - Soft delete notifications archived after 30 days
+        [Fix]: Added cooperative cancellation for graceful shutdown.
 
         Runs daily to permanently delete soft-deleted notifications older than 30 days.
         """
@@ -668,8 +1020,11 @@ class SchedulerService:
 
         while self._running:
             try:
-                # Wait 24 hours between cleanup runs
-                await asyncio.sleep(CLEANUP_INTERVAL_HOURS * 3600)
+                # Wait between cleanup runs (with cooperative cancellation)
+                if not await self._sleep_with_cooperative_cancellation(
+                    CLEANUP_INTERVAL_HOURS * 3600
+                ):
+                    break
 
                 if not self._running:
                     break
@@ -682,7 +1037,9 @@ class SchedulerService:
                 break
             except Exception as e:
                 logger.exception(f"Error in cleanup job: {e}")
-                await asyncio.sleep(3600)
+                # Wait before retrying on error
+                if not await self._sleep_with_cooperative_cancellation(3600):
+                    break
 
     async def _cleanup_old_notifications(self) -> None:
         """Permanently delete old soft-deleted notifications.

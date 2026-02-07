@@ -244,7 +244,11 @@ if AGENT_AVAILABLE:
         Examples:
             list_tasks(ctx)  # All tasks
             list_tasks(ctx, status="pending")  # Only pending tasks
+
+        IMPORTANT: The task IDs returned here are the ONLY valid IDs for complete_task
+        and delete_task. Always use the exact IDs shown in brackets.
         """
+        from app.ai.agents.context import get_current_context
         from app.ai.mcp.tools import TaskTools
 
         try:
@@ -257,6 +261,20 @@ if AGENT_AVAILABLE:
                 limit=limit,
                 offset=offset,
             )
+
+            # Cache valid task IDs in context for validation by complete_task/delete_task
+            # This prevents the agent from hallucinating non-existent task IDs
+            if result.status == "success" and isinstance(result.data, list):
+                task_ids = [item.get("task_id") for item in result.data if item.get("task_id")]
+                if task_ids:
+                    context = get_current_context()
+                    if context:
+                        context.update_valid_task_ids(task_ids)
+                        logger.debug(
+                            "Cached valid task IDs",
+                            task_count=len(task_ids),
+                            task_ids=task_ids[:10],  # Log first 10
+                        )
 
             return _format_tool_result(result, "list_tasks")
 
@@ -286,10 +304,36 @@ if AGENT_AVAILABLE:
         Examples:
             complete_task(ctx, 123)  # where 123 came from list_tasks result
         """
+        from app.ai.agents.context import get_current_context
         from app.ai.mcp.tools import TaskTools
 
         try:
             user_id, session = _get_user_id_and_session(ctx)
+
+            # Validate task ID against cached list_tasks results
+            # This prevents the agent from hallucinating non-existent task IDs
+            context = get_current_context()
+            if context and not context.is_task_id_valid(task_id):
+                # Task ID is not in the valid list - provide helpful error
+                if context.valid_task_ids:
+                    valid_ids = sorted(list(context.valid_task_ids))
+                    logger.warning(
+                        "Agent attempted to use invalid task ID - validation caught it",
+                        attempted_id=task_id,
+                        valid_ids=valid_ids,
+                        user_id=user_id,
+                    )
+                    return (
+                        f"Error: Task ID {task_id} is not valid. "
+                        f"Please use one of these valid task IDs from list_tasks: {valid_ids}. "
+                        f"ALWAYS call list_tasks FIRST to get the current valid task IDs before completing tasks."
+                    )
+                # Cache is stale or empty, proceed with validation at database level
+                logger.warning(
+                    "Task ID validation skipped - cache stale or empty",
+                    task_id=task_id,
+                    cache_size=len(context.valid_task_ids) if context else 0,
+                )
 
             # Use default autocommit=False to allow parallel tool calls
             # The HTTP route handler commits the session after all tools complete
@@ -327,10 +371,36 @@ if AGENT_AVAILABLE:
         Examples:
             delete_task(ctx, 123)  # where 123 came from list_tasks result
         """
+        from app.ai.agents.context import get_current_context
         from app.ai.mcp.tools import TaskTools
 
         try:
             user_id, session = _get_user_id_and_session(ctx)
+
+            # Validate task ID against cached list_tasks results
+            # This prevents the agent from hallucinating non-existent task IDs
+            context = get_current_context()
+            if context and not context.is_task_id_valid(task_id):
+                # Task ID is not in the valid list - provide helpful error
+                if context.valid_task_ids:
+                    valid_ids = sorted(list(context.valid_task_ids))
+                    logger.warning(
+                        "Agent attempted to use invalid task ID - validation caught it",
+                        attempted_id=task_id,
+                        valid_ids=valid_ids,
+                        user_id=user_id,
+                    )
+                    return (
+                        f"Error: Task ID {task_id} is not valid. "
+                        f"Please use one of these valid task IDs from list_tasks: {valid_ids}. "
+                        f"ALWAYS call list_tasks FIRST to get the current valid task IDs before deleting tasks."
+                    )
+                # Cache is stale or empty, proceed with validation at database level
+                logger.warning(
+                    "Task ID validation skipped - cache stale or empty",
+                    task_id=task_id,
+                    cache_size=len(context.valid_task_ids) if context else 0,
+                )
 
             # Use default autocommit=False to allow parallel tool calls
             # The HTTP route handler commits the session after all tools complete
@@ -480,7 +550,11 @@ if AGENT_AVAILABLE:
             semantic_search(ctx, "grocery shopping")
             semantic_search(ctx, "urgent work tasks")
             semantic_search(ctx, "خریداری")  # Urdu for shopping
+
+        IMPORTANT: The task IDs returned here are valid for complete_task
+        and delete_task. Always use the exact IDs shown in brackets.
         """
+        from app.ai.agents.context import get_current_context
         from app.ai.mcp.tools import TaskTools
 
         try:
@@ -497,11 +571,22 @@ if AGENT_AVAILABLE:
                 items = result.data
                 if items:
                     formatted = []
+                    task_ids = []
                     for item in items:  # Show ALL results, not just first 10
                         score = item.get("score", 0)
                         title = item.get("title", "")
                         task_id = item.get("task_id", item.get("id", ""))
                         formatted.append(f"[{task_id}] (relevance: {score:.2f}) {title}")
+                        task_ids.append(task_id)
+                    # Cache found task IDs for validation
+                    context = get_current_context()
+                    if context and task_ids:
+                        context.update_valid_task_ids(task_ids)
+                        logger.debug(
+                            "Cached valid task IDs from semantic_search",
+                            task_count=len(task_ids),
+                            query=query[:50],
+                        )
                     return "Similar tasks:\n" + "\n".join(formatted)
                 return "No similar tasks found."
             return _format_tool_result(result, "semantic_search")
@@ -772,6 +857,7 @@ Your capabilities:
   - NEVER make up task IDs - always use IDs from list_tasks or semantic_search results
   - Confirm task ID or title before completing
   - For "mark all tasks as completed": FIRST call list_tasks, THEN complete each returned task
+  - WARNING: The system validates task IDs. Using invalid IDs will result in an error listing the valid IDs.
 
 - **Update tasks**: Modify existing task properties
   - Title, description, priority, due date, **tags**
@@ -781,6 +867,7 @@ Your capabilities:
   - CRITICAL: Always call list_tasks FIRST to get actual task IDs before deleting
   - NEVER make up task IDs - always use IDs from list_tasks or semantic_search results
   - For "delete all tasks": FIRST call list_tasks, THEN delete each returned task
+  - WARNING: The system validates task IDs. Using invalid IDs will result in an error listing the valid IDs.
 
 **Language Support (Bilingual English/Urdu)**:
 - CRITICAL: Detect the user's language and respond in the SAME language

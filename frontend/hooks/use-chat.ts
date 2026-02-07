@@ -86,6 +86,7 @@ export function useSendMessage() {
       message,
       conversationId,
       languagePreference,
+      messageType,
       onMessageStart,
       onToken,
       onToolCall,
@@ -96,6 +97,7 @@ export function useSendMessage() {
       message: string;
       conversationId: string | null;
       languagePreference?: "auto" | "en" | "ur";
+      messageType?: "text" | "voice";
       onMessageStart?: (conversationId: string, correlationId: string) => void;
       onToken: (token: string) => void;
       onToolCall: (tool: string, args: Record<string, unknown>) => void;
@@ -127,6 +129,7 @@ export function useSendMessage() {
           message,
           conversation_id: conversationId,
           language_preference: languagePreference,
+          message_type: messageType,  // Include message type so backend can store it
         }),
         signal: abortControllerRef.current.signal,
       });

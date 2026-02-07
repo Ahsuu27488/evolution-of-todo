@@ -299,6 +299,7 @@ async def get_current_user(
         first_name=user.first_name,
         last_name=user.last_name,
         display_name=user.display_name,  # Computed property
+        timezone=user.timezone,  # Include timezone for digest scheduling
         created_at=user.created_at,
     )
 
@@ -342,6 +343,10 @@ async def update_current_user(
     if user_data.last_name is not None:
         user.last_name = user_data.last_name
 
+    # [Fix]: Support timezone updates for digest email scheduling
+    if user_data.timezone is not None:
+        user.timezone = user_data.timezone
+
     # Update legacy name field for backward compatibility
     if user.first_name or user.last_name:
         user.name = f"{user.first_name or ''} {user.last_name or ''}".strip()
@@ -349,7 +354,7 @@ async def update_current_user(
     await session.commit()
     await session.refresh(user)
 
-    logger.info(f"User profile updated: {user.email}")
+    logger.info(f"User profile updated: {user.email}, timezone: {user.timezone}")
 
     return UserPublic(
         id=user.id,
@@ -357,5 +362,6 @@ async def update_current_user(
         first_name=user.first_name,
         last_name=user.last_name,
         display_name=user.display_name,
+        timezone=user.timezone,  # Include timezone in response
         created_at=user.created_at,
     )

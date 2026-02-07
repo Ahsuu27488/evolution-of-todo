@@ -729,6 +729,32 @@ class ApiClient {
       )
     }
   }
+
+  /**
+   * Update current user's timezone.
+   *
+   * [Fix]: Added for digest email scheduling - users can set their timezone
+   * to receive daily/weekly digests at their local time.
+   *
+   * @param timezone - IANA timezone identifier (e.g., "Asia/Karachi", "America/New_York")
+   * @returns Updated user profile with new timezone
+   */
+  async updateTimezone(timezone: string): Promise<Result<{ id: string; email: string; timezone: string }>> {
+    const result = await this.request<{ id: string; email: string; timezone: string }>(
+      "/api/auth/me",
+      {
+        method: "PUT",
+        body: { timezone },
+      }
+    )
+
+    if (result.success) {
+      // Unwrap from ApiResponse to get the actual data
+      return ok(result.data.data)
+    }
+
+    return result
+  }
 }
 
 // =============================================================================

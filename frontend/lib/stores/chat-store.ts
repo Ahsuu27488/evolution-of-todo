@@ -24,6 +24,7 @@ export interface ChatMessage {
   conversationId: string
   role: "user" | "assistant" | "system" | "tool"
   content: string
+  messageType?: "text" | "voice"  // Distinguish voice from text messages
   toolCalls?: Array<{
     tool: string
     arguments: Record<string, unknown>

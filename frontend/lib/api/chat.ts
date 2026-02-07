@@ -105,7 +105,7 @@ export async function streamChat(
   }
 
   // Use shared SSE parsing utility
-  for await (const { eventType, data } of parseSSEStream(reader, {
+  for await (const {} of parseSSEStream(reader, {
     onMessageStart: options.onMessageStart,
     onToken: options.onToken,
     onToolCall: options.onToolCall,

@@ -34,6 +34,17 @@ class MessageRole(str, Enum):
     TOOL = "tool"  # FR-005: Tool results for conversation context
 
 
+class MessageType(str, Enum):
+    """Type of message for UI display purposes.
+
+    - text: Regular text message (default)
+    - voice: Voice message transcribed from audio
+    """
+
+    TEXT = "text"
+    VOICE = "voice"
+
+
 @dataclass
 class ToolCall:
     """
@@ -72,6 +83,7 @@ class Message(SQLModel, table=True):
         correlation_id: Distributed tracing ID for observability
         role: Message role (user/assistant/system)
         content: Message text content
+        message_type: Type of message (text/voice) for UI display
         tool_calls: JSON array of tools invoked by assistant
         created_at: Message creation timestamp
 
@@ -105,6 +117,14 @@ class Message(SQLModel, table=True):
         max_length=10000,
         sa_column=Column(Text, nullable=False),
         description="Message text content",
+    )
+    message_type: MessageType = Field(
+        sa_column=Column(
+            SQLEnum(MessageType, values_callable=lambda x: [e.value for e in x]),
+            nullable=False,
+            server_default="text",
+        ),
+        description="Type of message for UI display (text/voice)",
     )
     tool_calls: list[dict[str, Any]] = Field(
         default=[],
@@ -151,6 +171,7 @@ class MessageBase(BaseModel):
 
     role: MessageRole
     content: str
+    message_type: MessageType = MessageType.TEXT
 
 
 class MessageCreate(MessageBase):
@@ -178,6 +199,7 @@ class MessagePublic(MessageBase):
     id: UUID
     conversation_id: UUID = PydanticField(alias="conversationId")
     correlation_id: str | None = PydanticField(alias="correlationId")
+    message_type: MessageType = PydanticField(alias="messageType", default=MessageType.TEXT)
     tool_calls: list[ToolCallSchema] = PydanticField(alias="toolCalls", default_factory=list)
     created_at: datetime = PydanticField(alias="createdAt")
 

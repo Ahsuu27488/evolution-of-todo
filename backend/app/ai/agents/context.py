@@ -12,6 +12,7 @@ into @function_tool decorated functions, so we use context variables.
 from __future__ import annotations
 
 import contextvars
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
@@ -101,6 +102,85 @@ class TodoContext:
     session: Any = None  # Database session for MCP tools
     tool_results: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    # Valid task IDs from recent list_tasks call (for validation)
+    # Prevents agent from hallucinating non-existent task IDs
+    valid_task_ids: list[int] = field(default_factory=list)
+    last_list_tasks_time: float | None = None  # When list_tasks was last called (epoch time)
+
+    # Task ID cache TTL in seconds - after this, IDs are considered stale
+    TASK_ID_CACHE_TTL: int = 300  # 5 minutes
+
+    def is_task_id_valid(self, task_id: int) -> bool:
+        """
+        Check if a task ID is valid (exists in the user's tasks).
+
+        Uses the cached valid_task_ids list from recent list_tasks call.
+        If cache is stale (> TASK_ID_CACHE_TTL seconds), returns True (bypass validation).
+
+        Args:
+            task_id: Task ID to validate
+
+        Returns:
+            True if task ID is valid or cache is stale, False otherwise
+        """
+        # If cache is empty or stale, bypass validation (trust the agent)
+        if not self.valid_task_ids:
+            return True
+
+        if self.last_list_tasks_time is None:
+            return True
+
+        # Check if cache is stale
+        cache_age = time.time() - self.last_list_tasks_time
+        if cache_age > self.TASK_ID_CACHE_TTL:
+            return True
+
+        # Validate against cached IDs (list instead of set for pickle compatibility)
+        return task_id in self.valid_task_ids
+
+    def update_valid_task_ids(self, task_ids: list[int] | set[int]) -> None:
+        """
+        Update the cache of valid task IDs from a list_tasks call.
+
+        Args:
+            task_ids: List of valid task IDs from list_tasks result
+        """
+        # Convert to list and deduplicate for storage
+        if isinstance(task_ids, set):
+            self.valid_task_ids = list(task_ids)
+        else:
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_ids = []
+            for tid in task_ids:
+                if tid not in seen:
+                    seen.add(tid)
+                    unique_ids.append(tid)
+            self.valid_task_ids = unique_ids
+        self.last_list_tasks_time = time.time()
+
+    def get_invalid_task_ids(self, task_ids: list[int]) -> list[int]:
+        """
+        Filter out invalid task IDs from a list.
+
+        Args:
+            task_ids: List of task IDs to validate
+
+        Returns:
+            List of invalid task IDs (empty if all valid or cache is stale)
+        """
+        if not self.valid_task_ids or self.last_list_tasks_time is None:
+            return []  # Cache not populated, can't validate
+
+        # Check if cache is stale
+        cache_age = time.time() - self.last_list_tasks_time
+        if cache_age > self.TASK_ID_CACHE_TTL:
+            return []  # Cache stale, bypass validation
+
+        # Return IDs that are NOT in the valid list
+        valid_set = set(self.valid_task_ids)
+        return [tid for tid in task_ids if tid not in valid_set]
 
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary for logging."""

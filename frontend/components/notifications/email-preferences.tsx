@@ -14,7 +14,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import {
   Mail,
@@ -25,6 +25,7 @@ import {
   Check,
   Loader2,
   Send,
+  Globe,
 } from "lucide-react"
 
 import { useEmailPreferences, useUpdateEmailPreferences } from "@/hooks/use-notifications"
@@ -41,6 +42,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { api } from "@/lib/api-client"
+import { timezoneOptions, getUserBrowserTimezone, getTimezoneAbbreviation } from "@/lib/constants/timezones"
 
 // =============================================================================
 // Types
@@ -109,6 +111,49 @@ export function EmailPreferences() {
   const [localPreferences, setLocalPreferences] = useState<
     Record<string, { enabled: boolean; frequency: string }>
   >({})
+
+  // [Fix]: Timezone state for digest scheduling
+  const [userTimezone, setUserTimezone] = useState<string>("UTC")
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false)
+  const [browserTimezone] = useState<string>(() => getUserBrowserTimezone())
+
+  // Fetch current user timezone on mount
+  useEffect(() => {
+    // Get user timezone from session/me endpoint
+    fetch("/api/auth/me", {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((userData) => {
+        if (userData.timezone) {
+          setUserTimezone(userData.timezone)
+        }
+      })
+      .catch(() => {
+        // Default to browser timezone if fetch fails
+        setUserTimezone(browserTimezone)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleTimezoneChange = async (value: string) => {
+    setIsSavingTimezone(true)
+    try {
+      const actualTimezone = value === "auto" ? browserTimezone : value
+
+      const result = await api.updateTimezone(actualTimezone)
+      if (result.success) {
+        setUserTimezone(actualTimezone)
+        toast.success(`Timezone updated to ${actualTimezone}`)
+      } else {
+        toast.error(result.error.message || "Failed to update timezone")
+      }
+    } catch {
+      toast.error("Failed to update timezone")
+    } finally {
+      setIsSavingTimezone(false)
+    }
+  }
 
   const handleTestEmail = async () => {
     if (!data?.email_address) {
@@ -258,6 +303,60 @@ export function EmailPreferences() {
           </div>
         </Card>
       )}
+
+      {/* [Fix]: Timezone Selector for Digest Scheduling */}
+      <Card className="mb-4 p-3 sm:p-4 border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
+              <Globe className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Digest Timezone</p>
+              <p className="text-sm text-muted-foreground">
+                {userTimezone === "UTC" && "Daily digests at 8 AM UTC"}
+                {userTimezone !== "UTC" && `Daily digests at 8 AM ${getTimezoneAbbreviation(userTimezone)}`}
+              </p>
+            </div>
+          </div>
+          <div className="w-full sm:w-auto">
+            <Select
+              value={userTimezone}
+              onValueChange={handleTimezoneChange}
+              disabled={isSavingTimezone}
+            >
+              <SelectTrigger className="w-full sm:w-[280px] h-9">
+                <SelectValue placeholder="Select timezone..." />
+              </SelectTrigger>
+              <SelectContent>
+                {timezoneOptions.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{tz.label}</span>
+                        {tz.offset && (
+                          <span className="text-xs text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                            {tz.offset}
+                          </span>
+                        )}
+                      </div>
+                      {tz.region !== "Auto" && (
+                        <span className="text-xs text-muted-foreground">{tz.region}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {isSavingTimezone && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Saving timezone...</span>
+          </div>
+        )}
+      </Card>
 
       {/* Email Address Display */}
       <Card className="mb-4 p-3 sm:p-4 border-border/50">

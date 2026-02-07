@@ -267,8 +267,9 @@ class User(SQLModel, table=True):
     # [Fix]: Timezone support for scheduled notifications
     # Stores IANA timezone identifier (e.g., 'America/New_York', 'Europe/London')
     # Used by scheduler to send digest emails at user's local time
+    # Default: Asia/Karachi (UTC+5) for Pakistan users
     timezone: str = SQLField(
-        default="UTC",
+        default="Asia/Karachi",
         max_length=50,
         description="User timezone for scheduled notifications (IANA format)",
     )

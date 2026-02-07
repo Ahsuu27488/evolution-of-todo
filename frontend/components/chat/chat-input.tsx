@@ -53,6 +53,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   // Handle transcript from voice recording (T090, T091)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTranscript = (text: string, _language?: string) => {
     // Append transcript to current input value
     setInputValue(inputValue ? `${inputValue} ${text}` : text);

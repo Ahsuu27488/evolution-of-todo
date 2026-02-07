@@ -448,10 +448,10 @@ class OpenAIService:
         """
         try:
             response = await self.chat(
-                message=f"Generate a concise title in ENGLISH (max 50 chars) for this conversation: {conversation_summary}",
-                system_prompt="You are a title generator. Always generate titles in ENGLISH, regardless of the input language. Return only the title, no quotes or punctuation.",
+                message=f"Generate a concise title in ENGLISH ONLY (max 50 chars) for this conversation: {conversation_summary}\n\nIMPORTANT: The title MUST be in English, even if the conversation is in Urdu or any other language. Translate if necessary.",
+                system_prompt="You are a title generator. Your ONLY task is to generate SHORT titles in ENGLISH. Never output text in Urdu, Arabic, or any non-English language. Return only the English title, no quotes, no punctuation, maximum 50 characters.",
                 max_tokens=50,
-                temperature=0.3,
+                temperature=0.1,  # Lower temperature for more consistent English output
             )
 
             # Clean up title
