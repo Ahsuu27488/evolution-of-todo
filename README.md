@@ -6,7 +6,11 @@
 [![OpenAI](https://img.shields.io/badge/OpenAI-Agents_SDK-green)](https://platform.openai.com/docs/agents)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-A full-stack todo application demonstrating **Spec-Driven Development** across 5 evolutionary phases, from a simple console app to an **AI-powered chatbot with natural language task management**, cloud-deployed web application.
+A full-stack todo application demonstrating **Spec-Driven Development** across 5 evolutionary phases, from a simple console app to an **AI-powered chatbot with natural language task management**, deployed with Kubernetes on Oracle Cloud.
+
+## 🚀 Live Demo
+
+**Frontend**: https://chronos.ahsandev.site
 
 ## Project Phases
 
@@ -15,8 +19,8 @@ A full-stack todo application demonstrating **Spec-Driven Development** across 5
 | **Phase I** | ✅ Complete | In-memory Python console app | [`src/README.md`](src/README.md) |
 | **Phase II** | ✅ Complete | Full-stack web application | [`backend/README.md`](backend/README.md) · [`frontend/README.md`](frontend/README.md) |
 | **Phase III** | ✅ Complete | **AI-powered chatbot with OpenAI Agents SDK** | [`specs/012-ai-chatbot-phase3/README.md`](specs/012-ai-chatbot-phase3/README.md) |
-| Phase IV | ⏳ Pending | Local Kubernetes deployment with Minikube/Helm | — |
-| Phase V | ⏳ Pending | Cloud deployment with Kafka/Dapr | — |
+| **Phase IV** | ✅ Complete | Local Kubernetes deployment (Minikube/Helm) | [`docs/phase4/README.md`](docs/phase4/README.md) |
+| **Phase V** | ✅ Complete | Oracle OKE cloud deployment (Kafka/Dapr) | [`docs/phase5/README.md`](docs/phase5/README.md) |
 
 ---
 
@@ -94,36 +98,50 @@ Chronos is truly bilingual:
 | **Roman Urdu** | Full | "Task add karo", "Mere tasks dikhao", "Complete kar do" |
 | **Code-Switching** | Partial | "Add a task for آج" → Responds in dominant language |
 
-### 📱 Chat Features
+---
 
-| Feature | Description |
-|---------|-------------|
-| **SSE Streaming** | Real-time token-by-token responses |
-| **Conversation History** | Persistent chat sessions with auto-generated titles |
-| **Tool Calling Display** | Visual feedback when Chronos uses MCP tools |
-| **Agent Handoff Notifications** | Shows when Chronos transfers to specialists |
-| **RTL Rendering** | Noto Nastaliq Urdu font for proper Urdu display |
-| **Task Cards in Chat** | Inline task display for AI-created items |
+## Phase IV & V: Kubernetes Deployment
 
-### 💬 Example Conversations
+### Cloud Infrastructure
 
-**English:**
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Kubernetes** | Minikube (local), Oracle OKE (cloud) | Container orchestration |
+| **Helm** | Chart-based package management | Deployment automation |
+| **Dapr** | Distributed Application Runtime | Service mesh, pub/sub, state |
+| **Redpanda** | Kafka-compatible event streaming | Task events, reminders |
+| **Docker** | Container images | `ahsandev/chronos-frontend`, `ahsandev/chronos-backend` |
+
+### Deployment Artifacts
+
 ```
-You: "I need to buy groceries tomorrow"
-Chronos: "Task added! 🛒 I've created 'Buy groceries' for tomorrow with HIGH priority.
-        Would you like me to add common grocery items as subtasks?"
-
-You: "Show me my work tasks"
-Chronos: [Handing off to QueryAgent] "Let me search for your work-related tasks..."
-        [Returns 5 tasks via semantic search]
+helm/chronos-todo/          # Helm chart
+├── Chart.yaml
+├── values.yaml             # Configuration (excluded from git - contains secrets)
+├── templates/
+│   ├── backend-deployment.yaml
+│   ├── frontend-deployment.yaml
+│   ├── redpanda-deployment.yaml
+│   ├── dapr-pubsub.yaml
+│   └── secret.yaml
+scripts/
+├── deploy-minikube.sh       # Local K8s deployment
+└── deploy-oracle.sh         # Oracle OKE cloud deployment
 ```
 
-**Urdu:**
+### Quick Deploy
+
+**Minikube (Local):**
+```bash
+./scripts/deploy-minikube.sh
 ```
-You: "کل میری میٹنگ ہے"
-Chronos: "ٹاسک شامل کر دیا گیا! میں نے 'میری میٹنگ' کل کے لیے HIGH ٹاولیرنٹی کے ساتھ شامل کر دیا۔
-        [Task added! I've added 'My meeting' for tomorrow with HIGH priority.]"
+
+**Oracle OKE (Production):**
+```bash
+./scripts/deploy-oracle.sh
 ```
+
+See [`DEPLOYMENT-GUIDE.md`](DEPLOYMENT-GUIDE.md) for full deployment instructions.
 
 ---
 
@@ -132,38 +150,22 @@ Chronos: "ٹاسک شامل کر دیا گیا! میں نے 'میری میٹنگ
 ```
 evolution-of-todo/
 ├── src/                    # Phase I: Console App
-│   ├── README.md           # Console app documentation
-│   ├── CLAUDE.md           # Architecture patterns
-│   └── todo/               # Domain, repository, service, CLI layers
-│
 ├── backend/                # Phase II: FastAPI Backend
-│   ├── README.md           # Backend documentation
-│   ├── CLAUDE.md           # Backend architecture
-│   ├── app/                # FastAPI application
-│   │   ├── main.py         # App entry point
-│   │   ├── models.py       # SQLModel models
-│   │   ├── db.py           # Database connection
-│   │   ├── errors.py       # Error handling
-│   │   ├── simple_auth.py  # JWT auth
+│   ├── app/
+│   │   ├── ai/             # Phase III: OpenAI Agents + MCP
+│   │   ├── dapr/           # Phase V: Dapr client
 │   │   └── routes/         # API endpoints
-│   └── requirements.txt
-│
+│   └── Dockerfile         # Phase IV/V: Container image
 ├── frontend/               # Phase II: Next.js Frontend
-│   ├── README.md           # Frontend documentation
-│   ├── CLAUDE.md           # Frontend architecture
 │   ├── app/                # Next.js App Router
-│   │   ├── (auth)/         # Auth pages
-│   │   ├── dashboard/      # Main app
-│   │   ├── actions/        # Server Actions
-│   │   ├── api/auth/       # Better Auth routes
-│   │   └── providers.tsx   # App providers
 │   ├── components/         # React components
-│   ├── lib/                # Utilities, API client, auth
-│   └── package.json
-│
-├── specs/                  # Feature specifications
-├── history/                # PHRs, ADRs
-└── .specify/               # SpecKit Plus templates
+│   ├── lib/
+│   │   ├── dapr/           # Phase V: Dapr client
+│   │   └── api/            # API client
+│   └── Dockerfile         # Phase IV/V: Container image
+├── helm/                   # Phase IV/V: Kubernetes Helm charts
+├── scripts/                # Deployment scripts
+└── docs/phase4/, phase5/   # Deployment documentation
 ```
 
 ## Tech Stack
@@ -186,7 +188,7 @@ evolution-of-todo/
 | **Database** | Neon PostgreSQL | Serverless Postgres |
 | **Auth** | JWT (HS256) | Shared secret auth |
 
-### Phase III (AI Chatbot) ⭐ NEW
+### Phase III (AI Chatbot) ⭐
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
@@ -200,7 +202,19 @@ evolution-of-todo/
 | **Logging** | structlog | Structured JSON logging |
 | **Rate Limiting** | slowapi | Per-user API limits |
 
-## Quick Start
+### Phase IV & V (Kubernetes) 🚀
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Orchestration** | Kubernetes | Container management |
+| **Package Manager** | Helm | Deployment automation |
+| **Service Mesh** | Dapr | Pub/sub, state, secrets |
+| **Event Streaming** | Redpanda | Kafka-compatible broker |
+| **Cloud** | Oracle OKE | Production deployment |
+
+---
+
+## Quick Start (Local Development)
 
 ### Prerequisites
 
@@ -212,7 +226,7 @@ evolution-of-todo/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/evolution-of-todo.git
+git clone https://github.com/Ahsuu27488/evolution-of-todo.git
 cd evolution-of-todo
 ```
 
@@ -236,26 +250,19 @@ cp .env.example .env
 Edit `backend/.env`:
 ```env
 # Database
-DATABASE_URL=postgresql://username:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql+asyncpg://user:pass@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
 
 # Authentication
 BETTER_AUTH_SECRET=your-32-character-secret-here
 CORS_ORIGINS=http://localhost:3000
 
-# Phase III: AI Features (NEW)
+# Phase III: AI Features
 OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_WHISPER_MODEL=whisper-1
-
-# Qdrant Vector Database
 QDRANT_URL=https://your-cluster.qdrant.io
 QDRANT_API_KEY=your-qdrant-api-key
 
 # Feature Flags
 PHASE_III_ENABLED=true
-MAX_MESSAGE_LENGTH=5000
-MAX_AUDIO_SIZE_MB=25
 ```
 
 ### 3. Frontend Setup
@@ -273,7 +280,7 @@ cp .env.example .env.local
 Edit `frontend/.env.local`:
 ```env
 # Database (shared with backend)
-DATABASE_URL=postgresql://username:password@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql+asyncpg://user:pass@ep-xxxxx.region.aws.neon.tech/neondb?sslmode=require
 
 # Authentication (MUST match backend!)
 BETTER_AUTH_SECRET=your-32-character-secret-here
@@ -283,7 +290,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # API
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
-# Phase III: OpenAI (for chatbot)
+# OpenAI (for chatbot)
 OPENAI_API_KEY=sk-your-openai-api-key
 ```
 
@@ -312,199 +319,7 @@ npm run dev
 | **API Docs** | http://localhost:8000/docs |
 | **Health Check** | http://localhost:8000/api/health |
 
-## Troubleshooting
-
-### Dropdown Menus Not Visible
-
-**Symptom:** Clicking dropdown menus (sort, filters, date picker) doesn't show any options.
-
-**Cause:** Ad blocker extensions (AdLock, uBlock Origin, AdBlock Plus, etc.) may mistakenly block Portal-rendered UI components, thinking they are popup advertisements.
-
-**Solutions:**
-
-1. **Disable Ad Blocker** (quickest test)
-   - Open your browser in incognito/private mode (extensions disabled by default)
-   - Or disable the ad blocker extension temporarily
-   - Test if dropdowns appear correctly
-
-2. **Whitelist localhost** (recommended)
-   - Add `localhost:3000` to your ad blocker's allowlist
-   - For AdLock: Settings → Whitelist → Add `localhost:3000`
-   - For uBlock Origin: Click the icon → Dashboard → Whitelist → `localhost:3000`
-
-3. **Production Deployment**
-   - If deploying to production, add your domain to the ad blocker's allowlist
-   - Document this in your user-facing help section
-
-**Why This Happens:**
-The app uses Radix UI's Portal component to render dropdowns, which places them in `document.body` for proper z-index layering. Ad blockers see this pattern and mistakenly identify these legitimate UI components as popup ads, since both use:
-- Portal rendering to `document.body`
-- `position: fixed` or `absolute` positioning
-- High z-index values
-- Overlay behavior
-
-**Affected Browsers:**
-- Chrome / Chromium-based browsers (Edge, Brave, Opera)
-- Mostly affects desktop browsers with extensions installed
-- Mobile browsers typically unaffected
-
-**Unaffected Browsers:**
-- Firefox (different extension architecture)
-- Safari (different ad blocking approach)
-- Mobile browsers (fewer extensions)
-
-## Phase I: Console Application
-
-The foundation phase demonstrating clean architecture patterns that scale to the full-stack application.
-
-### Running Phase I
-
-```bash
-# Start with empty task list
-python3 src/main.py
-
-# Start with demo data
-python3 src/main.py --demo
-```
-
-### Features
-
-- ✅ Add, view, update, delete tasks
-- ✅ Mark tasks complete/incomplete
-- ✅ Priorities (HIGH/MEDIUM/LOW)
-- ✅ Tags/categories with colors
-- ✅ Search and filter
-- ✅ Sort by multiple fields
-- ✅ Recurring tasks (daily/weekly/monthly)
-- ✅ Due dates with urgency indicators
-
-See [`src/README.md`](src/README.md) for detailed documentation.
-
-## Phase II: Full-Stack Web Application
-
-A modern, multi-user todo application with authentication and persistent storage.
-
-### Features
-
-#### Core Task Management
-- ✅ User registration and email/password authentication
-- ✅ User profile with first name and last name fields (supports mononyms)
-- ✅ Edit profile functionality with timezone support
-- ✅ JWT-based session management
-- ✅ Task CRUD with optimistic UI updates
-- ✅ Task filtering by status, priority, tags
-- ✅ Task search and sorting
-- ✅ Data isolation between users
-- ✅ Recurring tasks (daily/weekly/monthly)
-- ✅ Audit trail for task modifications
-- ✅ Zero-downtime database migrations
-
-#### User Experience
-- ✅ Responsive design (mobile, tablet, desktop)
-- ✅ Dark mode support with Deep Space theme
-- ✅ Enhanced loading states with dual-ring spinner animation
-- ✅ Inline error handling with retry functionality
-- ✅ Toast notifications via sonner
-
-#### Notification System
-- ✅ **In-App Notifications** — Real-time notification center with SSE streaming
-- ✅ **Push Notifications** — Web Push API with browser notifications
-- ✅ **Email Notifications** — Transactional emails via Resend
-- ✅ **Digest Emails** — Daily (8 AM) and weekly (Monday 9 AM) digests with timezone support
-- ✅ **Notification Preferences** — Per-channel enable/disable settings
-- ✅ **Do Not Disturb Hours** — Silence notifications during specific times
-- ✅ **One-Click Unsubscribe** — Token-based email unsubscribe
-- ✅ **Webhook Tracking** — Email delivery status (sent, delivered, opened, bounced)
-- ✅ **Rate Limiting** — Push notifications limited to 3/hour (urgent exempt)
-
-### API Endpoints
-
-#### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/signup` | Register new user (with first name, last name) |
-| POST | `/api/auth/signin` | Login and get JWT |
-| GET | `/api/auth/me` | Get current user profile |
-| PUT | `/api/auth/me` | Update current user profile |
-
-#### Tasks
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/tasks` | List tasks (filter, sort, paginate) |
-| POST | `/api/tasks` | Create task |
-| GET | `/api/tasks/search` | Search tasks |
-| GET | `/api/tasks/{id}` | Get task by ID |
-| PUT | `/api/tasks/{id}` | Update task |
-| DELETE | `/api/tasks/{id}` | Delete task |
-| PATCH | `/api/tasks/{id}/complete` | Toggle completion |
-| GET | `/api/tasks/{id}/logs` | Get audit logs |
-
-#### Notifications
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/notifications` | List notifications (with unread count) |
-| PUT | `/api/notifications/{id}/read` | Mark notification as read |
-| POST | `/api/notifications/mark-all-read` | Mark all as read |
-| DELETE | `/api/notifications/{id}` | Delete notification |
-| GET | `/api/notifications/stream` | SSE stream for real-time updates |
-| GET | `/api/notifications/settings` | Get notification preferences |
-| PUT | `/api/notifications/settings` | Update notification preferences |
-
-#### Push Notifications
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/notifications/push/subscribe` | Subscribe to push |
-| DELETE | `/api/notifications/push/unsubscribe` | Unsubscribe from push |
-| GET | `/api/notifications/push/status` | Get subscription status |
-| POST | `/api/notifications/push/test` | Send test push notification |
-
-#### Email Notifications
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/notifications/email/preferences` | Get email preferences |
-| PUT | `/api/notifications/email/preferences` | Update email preferences |
-| POST | `/api/notifications/email/test` | Send test email |
-| POST | `/api/notifications/email/webhook` | Resend webhook handler |
-
-#### AI Chatbot (Phase III) ⭐ NEW
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/chat` | Send message to Chronos (SSE streaming) |
-| POST | `/api/chat/transcribe` | Transcribe audio file (Whisper) |
-| GET | `/api/chat/conversations` | List all conversations |
-| GET | `/api/chat/conversations/{id}` | Get conversation with messages |
-| DELETE | `/api/chat/conversations/{id}` | Delete conversation |
-
-**Chronos AI Capabilities:**
-- 🤖 Multi-agent system (TodoAgent, PlanningAgent, QueryAgent)
-- 🔍 Semantic search via vector embeddings (Qdrant)
-- 🎙️ Voice input via Whisper API
-- 🌐 Bilingual English/Urdu with RTL support
-- 🛠️ 7 MCP tools for task management
-- 📊 Real-time SSE streaming responses
-
-See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md) for detailed documentation.
-
-### Database Migration
-
-For users who signed up before name fields were added, use the migration CLI:
-
-```bash
-# Check migration status
-python backend/scripts/migrate_users.py --status
-
-# Preview changes (dry-run)
-python backend/scripts/migrate_users.py --dry-run
-
-# Run migration
-python backend/scripts/migrate_users.py
-```
-
-**Migration Strategy**:
-- Legacy single-name users migrated to first_name/last_name schema
-- Zero-downtime with batch processing (100 users per batch)
-- Rollback safety and integrity checks
-- Supports mononyms (last_name can be NULL)
+---
 
 ## Development
 
@@ -523,17 +338,7 @@ This project uses **Spec-Driven Development** with:
 - `history/adr/` — Architecture Decision Records
 - `.claude/skills/` — Reusable intelligence
 
-### Architecture Patterns
-
-The codebase demonstrates several key patterns:
-
-1. **Repository Pattern** — Abstract data access (src/backend)
-2. **Service Layer** — Business logic separation (src/backend)
-3. **Dependency Injection** — Pass dependencies to services
-4. **JWT Authentication** — Shared secret auth between frontend/backend
-5. **Async/Await** — Throughout the backend stack
-6. **Server Actions** — Next.js server-side mutations
-7. **Result Type** — Type-safe error handling
+---
 
 ## License
 
