@@ -112,6 +112,42 @@ def _get_user_id_and_session(ctx: Any) -> tuple[str, Any]:
     )
 
 
+def _extract_task_ids_from_result(result: Any) -> list[int]:
+    """
+    Extract task IDs from a tool result.
+
+    This helper function extracts all task IDs from list_tasks or semantic_search
+    results, making them available for the agent to use in subsequent operations.
+
+    Args:
+        result: ToolResponse from MCP tool
+
+    Returns:
+        List of task IDs (empty list if none found)
+
+    Example:
+        >>> result = ToolResponse(status="success", data=[{"task_id": 123}, ...])
+        >>> _extract_task_ids_from_result(result)
+        [123]
+    """
+    from app.ai.mcp.tools import ToolResponse
+
+    task_ids = []
+
+    if isinstance(result, ToolResponse) and result.status == "success":
+        if isinstance(result.data, list):
+            for item in result.data:
+                if isinstance(item, dict):
+                    # Try both task_id and id fields
+                    task_id = item.get("task_id") or item.get("id")
+                    if isinstance(task_id, int):
+                        task_ids.append(task_id)
+                    elif isinstance(task_id, str) and task_id.isdigit():
+                        task_ids.append(int(task_id))
+
+    return task_ids
+
+
 def _format_tool_result(result: Any, tool_name: str) -> str:
     """
     Format ToolResponse for agent consumption.
@@ -148,7 +184,16 @@ def _format_tool_result(result: Any, tool_name: str) -> str:
                         completed = item.get("completed", False)
                         status = "✓" if completed else "○"
                         formatted_items.append(f"{status} [{task_id}] {title}")
-                return "\n".join(formatted_items) if formatted_items else result.message
+                output = "\n".join(formatted_items) if formatted_items else result.message
+
+                # Add explicit task ID summary for LLM parsing
+                # This helps the agent extract IDs more reliably
+                task_ids = _extract_task_ids_from_result(result)
+                if task_ids and len(task_ids) > 1:
+                    output += f"\n\nTASK_IDS: {','.join(map(str, task_ids))}"
+                    output += f"\nUse these exact IDs for complete_task/delete_task: {', '.join(map(str, task_ids))}"
+
+                return output
             return f"Found {len(items)} items. {result.message}"
         return result.message or f"Operation completed: {tool_name}"
     else:
@@ -587,7 +632,14 @@ if AGENT_AVAILABLE:
                             task_count=len(task_ids),
                             query=query[:50],
                         )
-                    return "Similar tasks:\n" + "\n".join(formatted)
+                    output = "Similar tasks:\n" + "\n".join(formatted)
+
+                    # Add explicit task ID summary for LLM parsing
+                    if len(task_ids) > 1:
+                        output += f"\n\nTASK_IDS: {','.join(map(str, task_ids))}"
+                        output += f"\nUse these exact IDs for complete_task/delete_task: {', '.join(map(str, task_ids))}"
+
+                    return output
                 return "No similar tasks found."
             return _format_tool_result(result, "semantic_search")
 
@@ -858,6 +910,10 @@ Your capabilities:
   - Confirm task ID or title before completing
   - For "mark all tasks as completed": FIRST call list_tasks, THEN complete each returned task
   - WARNING: The system validates task IDs. Using invalid IDs will result in an error listing the valid IDs.
+  - **EXTRACTING TASK IDs**: When list_tasks returns results, look for:
+    1. The TASK_IDS line at the bottom (e.g., "TASK_IDS: 123,456,789")
+    2. OR the IDs in brackets like "[123] Task Title"
+    3. NEVER guess or make up IDs - only use what list_tasks explicitly returned
 
 - **Update tasks**: Modify existing task properties
   - Title, description, priority, due date, **tags**
@@ -867,7 +923,9 @@ Your capabilities:
   - CRITICAL: Always call list_tasks FIRST to get actual task IDs before deleting
   - NEVER make up task IDs - always use IDs from list_tasks or semantic_search results
   - For "delete all tasks": FIRST call list_tasks, THEN delete each returned task
+  - For "delete all completed tasks": FIRST call list_tasks(status="completed"), THEN delete each
   - WARNING: The system validates task IDs. Using invalid IDs will result in an error listing the valid IDs.
+  - **EXTRACTING TASK IDs**: Look for the TASK_IDS line at the bottom or IDs in brackets [123]
 
 **Language Support (Bilingual English/Urdu)**:
 - CRITICAL: Detect the user's language and respond in the SAME language

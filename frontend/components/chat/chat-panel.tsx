@@ -21,6 +21,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageSquare, X, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task";
 
 import {
@@ -43,6 +44,8 @@ import { useSendMessage, useConversations, useDeleteConversation as useDeleteCon
 import { api } from "@/lib/api-client";
 import * as chatApi from "@/lib/api/chat";
 import { useResponsive, type Breakpoint } from "@/lib/utils/responsive";
+import { showToastForAIMutation } from "@/lib/utils/toast";
+import { parseToolResult } from "@/lib/utils/sse";
 
 import { ChatMessage } from "./chat-message";
 import { VoiceRecorder } from "./voice-recorder";
@@ -145,6 +148,9 @@ const panelVariants = {
 export function ChatPanel() {
   // Responsive breakpoint detection (User Story 3, T021)
   const { breakpoint } = useResponsive()
+
+  // Query client for task cache updates
+  const queryClient = useQueryClient()
 
   // Panel state
   const isOpen = useChatPanel();
@@ -286,6 +292,23 @@ export function ChatPanel() {
         },
         onToolCall: (tool, args) => {
           console.log("Tool called:", tool, args);
+        },
+        onToolResult: (tool, output) => {
+          console.log("Tool result:", tool, output);
+          // Parse task mutations from tool results and update cache
+          // This enables real-time dashboard updates when AI performs task actions
+          try {
+            const parsedOutput = typeof output === 'string' ? JSON.parse(output) : output;
+            const mutation = parseToolResult(tool, parsedOutput);
+            if (mutation) {
+              // Update TanStack Query cache for immediate UI updates
+              chatApi.updateTaskCache(queryClient, mutation);
+              // Show toast notification for AI actions
+              showToastForAIMutation(mutation);
+            }
+          } catch (e) {
+            console.debug("Could not parse tool result as JSON:", output);
+          }
         },
         onAgentHandoff: (from, to) => {
           console.log("Agent handoff:", from, "->", to);
@@ -494,6 +517,23 @@ export function ChatPanel() {
         },
         onToolCall: (tool, args) => {
           console.log("Tool called:", tool, args);
+        },
+        onToolResult: (tool, output) => {
+          console.log("Tool result:", tool, output);
+          // Parse task mutations from tool results and update cache
+          // This enables real-time dashboard updates when AI performs task actions
+          try {
+            const parsedOutput = typeof output === 'string' ? JSON.parse(output) : output;
+            const mutation = parseToolResult(tool, parsedOutput);
+            if (mutation) {
+              // Update TanStack Query cache for immediate UI updates
+              chatApi.updateTaskCache(queryClient, mutation);
+              // Show toast notification for AI actions
+              showToastForAIMutation(mutation);
+            }
+          } catch (e) {
+            console.debug("Could not parse tool result as JSON:", output);
+          }
         },
         onAgentHandoff: (from, to) => {
           console.log("Agent handoff:", from, "->", to);

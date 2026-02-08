@@ -860,10 +860,11 @@ class TaskTools:
         - Uses Qdrant vector search for semantic similarity
         - Falls back to keyword search if Qdrant unavailable
         - Results scoped to user_id (no cross-user search)
+        - Cross-language support: Works across English/Urdu language barriers
 
         Args:
             user_id: User ID from JWT 'sub' claim
-            query: Natural language search query
+            query: Natural language search query (can be mixed English/Urdu)
             limit: Maximum results to return
 
         Returns:
@@ -873,6 +874,11 @@ class TaskTools:
             response = await tools.semantic_search(
                 user_id="user123",
                 query="things I need to buy at the store",
+                limit=10,
+            )
+            response = await tools.semantic_search(
+                user_id="user123",
+                query="Dinner wala task complete krdo",  # Mixed English/Roman Urdu
                 limit=10,
             )
         """
@@ -885,63 +891,102 @@ class TaskTools:
                 limit=limit,
             )
 
+            # Import cross-language preprocessing
+            from app.ai.utils.language import preprocess_query_for_semantic_search
+
+            # Generate query variants for cross-language search
+            # This handles cases like "Dinner wala task" where task title is in English
+            query_variants = preprocess_query_for_semantic_search(query)
+
+            self.logger.debug(
+                "Cross-language semantic search",
+                tool_name="semantic_search",
+                original_query=query,
+                query_variants=query_variants,
+            )
+
             # Get Qdrant service
             qdrant_service = get_qdrant_service()
             openai_service = None
 
             if qdrant_service and qdrant_service.is_available():
-                # Generate query embedding
+                # Generate query embeddings for all variants and merge results
+                all_results = {}  # task_id -> (best_score, result_data)
+
                 try:
                     if openai_service is None:
                         openai_service = OpenAIService()
 
-                    embedding_response = await openai_service.generate_embedding(query)
-                    query_embedding = embedding_response.embedding
+                    # Try each query variant and merge results by best score
+                    for variant_query in query_variants:
+                        embedding_response = await openai_service.generate_embedding(variant_query)
+                        query_embedding = embedding_response.embedding
 
-                    # Search Qdrant
-                    search_response = await qdrant_service.semantic_search(
-                        user_id=user_id,
-                        query_embedding=query_embedding,
-                        limit=limit,
-                        # Lower threshold for better recall (0.3 instead of 0.5)
-                        # This captures semantically related tasks even with lower similarity
-                        score_threshold=0.3,
-                    )
+                        # Search Qdrant
+                        search_response = await qdrant_service.semantic_search(
+                            user_id=user_id,
+                            query_embedding=query_embedding,
+                            limit=limit,
+                            # Lower threshold for better recall (0.3 instead of 0.5)
+                            # This captures semantically related tasks even with lower similarity
+                            score_threshold=0.25,  # Even lower for cross-language matching
+                        )
 
-                    if search_response.results:
+                        # Merge results: keep the best score for each task
+                        for r in search_response.results:
+                            if r.task_id not in all_results or r.score > all_results[r.task_id][0]:
+                                all_results[r.task_id] = (r.score, r)
+
+                        self.logger.debug(
+                            "Semantic search variant processed",
+                            tool_name="semantic_search",
+                            variant=variant_query[:50],
+                            results_this_variant=len(search_response.results),
+                        )
+
+                    if all_results:
+                        # Convert merged results to sorted list
+                        sorted_results = sorted(
+                            [(task_id, score, result) for task_id, (score, result) in all_results.items()],
+                            key=lambda x: x[1],  # Sort by score
+                            reverse=True
+                        )[:limit]  # Limit final results
+
                         # Filter out completed tasks from results (T040)
                         # The AI should only see pending tasks when deciding what to complete
                         pending_results = [
-                            r for r in search_response.results
-                            if not r.payload.get("completed", False)
+                            (task_id, score, result)
+                            for task_id, score, result in sorted_results
+                            if not result.payload.get("completed", False)
                         ]
 
                         self.logger.info(
-                            "MCP tool completed: semantic_search (Qdrant)",
+                            "MCP tool completed: semantic_search (Qdrant with cross-language)",
                             tool_name="semantic_search",
                             user_id=user_id,
-                            result_count=len(search_response.results),
+                            total_unique_tasks=len(all_results),
                             pending_count=len(pending_results),
                             mode="semantic",
-                            scores=[round(r.score, 3) for r in search_response.results],
+                            query_variants_tried=len(query_variants),
+                            scores=[round(score, 3) for _, score, _ in pending_results],
                         )
 
                         return ToolResponse(
                             status="success",
                             data=[
                                 {
-                                    "task_id": r.task_id,
-                                    "score": round(r.score, 3),
-                                    "title": r.payload.get("title", ""),
-                                    "description": r.payload.get("description", ""),
-                                    "priority": r.payload.get("priority", "MEDIUM"),
-                                    "due_date": r.payload.get("due_date"),
-                                    "completed": r.payload.get("completed", False),
-                                    "tags": r.payload.get("tags", []),  # Include tags from payload
+                                    "task_id": task_id,
+                                    "score": round(score, 3),
+                                    "title": result.payload.get("title", ""),
+                                    "description": result.payload.get("description", ""),
+                                    "priority": result.payload.get("priority", "MEDIUM"),
+                                    "due_date": result.payload.get("due_date"),
+                                    "completed": result.payload.get("completed", False),
+                                    "tags": result.payload.get("tags", []),  # Include tags from payload
                                 }
-                                for r in pending_results
+                                for task_id, score, result in pending_results
                             ],
-                            message=f"Found {len(pending_results)} pending tasks (filtered from {len(search_response.results)} total)",
+                            message=f"Found {len(pending_results)} pending tasks (cross-language search with {len(query_variants)} variants)",
                         )
                     else:
                         # Log when Qdrant returns no results (helps debug threshold issues)
@@ -950,7 +995,8 @@ class TaskTools:
                             tool_name="semantic_search",
                             user_id=user_id,
                             query=query[:100],
-                            score_threshold=0.3,
+                            score_threshold=0.25,
+                            query_variants=query_variants,
                         )
 
                 except Exception as e:
@@ -960,7 +1006,7 @@ class TaskTools:
                         error=str(e),
                     )
 
-            # Fallback: keyword search (FR-038)
+            # Fallback: keyword search with cross-language support (FR-038)
             self.logger.info(
                 "MCP tool: semantic_search using keyword fallback",
                 tool_name="semantic_search",
@@ -968,30 +1014,56 @@ class TaskTools:
                 mode="keyword",
             )
 
-            # Build keyword search query
-            statement = select(Task).where(
-                (Task.user_id == user_id) &
-                (Task.completed == False)  # Only search pending tasks (T040)
-            )
+            # For keyword fallback, try all query variants and merge results
+            seen_task_ids = set()
+            all_keyword_results = []
 
-            # Search in title and description
-            search_pattern = f"%{query}%"
-            statement = statement.where(
-                (Task.title.ilike(search_pattern)) | (Task.description.ilike(search_pattern))
-            )
+            for variant_query in query_variants:
+                # Build keyword search query
+                statement = select(Task).where(
+                    (Task.user_id == user_id) &
+                    (Task.completed == False)  # Only search pending tasks (T040)
+                )
 
-            statement = statement.order_by(Task.created_at.desc())
-            statement = statement.limit(limit)
+                # Search in title and description
+                search_pattern = f"%{variant_query}%"
+                statement = statement.where(
+                    (Task.title.ilike(search_pattern)) | (Task.description.ilike(search_pattern))
+                )
 
-            result = await self.session.execute(statement)
-            tasks = result.scalars().all()
+                statement = statement.order_by(Task.created_at.desc())
+                statement = statement.limit(limit)
+
+                result = await self.session.execute(statement)
+                tasks = result.scalars().all()
+
+                # Add tasks not already seen
+                for task in tasks:
+                    if task.id not in seen_task_ids:
+                        seen_task_ids.add(task.id)
+                        all_keyword_results.append(task)
+
+                self.logger.debug(
+                    "Keyword search variant processed",
+                    tool_name="semantic_search",
+                    variant=variant_query[:50],
+                    results_this_variant=len(tasks),
+                )
+
+                # Stop if we have enough results
+                if len(all_keyword_results) >= limit:
+                    break
+
+            # Limit final results
+            all_keyword_results = all_keyword_results[:limit]
 
             self.logger.info(
                 "MCP tool completed: semantic_search (keyword fallback)",
                 tool_name="semantic_search",
                 user_id=user_id,
-                result_count=len(tasks),
+                result_count=len(all_keyword_results),
                 mode="keyword",
+                query_variants_tried=len(query_variants),
             )
 
             return ToolResponse(
@@ -1007,9 +1079,9 @@ class TaskTools:
                         "completed": task.completed,
                         "tags": [t for t in (task.tags or [])],  # Include tags
                     }
-                    for task in tasks
+                    for task in all_keyword_results
                 ],
-                message=f"Found {len(tasks)} matching tasks (keyword search)",
+                message=f"Found {len(all_keyword_results)} matching tasks (keyword search with {len(query_variants)} variants)",
             )
 
         except Exception as e:

@@ -46,7 +46,10 @@ from app.ai.services import (
     OpenAIService,
     initialize_qdrant,
 )
-from app.ai.agents.context import TodoContext
+from app.ai.agents.context import (
+    TodoContext,
+    create_context_with_user_profile,
+)
 from app.ai.utils.logging import get_logger, bind_correlation_id, sanitize_log_data
 from app.ai.utils.language import detect_language, should_respond_in_urdu
 from app.ai.utils.sanitize import sanitize_user_input, should_block_input, strip_system_instructions
@@ -362,17 +365,21 @@ async def chat(
         conv_lock = await conversation_lock_manager.acquire_lock(str(conversation.id))
 
         async with conv_lock:
-            # Create TodoContext for agent execution
+            # Create TodoContext for agent execution with user profile
             # Include current date so agent knows what "today" is (fixes "tomorrow" parsing)
-            context = TodoContext(
+            # Include user profile for personalized responses (using user's name)
+            context = await create_context_with_user_profile(
                 user_id=user_id,
                 conversation_id=str(conversation.id),
                 correlation_id=correlation_id,
-                language_preference=request_mode.value if request_mode else conversation.language_preference.value,
-                response_language=response_language.value,  # The actual language to respond in
-                current_date=datetime.utcnow().date(),  # Agent needs to know current date
                 session=session,
+                language_preference=request_mode.value if request_mode else conversation.language_preference.value,
+                timezone=getattr(conversation, "timezone", "UTC"),
+                current_date=datetime.utcnow().date(),  # Agent needs to know current date
             )
+
+            # Set response language based on detection
+            context.response_language = response_language.value
 
             # Get conversation history for context
             # Exclude the current user message (already saved to DB)
@@ -397,10 +404,19 @@ async def chat(
             # First, add a system message with current date context
             # This fixes the bug where "tomorrow" parses to the model's birth date (e.g., 6-7-24)
             today = datetime.utcnow().date()
+            system_content = f"Today's date is {today.strftime('%A, %B %d, %Y')}. "
+            system_content += "Use this date as reference when parsing relative dates like 'tomorrow', 'next week', etc."
+
+            # Add user profile context for personalized responses
+            if context.user_display_name or context.user_first_name:
+                user_name = context.user_display_name or context.user_first_name
+                system_content += f"\n\nThe user's name is {user_name}. Use their name naturally in greetings and responses to make the conversation more personal and friendly."
+                system_content += f"\nLanguage preference: {context.language_preference}."
+                system_content += f"\nTimezone: {context.timezone}."
+
             system_message = {
                 "role": "system",
-                "content": f"Today's date is {today.strftime('%A, %B %d, %Y')}. "
-                          f"Use this date as reference when parsing relative dates like 'tomorrow', 'next week', etc.",
+                "content": system_content,
             }
 
             conversation_history = [system_message]

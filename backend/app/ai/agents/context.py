@@ -98,6 +98,12 @@ class TodoContext:
     # Current date for agent awareness (fixes "tomorrow" parsing to model's birth date)
     current_date: date | None = None
 
+    # User profile information for personalized responses
+    user_email: str | None = None
+    user_first_name: str | None = None
+    user_last_name: str | None = None
+    user_display_name: str | None = None  # Computed display name
+
     # Runtime state (not persisted)
     session: Any = None  # Database session for MCP tools
     tool_results: dict[str, Any] = field(default_factory=dict)
@@ -110,6 +116,44 @@ class TodoContext:
 
     # Task ID cache TTL in seconds - after this, IDs are considered stale
     TASK_ID_CACHE_TTL: int = 300  # 5 minutes
+
+    @property
+    def user_name(self) -> str:
+        """
+        Get the user's name for personalized responses.
+
+        Returns display_name if available, otherwise first_name,
+        otherwise "there" as a neutral fallback.
+
+        Examples:
+            >>> ctx.user_name
+            "Ahsan"
+            >>> ctx.user_name  # When no name is set
+            "there"
+        """
+        if self.user_display_name:
+            return self.user_display_name
+        if self.user_first_name:
+            return self.user_first_name
+        return "there"
+
+    @property
+    def user_greeting(self) -> str:
+        """
+        Get a culturally appropriate greeting for the user.
+
+        Returns a greeting based on the user's name and language preference.
+
+        Examples:
+            >>> ctx.user_greeting
+            "Hello Ahsan!"
+            >>> ctx.user_greeting  # When Urdu preference
+            "السلام علیکم Ahsan!"
+        """
+        name = self.user_name
+        if self.language_preference == "ur" or self.response_language == "ur":
+            return f"السلام علیکم {name}!"  # Assalam-o-Alaikum
+        return f"Hello {name}!"
 
     def is_task_id_valid(self, task_id: int) -> bool:
         """
@@ -204,4 +248,122 @@ class TodoContext:
             language_preference=data.get("language_preference", "auto"),
             timezone=data.get("timezone", "UTC"),
             current_date=data.get("current_date"),
+            # User profile fields
+            user_email=data.get("user_email"),
+            user_first_name=data.get("user_first_name"),
+            user_last_name=data.get("user_last_name"),
+            user_display_name=data.get("user_display_name"),
         )
+
+
+# =============================================================================
+# User Profile Fetching
+# =============================================================================
+
+async def fetch_user_profile(
+    user_id: str,
+    session: Any,
+) -> dict[str, Any] | None:
+    """
+    Fetch user profile information from the database.
+
+    This function retrieves the user's profile data including name,
+    email, and timezone for use in agent context.
+
+    Args:
+        user_id: User ID from JWT 'sub' claim
+        session: Database session
+
+    Returns:
+        Dictionary with user profile fields or None if user not found
+
+    Example:
+        >>> profile = await fetch_user_profile("user123", session)
+        >>> profile["user_first_name"]
+        "Ahsan"
+    """
+    try:
+        from sqlalchemy import select
+        from app.models import User
+
+        statement = select(User).where(User.id == user_id)
+        result = await session.execute(statement)
+        user = result.scalar_one_or_none()
+
+        if user:
+            return {
+                "user_email": user.email,
+                "user_first_name": getattr(user, "first_name", None),
+                "user_last_name": getattr(user, "last_name", None),
+                "user_display_name": getattr(user, "display_name", None),
+                "timezone": getattr(user, "timezone", "UTC"),
+            }
+
+        return None
+
+    except Exception as e:
+        # Log error but don't fail - agent can work without user profile
+        import logging
+        logging.warning(
+            "Failed to fetch user profile for agent context",
+            user_id=user_id,
+            error=str(e),
+        )
+        return None
+
+
+async def create_context_with_user_profile(
+    user_id: str,
+    conversation_id: str,
+    correlation_id: str,
+    session: Any,
+    language_preference: str = "auto",
+    timezone: str = "UTC",
+    current_date: date | None = None,
+) -> TodoContext:
+    """
+    Create a TodoContext with user profile information.
+
+    This function creates a context and populates it with user profile
+    data from the database for personalized agent responses.
+
+    Args:
+        user_id: User ID from JWT 'sub' claim
+        conversation_id: Conversation ID
+        correlation_id: Request correlation ID
+        session: Database session
+        language_preference: Language preference (auto, en, ur)
+        timezone: User's timezone
+        current_date: Current date for agent awareness
+
+    Returns:
+        TodoContext with user profile populated
+
+    Example:
+        >>> ctx = await create_context_with_user_profile(
+        ...     "user123",
+        ...     "conv456",
+        ...     "corr789",
+        ...     session,
+        ...     language_preference="auto"
+        ... )
+        >>> ctx.user_name
+        "Ahsan"
+    """
+    # Fetch user profile from database
+    user_profile = await fetch_user_profile(user_id, session)
+
+    # Create context with or without user profile
+    context_data = {
+        "user_id": user_id,
+        "conversation_id": conversation_id,
+        "correlation_id": correlation_id,
+        "language_preference": language_preference,
+        "timezone": timezone,
+        "current_date": current_date,
+    }
+
+    if user_profile:
+        context_data.update(user_profile)
+
+    return TodoContext.from_dict(context_data)

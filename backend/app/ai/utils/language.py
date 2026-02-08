@@ -329,6 +329,192 @@ def get_text_direction(text: str) -> Literal["ltr", "rtl"]:
 
 
 # =============================================================================
+# Cross-Language Semantic Search Support
+# =============================================================================
+
+# Common Urdu-to-English word mappings for transliteration
+# This helps when users mix Urdu and English in queries like "Dinner wala task"
+URDU_TO_ENGLISH_MAPPING = {
+    # Common words (Urdu script -> Roman Urdu -> English)
+    "کام": "kaam",  # work
+    "کام کا": "kaam ka",
+    "کھانا": "khana",  # food
+    "کھانے کا": "khanay ka",
+    "خریداری": "khareedy",  # shopping
+    "دنر": "dinner",  # dinner
+    "ناشتہ": "nashta",  # breakfast
+    "دوپہر کا کھانا": "dopehar ka khana",  # lunch
+    "ملاقات": "mulaqaat",  # meeting
+    "جلس": "jals",  # meeting/gathering
+    "کلاس": "class",  # class
+    "مطالعات": "mutaleat",  # study
+    "پڑھائی": "parhai",  # study
+    "فون": "phone",  # phone/call
+    "کال": "call",  # call
+    "دکان": "dukan",  # shop/store
+    "مارکیٹ": "market",  # market
+    "گاڑی": "gari",  # car/vehicle
+    "سفر": "safar",  # travel/trip
+    "دوا": "dawa",  # medicine
+    "ڈاکٹر": "doctor",  # doctor
+    "ہسپتال": "hospital",  # hospital
+    "مقصد": "maqsad",  # purpose/task
+    "ٹاسک": "task",  # task
+    "کام": "kaam",  # work
+    "مکمل": "mukammal",  # complete/finish
+    "ختم": "khatam",  # finish/end
+    "شروع": "shuroo",  # start
+    "بنائیں": "banain",  # make/create
+    "شامل": "shamil",  # include/add
+    "ہٹائیں": "hatayen",  # remove/delete
+    "حذف": "hazf",  # delete
+    "اپ ڈیٹ": "update",  # update
+    "تبدیل": "tabdeel",  # change
+    "جائز": "jaiz",  # review
+    "چیک": "check",  # check
+}
+
+# Common Roman Urdu words to English
+ROMAN_URDU_TO_ENGLISH = {
+    "kaam": "work",
+    "khana": "food",
+    "khareedy": "shopping",
+    "dinner": "dinner",
+    "nashta": "breakfast",
+    "lunch": "lunch",
+    "mulaqaat": "meeting",
+    "jals": "meeting",
+    "class": "class",
+    "mutaleat": "study",
+    "parhai": "study",
+    "phone": "call",
+    "call": "call",
+    "dukan": "shop",
+    "market": "market",
+    "gari": "car",
+    "safar": "travel",
+    "dawa": "medicine",
+    "doctor": "doctor",
+    "hospital": "hospital",
+    "maqsad": "task",
+    "task": "task",
+    "mukammal": "complete",
+    "khatam": "finish",
+    "shuroo": "start",
+    "banain": "create",
+    "shamil": "add",
+    "hatayen": "remove",
+    "hazf": "delete",
+    "update": "update",
+    "tabdeel": "change",
+    "jaiz": "review",
+    "check": "check",
+    "kar": "do",
+    "karna": "do",
+    "kr": "do",  # Short for karna in Roman Urdu
+    "wala": "of",  # "Dinner wala" = "Dinner of" = related to dinner
+}
+
+
+def preprocess_query_for_semantic_search(query: str) -> list[str]:
+    """
+    Preprocess a query for cross-language semantic search.
+
+    When users mix Urdu and English (e.g., "Dinner wala task complete krdo"),
+    semantic search may fail because:
+    1. The query contains mixed scripts
+    2. The task titles might be in English while query has Urdu words
+
+    This function generates multiple query variants to improve matching:
+    1. Original query (preserve exact wording)
+    2. Query with Urdu words transliterated to English
+    3. Query with Roman Urdu words converted to English equivalents
+
+    Args:
+        query: The original search query
+
+    Returns:
+        List of query variants to try in order of priority
+
+    Examples:
+        >>> preprocess_query_for_semantic_search("Dinner wala task complete krdo")
+        ["Dinner wala task complete krdo", "Dinner of task complete do", "Dinner related task complete do"]
+
+        >>> preprocess_query_for_semantic_search("دنر کا ٹاسک")
+        ["دنر کا ٹاسک", "Dinner ka task", "Dinner task"]
+    """
+    if not query:
+        return [query]
+
+    variants = [query]  # Always include original query first
+
+    # Check if query contains Urdu script
+    has_urdu_script = is_urdu_text(query)
+
+    # Check if query contains common Roman Urdu patterns
+    words = query.lower().split()
+    has_roman_urdu = any(word in ROMAN_URDU_TO_ENGLISH for word in words)
+
+    if has_urdu_script or has_roman_urdu:
+        # Create English-transliterated variant
+        transliterated = query
+
+        # Replace Urdu script words with English equivalents
+        for urdu_word, english_word in URDU_TO_ENGLISH_MAPPING.items():
+            transliterated = transliterated.replace(urdu_word, english_word)
+
+        # Replace Roman Urdu words with English equivalents
+        for roman_urdu, english in ROMAN_URDU_TO_ENGLISH.items():
+            # Use word boundary regex for more accurate replacement
+            import re as re_module
+            pattern = r'\b' + re_module.escape(roman_urdu) + r'\b'
+            transliterated = re_module.sub(
+                pattern,
+                english,
+                transliterated,
+                flags=re_module.IGNORECASE
+            )
+
+        # Handle common suffixes like "wala" / "wali"
+        if "wala" in transliterated.lower() or "wali" in transliterated.lower():
+            # "X wala" roughly means "X of" or "related to X" or "X person"
+            # Replace with "related to" or remove for better semantic matching
+            import re as re_module
+            transliterated = re_module.sub(
+                r'\bwala\b',
+                'related to',
+                transliterated,
+                flags=re_module.IGNORECASE
+            )
+            transliterated = re_module.sub(
+                r'\bwali\b',
+                'related to',
+                transliterated,
+                flags=re_module.IGNORECASE
+            )
+
+        # Add transliterated variant if different from original
+        if transliterated != query and transliterated not in variants:
+            variants.append(transliterated)
+
+        # Create a simpler English-only variant for key terms
+        # Extract key English words and create a simplified query
+        import re as re_module
+        # Remove common Roman Urdu particles
+        simplified = re_module.sub(
+            r'\b(kr|karna|kar|karo|do|hai|hai|ka|ki|ke|ko|se|mein|par|pe|bhi|to|hi)\b',
+            '',
+            transliterated,
+            flags=re_module.IGNORECASE
+        )
+        simplified = ' '.join(simplified.split())  # Clean up extra spaces
+        if simplified and simplified not in variants and len(simplified) > 3:
+            variants.append(simplified)
+
+    return variants
+
+
+# =============================================================================
 # Deprecated - langdetect fallback
 # =============================================================================
 
