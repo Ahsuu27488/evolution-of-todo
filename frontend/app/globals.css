@@ -355,6 +355,9 @@
       radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
       rgb(var(--background));
     background-attachment: fixed;
+
+    /* Safe area inset support for iPhone home indicator */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
   /* Light mode body background with subtle gradient */
@@ -788,6 +791,32 @@
    Google Fonts import for Urdu support
    Per T076: Import Noto Nastaliq Urdu for proper Urdu script rendering
    =========================================================================== */
+
+/* =============================================================================
+   Mobile Keyboard & Safe Area Fixes
+   Ensures input fields are visible when virtual keyboard opens on iOS
+   =========================================================================== */
+
+@layer utilities {
+  /* iOS-specific: Prevent auto-zoom on input focus */
+  input[type="text"],
+  input[type="textarea"],
+  textarea {
+    font-size: 16px !important; /* Prevents iOS auto-zoom on focus */
+  }
+
+  /* Safe area inset for iPhone home indicator */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Fixed bottom elements that need to account for keyboard */
+  @supports (padding: max(0px)) {
+    .keyboard-aware-bottom {
+      padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+    }
+  }
+}
 
 /* Note: Font should be loaded via next/font in layout.tsx:
    import { Noto_Nastaliq_Urdu } from 'next/font/google'

@@ -168,7 +168,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         placeholder={placeholderText}
         disabled={disabled || isStreaming}
         dir={textDirection}
-        className={`flex-1 ${responsive.textareaMinH} bg-transparent text-white placeholder-white/40 ${responsive.textSize} resize-none outline-none`}
+        className={`flex-1 ${responsive.textareaMinH} bg-transparent text-white placeholder-white/40 resize-none outline-none`}
         style={{
           fieldSizing: "content",
           // Urdu-friendly font settings (T078)
@@ -177,6 +177,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           // T048: Focus state styling
           transition: "all 0.2s ease",
           padding: breakpoint === "mobile" ? "0.5rem 0" : "0.75rem 0",
+          // Prevents iOS auto-zoom on focus - always use 16px on mobile
+          fontSize: breakpoint === "mobile" ? "16px" : undefined,
         }}
         onFocus={(e) => {
           // Add focus ring effect

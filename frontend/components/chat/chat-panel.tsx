@@ -20,6 +20,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageSquare, X, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
+import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Task } from "@/types/task";
@@ -72,17 +73,23 @@ interface Conversation {
 /**
  * Responsive panel variants for different screen sizes.
  * Per User Story 3 (FR-009 through FR-011):
- * - Mobile (< 640px): full-screen layout
+ * - Mobile (< 640px): full-screen layout with dynamic height for keyboard handling
  * - Tablet (640px - 1024px): centered modal
  * - Desktop (> 1024px): floating panel bottom-right
  */
-const getResponsivePanelStyles = (breakpoint: Breakpoint) => {
+const getResponsivePanelStyles = (
+  breakpoint: Breakpoint,
+  visualViewportHeight?: number,
+  safeAreaBottom?: number
+) => {
   switch (breakpoint) {
     case "mobile":
-      // Full-screen on mobile
+      // Full-screen on mobile with dynamic height to handle keyboard
+      // Uses visualViewport.height which shrinks when keyboard opens
       return {
-        className: "fixed inset-0 z-50 w-screen h-screen rounded-none",
+        className: "fixed left-0 right-0 top-0 z-50 w-full rounded-none",
         style: {
+          height: visualViewportHeight ? `${visualViewportHeight - (safeAreaBottom || 0)}px` : '100vh',
           background: "rgba(15, 23, 42, 0.98)",
           backdropFilter: "blur(20px)",
           border: "none",
@@ -149,6 +156,10 @@ export function ChatPanel() {
   // Responsive breakpoint detection (User Story 3, T021)
   const { breakpoint } = useResponsive()
 
+  // Visual viewport tracking for mobile keyboard handling
+  // This ensures the input field stays visible when the keyboard opens
+  const visualViewport = useVisualViewport()
+
   // Query client for task cache updates
   const queryClient = useQueryClient()
 
@@ -178,6 +189,7 @@ export function ChatPanel() {
   const { toggleLanguage } = useChatLanguageActions();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputAreaRef = useRef<HTMLDivElement>(null);
 
   // API hooks
   const sendMessage = useSendMessage();
@@ -203,6 +215,14 @@ export function ChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedContent]);
+
+  // Mobile keyboard handling: Scroll to input when keyboard opens
+  useEffect(() => {
+    if (breakpoint === "mobile" && visualViewport.isKeyboardOpen) {
+      // Scroll input into view when keyboard opens
+      inputAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+  }, [breakpoint, visualViewport.isKeyboardOpen]);
 
   // T052: Scroll handler for loading older messages (pagination)
   // Detects when user scrolls near top of messages and triggers loading
@@ -637,8 +657,8 @@ export function ChatPanel() {
             animate="open"
             exit="closed"
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`${getResponsivePanelStyles(breakpoint).className} shadow-2xl flex flex-col overflow-hidden`}
-            style={getResponsivePanelStyles(breakpoint).style}
+            className={`${getResponsivePanelStyles(breakpoint, visualViewport.height, visualViewport.safeAreaBottom).className} shadow-2xl flex flex-col overflow-hidden`}
+            style={getResponsivePanelStyles(breakpoint, visualViewport.height, visualViewport.safeAreaBottom).style}
           >
             {/* Header - Touch targets meet 44px minimum (T023) */}
             <div
@@ -949,10 +969,15 @@ export function ChatPanel() {
                 </div>
 
                 {/* Input Area - Touch targets meet 44px minimum (T023) */}
+                {/* On mobile, add padding for safe area (home indicator) */}
                 <div
+                  ref={inputAreaRef}
                   className="p-4"
                   style={{
                     borderTop: "1px solid rgba(168, 85, 247, 0.2)",
+                    paddingBottom: breakpoint === "mobile"
+                      ? `calc(1rem + ${visualViewport.safeAreaBottom}px)`
+                      : undefined,
                   }}
                 >
                   <div
@@ -978,11 +1003,12 @@ export function ChatPanel() {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask me anything..."
                       disabled={isStreaming}
-                      className="flex-1 bg-transparent text-white placeholder-white/40 text-sm resize-none outline-none py-3"
+                      className="flex-1 bg-transparent text-white placeholder-white/40 resize-none outline-none py-3"
                       style={{
                         fieldSizing: "content",
                         minHeight: "44px",
                         maxHeight: "120px",
+                        fontSize: "16px", // Prevents iOS auto-zoom on focus (T044)
                       }}
                       rows={1}
                     />

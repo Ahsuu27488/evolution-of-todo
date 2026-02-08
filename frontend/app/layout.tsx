@@ -86,6 +86,15 @@ export default function RootLayout({
   return (
     <ViewTransitions>
       <html lang="en" suppressHydrationWarning>
+        <head>
+          {/* Viewport meta tag with mobile keyboard handling support */}
+          {/* interactive-widget=resizes-content ensures the viewport resizes when the virtual keyboard opens */}
+          {/* This prevents the keyboard from covering input fields on iOS Safari */}
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+          />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} ${notoNastaliqUrdu.variable} antialiased min-h-screen`}
         >
