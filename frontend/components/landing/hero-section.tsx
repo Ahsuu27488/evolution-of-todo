@@ -118,7 +118,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass border-primary/30">
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
               <span className="text-xs sm:text-sm font-medium text-foreground">
-                ✨ AI-Powered Productivity Assistant
+                 AI-Powered Productivity Assistant
               </span>
             </div>
           </motion.div>
