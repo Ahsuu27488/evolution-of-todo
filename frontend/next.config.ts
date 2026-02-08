@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // View transitions are now stable in Next.js 15 - remove from 
-  
+  // Enable standalone output for Docker deployment
+  output: 'standalone',
 };
 
 export default nextConfig;

@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chronos-config
+  labels:
+    {{- include "chronos-todo.labels" . | nindent 4 }}
+data:
+  # Database Configuration (Neon - external)
+  database-host: {{ .Values.global.neon.host | quote }}
+  database-port: {{ .Values.global.neon.port | quote }}
+  database-name: {{ .Values.global.neon.database | quote }}
+  database-user: {{ .Values.global.neon.user | quote }}
+  database-sslmode: {{ .Values.global.neon.sslmode | quote }}
+
+  # Qdrant Configuration (external cloud)
+  qdrant-url: {{ .Values.global.qdrant.url | quote }}
+
+  # OpenAI Configuration
+  openai-model: {{ .Values.global.openai.model | quote }}
+  openai-embedding-model: {{ .Values.global.openai.embeddingModel | quote }}
+  openai-whisper-model: {{ .Values.global.openai.whisperModel | quote }}
+
+  # Kafka Configuration
+  kafka-bootstrap-servers: "chronos-redpanda:9092"
+
+  # App URLs
+  frontend-url: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_APP_URL | quote }}
+  api-url: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_API_URL | quote }}
+
+  # Resend Configuration
+  email-from: {{ .Values.global.resend.from | quote }}

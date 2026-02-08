@@ -1,0 +1,60 @@
+{{- if .Values.redpanda.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chronos-todo.fullname" . }}-redpanda
+  labels:
+    {{- include "chronos-todo.redpanda.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.redpanda.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chronos-todo.redpanda.labels" . | nindent 6 }}
+      app.kubernetes.io/component: redpanda
+  template:
+    metadata:
+      labels:
+        {{- include "chronos-todo.redpanda.labels" . | nindent 8 }}
+        app.kubernetes.io/component: redpanda
+    spec:
+      containers:
+      - name: redpanda
+        image: "{{ .Values.redpanda.image.repository }}:{{ .Values.redpanda.image.tag }}"
+        imagePullPolicy: {{ .Values.redpanda.image.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          redpanda start \
+            --smp 1 \
+            --reserve-memory 0M \
+            --overprovisioned \
+            --node-id 0 \
+            --kafka-addr 0.0.0.0:9092 \
+            --advertise-kafka-addr chronos-todo-redpanda.chronos.svc.cluster.local:9092 \
+            --pandaproxy-addr 0.0.0.0:8082 \
+            --advertise-pandaproxy-addr chronos-todo-redpanda.chronos.svc.cluster.local:8082
+        ports:
+        - name: kafka
+          containerPort: 9092
+          protocol: TCP
+        - name: http-proxy
+          containerPort: 8082
+          protocol: TCP
+        - name: admin
+          containerPort: 9644
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.redpanda.resources | nindent 10 }}
+        {{- if .Values.redpanda.persistence.enabled }}
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/redpanda/data
+        {{- end }}
+      {{- if .Values.redpanda.persistence.enabled }}
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "chronos-todo.fullname" . }}-redpanda-data
+      {{- end }}
+{{- end }}

@@ -82,4 +82,14 @@ testing prompts
 report.mdbackend/server_output.log
 backend/server_output.logcd
 notes.txt
-prompt.txt
+prompt.txthelm/chronos-todo/values.yaml
+# Exclude files with sensitive credentials
+DEPLOYMENT-GUIDE.md
+deploy-helm.sh
+scripts/deploy-minikube.sh
+scripts/deploy-oracle.sh
+docker-compose.yml
+docker-compose-simple.yml
+helm/chronos-todo/values.yaml
+form-structure.txt
+

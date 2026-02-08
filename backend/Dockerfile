@@ -1,3 +1,6 @@
+# Chronos Todo Backend - FastAPI Dockerfile
+# Supports both Hugging Face Spaces (port 7860) and Docker Compose (port 8000)
+
 # Use Python 3.13 slim image
 FROM python:3.13-slim
 
@@ -20,12 +23,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port 7860 (Hugging Face Spaces requirement)
+# Create non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+# Expose ports (both Hugging Face and standard)
 EXPOSE 7860
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7860/api/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Run uvicorn on port 7860
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run uvicorn on port 8000 (Docker Compose default)
+# To use Hugging Face Spaces, override CMD: --port 7860
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

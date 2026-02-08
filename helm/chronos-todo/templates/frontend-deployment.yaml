@@ -1,0 +1,46 @@
+{{- if .Values.frontend.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chronos-todo.fullname" . }}-frontend
+  labels:
+    {{- include "chronos-todo.frontend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chronos-todo.frontend.labels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "chronos-todo.frontend.labels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.frontend.service.port }}
+          protocol: TCP
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_API_URL | quote }}
+        - name: NEXT_PUBLIC_APP_URL
+          value: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_APP_URL | quote }}
+        - name: BETTER_AUTH_URL
+          value: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_APP_URL | quote }}
+        envFrom:
+        - configMapRef:
+            name: chronos-config
+        - secretRef:
+            name: chronos-secrets
+        resources:
+          {{- toYaml .Values.frontend.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.frontend.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.frontend.readinessProbe | nindent 10 }}
+{{- end }}

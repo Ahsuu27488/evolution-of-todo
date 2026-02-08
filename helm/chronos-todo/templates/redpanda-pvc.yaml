@@ -1,0 +1,15 @@
+{{- if .Values.redpanda.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chronos-todo.fullname" . }}-redpanda-data
+  labels:
+    {{- include "chronos-todo.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.redpanda.persistence.size }}
+  storageClassName: {{ .Values.redpanda.persistence.storageClass }}
+{{- end }}
