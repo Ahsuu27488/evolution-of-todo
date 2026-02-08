@@ -332,6 +332,36 @@ def get_text_direction(text: str) -> Literal["ltr", "rtl"]:
 # Cross-Language Semantic Search Support
 # =============================================================================
 
+# Common English words that Whisper transliterates to Urdu script
+# This handles the case where user says "Dinner" but Whisper writes "ڈنر"
+URDU_SCRIPT_TO_ENGLISH = {
+    # English words commonly transliterated by Whisper
+    "ڈنر": "Dinner",  # Dinner (with Urdu 'd' - ڈ)
+    "دنر": "Dinner",  # Dinner (with Arabic 'd' - د)
+    "ٹاسک": "task",  # task
+    "ٹاسک": "Task",
+    "کمپلیٹ": "complete",  # complete
+    "مکمل": "complete",  # complete
+    "ختم": "finish",  # finish
+    "شروع": "start",  # start
+    "اپ ڈیٹ": "update",  # update
+    "تبدیل": "change",  # change
+    "جائز": "review",  # review
+    "چیک": "check",  # check
+    "والا": "of",  # "wala" suffix - means "of" or "related to"
+    "والی": "of",  # "wali" suffix (feminine)
+    "کر": "do",  # "kr"/"kar" - do
+    "کرو": "do",  # "karo" - do
+    "کی": "of",  # "ki" - of (feminine)
+    "کے": "of",  # "ke" - of (masculine)
+    "کا": "of",  # "ka" - of (masculine)
+    "میں": "in",  # "main"/"mein" - in
+    "پر": "on",  # "par"/"pe" - on
+    "کے": "for",  # "ke" - for
+    "لیے": "for",  # "liye" - for
+    "سے": "from",  # "se" - from
+}
+
 # Common Urdu-to-English word mappings for transliteration
 # This helps when users mix Urdu and English in queries like "Dinner wala task"
 URDU_TO_ENGLISH_MAPPING = {
@@ -341,7 +371,6 @@ URDU_TO_ENGLISH_MAPPING = {
     "کھانا": "khana",  # food
     "کھانے کا": "khanay ka",
     "خریداری": "khareedy",  # shopping
-    "دنر": "dinner",  # dinner
     "ناشتہ": "nashta",  # breakfast
     "دوپہر کا کھانا": "dopehar ka khana",  # lunch
     "ملاقات": "mulaqaat",  # meeting
@@ -359,19 +388,6 @@ URDU_TO_ENGLISH_MAPPING = {
     "ڈاکٹر": "doctor",  # doctor
     "ہسپتال": "hospital",  # hospital
     "مقصد": "maqsad",  # purpose/task
-    "ٹاسک": "task",  # task
-    "کام": "kaam",  # work
-    "مکمل": "mukammal",  # complete/finish
-    "ختم": "khatam",  # finish/end
-    "شروع": "shuroo",  # start
-    "بنائیں": "banain",  # make/create
-    "شامل": "shamil",  # include/add
-    "ہٹائیں": "hatayen",  # remove/delete
-    "حذف": "hazf",  # delete
-    "اپ ڈیٹ": "update",  # update
-    "تبدیل": "tabdeel",  # change
-    "جائز": "jaiz",  # review
-    "چیک": "check",  # check
 }
 
 # Common Roman Urdu words to English
@@ -459,7 +475,12 @@ def preprocess_query_for_semantic_search(query: str) -> list[str]:
         # Create English-transliterated variant
         transliterated = query
 
-        # Replace Urdu script words with English equivalents
+        # CRITICAL: First, replace Urdu script transliterations of English words
+        # This handles the case where Whisper transcribes "Dinner" as "ڈنر"
+        for urdu_script_word, english_word in URDU_SCRIPT_TO_ENGLISH.items():
+            transliterated = transliterated.replace(urdu_script_word, english_word)
+
+        # Then replace Urdu script words with English equivalents
         for urdu_word, english_word in URDU_TO_ENGLISH_MAPPING.items():
             transliterated = transliterated.replace(urdu_word, english_word)
 
@@ -500,9 +521,9 @@ def preprocess_query_for_semantic_search(query: str) -> list[str]:
         # Create a simpler English-only variant for key terms
         # Extract key English words and create a simplified query
         import re as re_module
-        # Remove common Roman Urdu particles
+        # Remove common Roman Urdu particles and Urdu script particles
         simplified = re_module.sub(
-            r'\b(kr|karna|kar|karo|do|hai|hai|ka|ki|ke|ko|se|mein|par|pe|bhi|to|hi)\b',
+            r'\b(kr|karna|kar|karo|do|hai|hai|ka|ki|ke|ko|se|mein|par|pe|bhi|to|hi|والا|والی|میں|پر)\b',
             '',
             transliterated,
             flags=re_module.IGNORECASE
@@ -510,6 +531,23 @@ def preprocess_query_for_semantic_search(query: str) -> list[str]:
         simplified = ' '.join(simplified.split())  # Clean up extra spaces
         if simplified and simplified not in variants and len(simplified) > 3:
             variants.append(simplified)
+
+        # Special case: If query is mostly Urdu script, create an English keywords-only variant
+        # This handles "ڈنر والا کمپلیٹ کرد" → "Dinner task complete"
+        if has_urdu_script:
+            # Extract English words from the URDU_SCRIPT_TO_ENGLISH mapping
+            english_keywords = []
+            for urdu_word, english in URDU_SCRIPT_TO_ENGLISH.items():
+                if urdu_word in query:
+                    # Add the English word if it's a content word (not a particle)
+                    if english.lower() not in ('of', 'in', 'on', 'for', 'from', 'do'):
+                        english_keywords.append(english)
+
+            if english_keywords:
+                # Create a variant with just the English keywords
+                english_only = ' '.join(english_keywords)
+                if english_only not in variants:
+                    variants.append(english_only)
 
     return variants
 
