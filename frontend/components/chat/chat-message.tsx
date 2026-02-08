@@ -10,6 +10,7 @@
  * - Task card rendering for AI-created tasks (T116)
  *
  * Per spec.md FR-001 through FR-010, FR-048.
+ * Phase 10 (T046-T050): Glassmorphism styling matching dashboard theme.
  */
 
 import { motion } from "framer-motion";
@@ -189,7 +190,7 @@ interface ChatMessageProps {
 }
 
 // =============================================================================
-// Animation Variants
+// Animation Variants - T049: Spring physics matching dashboard components
 // =============================================================================
 
 const messageVariants = {
@@ -245,6 +246,9 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       variants={messageVariants}
       initial="hidden"
       animate="visible"
+      whileHover={{ scale: 1.002 }}
+      whileTap={{ scale: 0.998 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Avatar */}
@@ -270,131 +274,144 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       {/* Message Content */}
       <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} max-w-[80%]`}>
         {isVoice && isUser ? (
-          // Voice Message Indicator - Clean, minimal design
-          <div
+          // T047: Voice Message Indicator - Glassmorphism styling
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className="px-4 py-3 rounded-2xl rounded-tr-sm flex items-center gap-2"
             style={{
-              background: "linear-gradient(135deg, #00f5ff 0%, #00b4d8 100%)",
-              color: "#0f172a",
+              background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
+              border: "1px solid rgba(0, 245, 255, 0.3)",
+              color: "#00f5ff",
+              backdropFilter: "blur(12px)",
+              boxShadow: "0 0 20px rgba(0, 245, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
             }}
           >
             <Mic className="w-4 h-4" />
             <span className="font-medium">Voice message</span>
-          </div>
+          </motion.div>
         ) : (
-          // Regular Text Message
-          <div
+          // T046: Regular Text Message - Glassmorphism styling
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
             className={`px-4 py-2.5 rounded-2xl text-sm ${
               isUser ? "rounded-tr-sm" : "rounded-tl-sm"
             }`}
             style={
               isUser
                 ? {
-                    background: "linear-gradient(135deg, #00f5ff 0%, #00b4d8 100%)",
-                    color: "#0f172a",
+                    // T050: User message - Cyan gradient matching dashboard
+                    background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
+                    border: "1px solid rgba(0, 245, 255, 0.3)",
+                    color: "#00f5ff",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 0 15px rgba(0, 245, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
                   }
                 : {
-                    background: "rgba(255, 255, 255, 0.1)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    // T046: Assistant message - Glassmorphism with white/gray tint
+                    background: "rgba(255, 255, 255, 0.05)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
                     color: "rgba(255, 255, 255, 0.9)",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
                   }
             }
           >
             <div dir={textDirection}>
-            <ReactMarkdown
-              components={{
-                // Custom text renderer for mixed language support
-                p: ({ children }) => (
-                  <p style={{ marginBottom: "0.5rem" }}>
-                    {renderMixedLanguageText(children)}
-                  </p>
-                ),
-                li: ({ children }) => (
-                  <li style={{ marginBottom: "0.15rem" }}>
-                    {renderMixedLanguageText(children)}
-                  </li>
-                ),
-                strong: ({ children }) => (
-                  <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "#00f5ff" }}>
-                    {renderMixedLanguageText(children)}
-                  </strong>
-                ),
-                // Style links
-                a: ({ ...props }) => (
-                  <a
-                    {...props}
-                    style={{
-                      color: isUser ? "#0ea5e9" : "#00f5ff",
-                      textDecoration: "underline",
-                    }}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                ),
-                // Style unordered lists
-                ul: ({ ...props }) => (
-                  <ul
-                    {...props}
-                    style={{
-                      listStyleType: "disc",
-                      marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
-                      marginRight: textDirection === "rtl" ? "1.2rem" : "0",
-                      paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
-                      listStylePosition: "inside",
-                      marginTop: "0.25rem",
-                      marginBottom: "0.25rem",
-                    }}
-                  />
-                ),
-                // Style ordered lists
-                ol: ({ ...props }) => (
-                  <ol
-                    {...props}
-                    style={{
-                      listStyleType: "decimal",
-                      marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
-                      marginRight: textDirection === "rtl" ? "1.2rem" : "0",
-                      paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
-                      listStylePosition: "inside",
-                      marginTop: "0.25rem",
-                      marginBottom: "0.25rem",
-                    }}
-                  />
-                ),
-                // Style code (inline)
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                code: ({ inline, ...props }: { inline?: boolean } & any) => (
-                  <code
-                    {...props}
-                    style={{
-                      background: isUser ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)",
-                      padding: inline ? "2px 6px" : "0.5rem",
-                      borderRadius: inline ? "4px" : "8px",
-                      fontSize: "0.9em",
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  />
-                ),
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-          </div>
+              <ReactMarkdown
+                components={{
+                  // Custom text renderer for mixed language support
+                  p: ({ children }) => (
+                    <p style={{ marginBottom: "0.5rem" }}>
+                      {renderMixedLanguageText(children)}
+                    </p>
+                  ),
+                  li: ({ children }) => (
+                    <li style={{ marginBottom: "0.15rem" }}>
+                      {renderMixedLanguageText(children)}
+                    </li>
+                  ),
+                  strong: ({ children }) => (
+                    <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "#00f5ff" }}>
+                      {renderMixedLanguageText(children)}
+                    </strong>
+                  ),
+                  // Style links
+                  a: ({ ...props }) => (
+                    <a
+                      {...props}
+                      style={{
+                        color: isUser ? "#0ea5e9" : "#00f5ff",
+                        textDecoration: "underline",
+                      }}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  ),
+                  // Style unordered lists
+                  ul: ({ ...props }) => (
+                    <ul
+                      {...props}
+                      style={{
+                        listStyleType: "disc",
+                        marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
+                        marginRight: textDirection === "rtl" ? "1.2rem" : "0",
+                        paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
+                        listStylePosition: "inside",
+                        marginTop: "0.25rem",
+                        marginBottom: "0.25rem",
+                      }}
+                    />
+                  ),
+                  // Style ordered lists
+                  ol: ({ ...props }) => (
+                    <ol
+                      {...props}
+                      style={{
+                        listStyleType: "decimal",
+                        marginLeft: textDirection === "rtl" ? "0" : "1.2rem",
+                        marginRight: textDirection === "rtl" ? "1.2rem" : "0",
+                        paddingLeft: textDirection === "rtl" ? "0" : "0.5rem",
+                        listStylePosition: "inside",
+                        marginTop: "0.25rem",
+                        marginBottom: "0.25rem",
+                      }}
+                    />
+                  ),
+                  // Style code (inline)
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  code: ({ inline, ...props }: { inline?: boolean } & any) => (
+                    <code
+                      {...props}
+                      style={{
+                        background: isUser ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)",
+                        padding: inline ? "2px 6px" : "0.5rem",
+                        borderRadius: inline ? "4px" : "8px",
+                        fontSize: "0.9em",
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    />
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
 
-          {/* Streaming cursor */}
-          {isStreaming && (
-            <motion.span
-              animate={{ opacity: [0, 1, 0] }}
-              transition={{ repeat: Infinity, duration: 1 }}
-              className="inline-block w-2 h-4 ml-1 align-middle"
-              style={{
-                background: "rgba(255,255,255,0.7)",
-              }}
-            />
-          )}
-        </div>
+              {/* Streaming cursor */}
+              {isStreaming && (
+                <motion.span
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  className="inline-block w-2 h-4 ml-1 align-middle"
+                  style={{
+                    background: "rgba(255,255,255,0.7)",
+                  }}
+                />
+              )}
+            </div>
+          </motion.div>
         )}
-        {/* End voice/text conditional */}
 
         {/* Task Cards from Tool Calls (T116) */}
         {!isUser && message.toolCalls && message.toolCalls.length > 0 && (

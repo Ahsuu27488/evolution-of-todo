@@ -63,8 +63,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     <div
       className="flex items-end gap-2 px-4 py-3 rounded-xl"
       style={{
+        // T048: Glassmorphism styling matching dashboard input fields
         background: "rgba(255, 255, 255, 0.05)",
+        backdropFilter: "blur(12px)",
         border: "1px solid rgba(255, 255, 255, 0.1)",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
       }}
     >
       {/* Voice Input Button with Whisper API (T086-T091) */}
@@ -92,6 +95,18 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           // Urdu-friendly font settings (T078)
           fontFamily: textDirection === "rtl" ? "'Noto Nastaliq Urdu', 'Amiri', serif" : "inherit",
           lineHeight: textDirection === "rtl" ? "2" : "1.5",
+          // T048: Focus state styling
+          transition: "all 0.2s ease",
+        }}
+        onFocus={(e) => {
+          // Add focus ring effect
+          e.currentTarget.parentElement!.style.borderColor = "rgba(0, 245, 255, 0.3)";
+          e.currentTarget.parentElement!.style.boxShadow = "0 0 0 2px rgba(0, 245, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.15)";
+        }}
+        onBlur={(e) => {
+          // Reset focus state
+          e.currentTarget.parentElement!.style.borderColor = "rgba(255, 255, 255, 0.1)";
+          e.currentTarget.parentElement!.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)";
         }}
       />
 
@@ -103,10 +118,17 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         disabled={!inputValue.trim() || disabled || isStreaming}
         className="flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         style={{
+          // T050: Cyan primary color matching dashboard
           background:
             inputValue.trim() && !disabled && !isStreaming
-              ? "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)"
+              ? "linear-gradient(135deg, rgba(0, 245, 255, 0.8) 0%, rgba(0, 180, 216, 0.8) 100%)"
               : "rgba(255,255,255,0.1)",
+          border: inputValue.trim() && !disabled && !isStreaming
+            ? "1px solid rgba(0, 245, 255, 0.3)"
+            : "1px solid rgba(255, 255, 255, 0.1)",
+          boxShadow: inputValue.trim() && !disabled && !isStreaming
+            ? "0 0 15px rgba(0, 245, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+            : "none",
         }}
       >
         {isStreaming ? (

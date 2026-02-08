@@ -5,6 +5,7 @@
  * Handles SSE streaming for real-time AI responses.
  *
  * Per spec.md FR-001 through FR-010.
+ * Phase 9 (T045): Integrates themed toast notifications for AI task actions.
  */
 
 import { useCallback, useRef } from "react";
@@ -12,6 +13,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { API_URL } from "@/lib/config/api";
 import { getAuthToken } from "@/lib/auth/token";
+import { parseToolResult, isTaskToolResult } from "@/lib/utils/sse";
+import { showToastForAIMutation } from "@/lib/utils/toast";
 import type { Conversation, Message } from "@/types/chat";
 
 // =============================================================================
@@ -90,6 +93,7 @@ export function useSendMessage() {
       onMessageStart,
       onToken,
       onToolCall,
+      onToolResult,
       onAgentHandoff,
       onDone,
       onError,
@@ -101,6 +105,7 @@ export function useSendMessage() {
       onMessageStart?: (conversationId: string, correlationId: string) => void;
       onToken: (token: string) => void;
       onToolCall: (tool: string, args: Record<string, unknown>) => void;
+      onToolResult?: (tool: string, output: string) => void;
       onAgentHandoff: (from: string, to: string) => void;
       onDone: (output: string, agent: string) => void;
       onError: (error: string, conversationId?: string) => void;
@@ -182,6 +187,17 @@ export function useSendMessage() {
                   break;
                 case "tool_call":
                   onToolCall(data.tool, data.arguments || {});
+                  break;
+                case "tool_result":
+                  // T045: Handle tool_result events for AI task actions
+                  onToolResult?.(data.tool, data.output);
+                  // Show themed toast for task mutations
+                  if (isTaskToolResult(eventType, { tool: data.tool, output: data.output })) {
+                    const mutation = parseToolResult(data.tool, data.output);
+                    if (mutation) {
+                      showToastForAIMutation(mutation);
+                    }
+                  }
                   break;
                 case "agent_handoff":
                   onAgentHandoff(data.from_agent, data.to_agent);

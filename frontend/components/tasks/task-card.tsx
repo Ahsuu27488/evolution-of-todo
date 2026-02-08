@@ -15,7 +15,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { Check, Calendar, Tag, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
@@ -30,6 +30,7 @@ import { toggleTaskComplete } from "@/app/actions/tasks"
 import { api } from "@/lib/api-client"
 import { taskCompletionConfetti } from "@/components/confetti"
 import { taskCard, taskComplete } from "@/lib/animations"
+import { useTaskEventStore, selectHasRecentComplete } from "@/lib/stores/task-events"
 import type { Task } from "@/types/task"
 
 interface TaskCardProps {
@@ -60,6 +61,29 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
   const [optimisticCompleted, setOptimisticCompleted] = useState(task.completed)
   const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false)  // T098
   const queryClient = useQueryClient()
+
+  // Phase 1 T013: Listen for AI-triggered task completions
+  const lastMutation = useTaskEventStore((state) => state.lastMutation)
+  const hasRecentComplete = useTaskEventStore(selectHasRecentComplete)
+
+  // Trigger celebration when AI completes this specific task
+  useEffect(() => {
+    if (
+      hasRecentComplete &&
+      lastMutation &&
+      lastMutation.type === "complete" &&
+      lastMutation.taskId === task.id &&
+      !task.completed && // Was incomplete before
+      optimisticCompleted // Now completed (via cache update)
+    ) {
+      taskCompletionConfetti()
+    }
+  }, [hasRecentComplete, lastMutation, task.id, task.completed, optimisticCompleted])
+
+  // Update local state when task prop changes (from cache updates)
+  useEffect(() => {
+    setOptimisticCompleted(task.completed)
+  }, [task.completed])
 
   async function handleToggleComplete() {
     if (isUpdating) return

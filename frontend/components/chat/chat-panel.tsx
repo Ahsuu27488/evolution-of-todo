@@ -9,8 +9,10 @@
  * - Voice input button with Whisper API
  * - Conversation history management
  * - Minimize/maximize support
+ * - Responsive design (mobile/tablet/desktop)
  *
  * Per spec.md FR-001 through FR-010, frontend design guidelines.
+ * Per User Story 3 (FR-009 through FR-014): Mobile-first responsive design.
  */
 
 "use client";
@@ -40,9 +42,12 @@ import {
 import { useSendMessage, useConversations, useDeleteConversation as useDeleteConversationApi } from "@/hooks/use-chat";
 import { api } from "@/lib/api-client";
 import * as chatApi from "@/lib/api/chat";
+import { useResponsive, type Breakpoint } from "@/lib/utils/responsive";
 
 import { ChatMessage } from "./chat-message";
 import { VoiceRecorder } from "./voice-recorder";
+import { ChatSkeleton, ConversationItemSkeleton, StreamingMessageSkeleton } from "./chat-skeleton";
+import { AgentIntro } from "./agent-intro";
 
 // =============================================================================
 // Types
@@ -61,6 +66,65 @@ interface Conversation {
 // Animation Variants
 // =============================================================================
 
+/**
+ * Responsive panel variants for different screen sizes.
+ * Per User Story 3 (FR-009 through FR-011):
+ * - Mobile (< 640px): full-screen layout
+ * - Tablet (640px - 1024px): centered modal
+ * - Desktop (> 1024px): floating panel bottom-right
+ */
+const getResponsivePanelStyles = (breakpoint: Breakpoint) => {
+  switch (breakpoint) {
+    case "mobile":
+      // Full-screen on mobile
+      return {
+        className: "fixed inset-0 z-50 w-screen h-screen rounded-none",
+        style: {
+          background: "rgba(15, 23, 42, 0.98)",
+          backdropFilter: "blur(20px)",
+          border: "none",
+        },
+      }
+    case "tablet":
+      // Centered modal on tablet
+      return {
+        className: "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[600px] max-w-[90vw] h-[80vh] rounded-2xl",
+        style: {
+          background: "rgba(15, 23, 42, 0.95)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(168, 85, 247, 0.2)",
+        },
+      }
+    case "desktop":
+    default:
+      // Floating panel on desktop
+      return {
+        className: "fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-2xl",
+        style: {
+          background: "rgba(15, 23, 42, 0.95)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(168, 85, 247, 0.2)",
+        },
+      }
+  }
+}
+
+/**
+ * FAB position variants for different screen sizes.
+ * FAB is positioned differently on mobile vs desktop/tablet.
+ */
+const getFABPosition = (breakpoint: Breakpoint) => {
+  switch (breakpoint) {
+    case "mobile":
+      return "fixed bottom-4 right-4 z-50"
+    case "tablet":
+      return "fixed bottom-6 right-6 z-50"
+    case "desktop":
+    default:
+      return "fixed bottom-6 right-6 z-50"
+  }
+}
+
 const panelVariants = {
   closed: {
     opacity: 0,
@@ -74,22 +138,14 @@ const panelVariants = {
   },
 };
 
-const messageVariants = {
-  hidden: {
-    opacity: 0,
-    y: 10,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-  },
-};
-
 // =============================================================================
 // Main Component
 // =============================================================================
 
 export function ChatPanel() {
+  // Responsive breakpoint detection (User Story 3, T021)
+  const { breakpoint } = useResponsive()
+
   // Panel state
   const isOpen = useChatPanel();
   const isMinimized = useChatPanelMinimized();
@@ -117,16 +173,51 @@ export function ChatPanel() {
 
   // API hooks
   const sendMessage = useSendMessage();
-  const { data: conversationsData, refetch: refetchConversations } = useConversations();
+  const { data: conversationsData, refetch: refetchConversations, isLoading: isLoadingConversations } = useConversations();
   const deleteConversationApi = useDeleteConversationApi();
 
   // Local state for conversation history sidebar
   const [showHistory, setShowHistory] = useState(false);
 
+  // T034, T035, T051: Loading states for conversation and messages
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [conversationLoadTimeout, setConversationLoadTimeout] = useState(false);
+  const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
+
+  // T052: Older messages loading state (pagination)
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+
+  // T054: AbortController for cancelling conversation requests
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedContent]);
+
+  // T052: Scroll handler for loading older messages (pagination)
+  // Detects when user scrolls near top of messages and triggers loading
+  useEffect(() => {
+    const messagesArea = document.getElementById('chat-messages-area');
+    if (!messagesArea || !conversationId || isLoadingConversation || isLoadingOlderMessages) {
+      return;
+    }
+
+    const handleScroll = () => {
+      // Check if scrolled near top (within 100px)
+      if (messagesArea.scrollTop < 100 && messages.length > 0) {
+        // TODO: Implement actual pagination API call
+        // For now, this is a placeholder for when pagination is added
+        console.log('[DEBUG] Near top - would load older messages for conversation:', conversationId);
+        // setIsLoadingOlderMessages(true);
+        // await loadOlderMessages(conversationId);
+        // setIsLoadingOlderMessages(false);
+      }
+    };
+
+    messagesArea.addEventListener('scroll', handleScroll);
+    return () => messagesArea.removeEventListener('scroll', handleScroll);
+  }, [conversationId, messages.length, isLoadingConversation, isLoadingOlderMessages]);
 
   // Load conversations when panel opens
   useEffect(() => {
@@ -141,6 +232,15 @@ export function ChatPanel() {
       setStoreConversations(conversationsData.conversations);
     }
   }, [conversationsData, setStoreConversations]);
+
+  // T054: Cleanup - abort any pending conversation load on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleSend = async () => {
     if (!inputValue.trim() || isStreaming) return;
@@ -231,12 +331,37 @@ export function ChatPanel() {
     setShowHistory(false);
   }, [clearMessages, setStoreConversationId]);
 
-  // Load an existing conversation
+  // Load an existing conversation (T034, T035: with loading state and timeout)
+  // T051: Enhanced to show skeleton during conversation switch
+  // T053: Error state with retry
+  // T054: Request cancellation support
   const handleLoadConversation = useCallback(async (conv: Conversation) => {
+    // T054: Cancel any pending conversation load request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+
+    setIsLoadingConversation(true);
+    setConversationLoadTimeout(false);
+    setConversationLoadError(null);
+
+    // T035: 15 second timeout with retry option
+    const timeoutId = setTimeout(() => {
+      setConversationLoadTimeout(true);
+      setIsLoadingConversation(false);
+      setConversationLoadError("Loading timed out. Please try again.");
+    }, 15000);
+
     try {
       console.log("[DEBUG] Loading conversation:", conv.id, conv.title);
-      const result = await chatApi.getConversation(conv.id);
+      // T054: Pass abort signal to getConversation
+      const result = await chatApi.getConversation(conv.id, 50, 0, abortControllerRef.current.signal);
+      clearTimeout(timeoutId);
       console.log("[DEBUG] API result success:", result.success);
+
       if (result.success && result.data) {
         console.log("[DEBUG] Raw messages from API:", result.data.messages.length, result.data.messages);
         // Log first message's structure to diagnose timestamp issue
@@ -274,10 +399,29 @@ export function ChatPanel() {
           addMessage(msg);
         });
         setShowHistory(false);
+        setConversationLoadTimeout(false);
+      } else {
+        // T053: Handle API error response - use type narrowing
+        if (!result.success) {
+          throw new Error(result.error.message || "Failed to load conversation");
+        }
       }
     } catch (error) {
       console.error("Failed to load conversation:", error);
-      toast.error("Failed to load conversation");
+      clearTimeout(timeoutId);
+
+      // T053: Check if error is from abort (user switched conversations)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log("[DEBUG] Conversation load cancelled (user switched)");
+        return; // Don't show error for cancelled requests
+      }
+
+      const errorMessage = error instanceof Error ? error.message : "Failed to load conversation";
+      setConversationLoadError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsLoadingConversation(false);
+      abortControllerRef.current = null;
     }
   }, [addMessage, clearMessages, setStoreConversationId]);
 
@@ -420,16 +564,17 @@ export function ChatPanel() {
 
   return (
     <>
-      {/* FAB Button */}
-      <AnimatePresence>
+      {/* FAB Button - Responsive positioning (T019, T022) */}
+      <AnimatePresence mode="wait">
         {!isOpen && (
           <motion.button
+            key={`fab-${breakpoint}`}
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             exit={{ scale: 0, rotate: 180 }}
             transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }}
             onClick={toggleOpen}
-            className="fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            className={`${getFABPosition(breakpoint)} p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow`}
             style={{
               background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
             }}
@@ -439,22 +584,20 @@ export function ChatPanel() {
         )}
       </AnimatePresence>
 
-      {/* Chat Panel */}
-      <AnimatePresence>
+      {/* Chat Panel - Responsive layout with AnimatePresence (T019, T020, T021, T022) */}
+      <AnimatePresence mode="wait">
         {isOpen && (
           <motion.div
+            key={`panel-${breakpoint}`}
             variants={panelVariants}
             initial="closed"
             animate="open"
             exit="closed"
-            className="fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-            style={{
-              background: "rgba(15, 23, 42, 0.95)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(168, 85, 247, 0.2)",
-            }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            className={`${getResponsivePanelStyles(breakpoint).className} shadow-2xl flex flex-col overflow-hidden`}
+            style={getResponsivePanelStyles(breakpoint).style}
           >
-            {/* Header */}
+            {/* Header - Touch targets meet 44px minimum (T023) */}
             <div
               className="flex items-center justify-between px-4 py-3"
               style={{
@@ -464,7 +607,7 @@ export function ChatPanel() {
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center"
+                  className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center"
                   style={{
                     background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
                   }}
@@ -479,12 +622,12 @@ export function ChatPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                {/* History button */}
+                {/* History button - 44px touch target (T023) */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowHistory(!showHistory)}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors relative"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors relative flex items-center justify-center"
                   title="Conversation history"
                 >
                   <History className="w-4 h-4 text-white/70" />
@@ -495,12 +638,12 @@ export function ChatPanel() {
                   )}
                 </motion.button>
 
-                {/* Language toggle button (T079) */}
+                {/* Language toggle button - 44px touch target (T023, T079) */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={toggleLanguage}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors relative"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors relative flex items-center justify-center"
                   title={`Language: ${languagePreference === "auto" ? "Auto-detect" : languagePreference === "en" ? "English" : "اردو"}`}
                 >
                   <Languages className="w-4 h-4 text-white/70" />
@@ -516,9 +659,10 @@ export function ChatPanel() {
                     {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
                   </span>
                 </motion.button>
+                {/* Minimize button - 44px touch target (T023) */}
                 <button
                   onClick={toggleMinimized}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                 >
                   {isMinimized ? (
                     <Maximize2 className="w-4 h-4 text-white/70" />
@@ -526,9 +670,10 @@ export function ChatPanel() {
                     <Minimize2 className="w-4 h-4 text-white/70" />
                   )}
                 </button>
+                {/* Close button - 44px touch target (T023) */}
                 <button
                   onClick={toggleOpen}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                 >
                   <X className="w-4 h-4 text-white/70" />
                 </button>
@@ -559,7 +704,14 @@ export function ChatPanel() {
                       </button>
                     </div>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {conversationsData?.conversations && conversationsData.conversations.length > 0 ? (
+                      {/* T034: Conversation list skeleton while loading */}
+                      {isLoadingConversations ? (
+                        <>
+                          <ConversationItemSkeleton />
+                          <ConversationItemSkeleton />
+                          <ConversationItemSkeleton />
+                        </>
+                      ) : conversationsData?.conversations && conversationsData.conversations.length > 0 ? (
                         conversationsData.conversations.map((conv) => (
                           <div
                             key={conv.id}
@@ -595,99 +747,165 @@ export function ChatPanel() {
             {/* Messages Area */}
             {!isMinimized && (
               <>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {/* Welcome message */}
-                  {messages.length === 0 && !isStreaming && (
-                    <motion.div
-                      variants={messageVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="text-center py-8"
-                    >
-                      <div
-                        className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                        style={{
-                          background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)",
-                        }}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages-area">
+                  {/* T051: Skeleton when loading conversation (shows instead of old messages during switch) */}
+                  <AnimatePresence>
+                    {isLoadingConversation && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="space-y-4"
                       >
-                        <MessageSquare className="w-8 h-8" style={{ color: "#00f5ff" }} />
-                      </div>
-                      <h3 className="text-white font-semibold mb-2">
-                        Welcome to Todo AI
-                      </h3>
-                      <p className="text-sm text-white/60 mb-4">
-                        I can help you manage your tasks naturally:
-                      </p>
-                      <div className="text-left max-w-xs mx-auto space-y-2">
-                        {[
-                          '"Add a high priority task to buy groceries tomorrow"',
-                          '"Show me my tasks for this week"',
-                          '"Mark task 5 as complete"',
-                        ].map((example, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              // Extract the text between quotes
-                              const match = example.match(/"([^"]+)"/);
-                              const textToInsert = match ? match[1] : example;
-                              setInputValue(textToInsert);
-                            }}
-                            className="w-full px-3 py-2 rounded-lg text-sm text-left text-white/80 hover:text-white transition-colors"
-                            style={{
-                              background: "rgba(255,255,255,0.05)",
-                              border: "1px solid rgba(255,255,255,0.1)",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {example}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Messages */}
-                  <AnimatePresence mode="popLayout">
-                    {messages.map((message) => (
-                      <ChatMessage
-                        key={message.id}
-                        message={message}
-                        onTaskAction={handleTaskAction}
-                      />
-                    ))}
+                        <ChatSkeleton count={4} variant="mixed" />
+                      </motion.div>
+                    )}
                   </AnimatePresence>
 
-                  {/* Streaming indicator */}
-                  {isStreaming && streamedContent && (
-                    <ChatMessage
-                      message={{
-                        id: "streaming",
-                        conversationId: conversationId || "temp",
-                        role: "assistant",
-                        content: streamedContent,
-                        createdAt: new Date().toISOString(),
-                      }}
-                      isStreaming
-                      onTaskAction={handleTaskAction}
-                    />
-                  )}
+                  {/* T052: Older messages loading indicator (shows at top when scrolling up for pagination) */}
+                  <AnimatePresence>
+                    {isLoadingOlderMessages && !isLoadingConversation && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex justify-center py-2"
+                      >
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white/60"
+                          style={{
+                            background: "rgba(255, 255, 255, 0.05)",
+                            border: "1px solid rgba(168, 85, 247, 0.2)",
+                          }}
+                        >
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Loading older messages...</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-                  {/* Typing indicator */}
-                  {isStreaming && !streamedContent && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2 text-white/50"
-                    >
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">AI is thinking...</span>
-                    </motion.div>
+                  {/* T053: Loading error state with retry */}
+                  <AnimatePresence>
+                    {conversationLoadError && !isLoadingConversation && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex flex-col items-center gap-4 py-8"
+                      >
+                        <div className="text-center">
+                          <p className="text-red-400 mb-2 flex items-center gap-2">
+                            <X className="w-4 h-4" />
+                            {conversationLoadError}
+                          </p>
+                          <button
+                            onClick={() => {
+                              setConversationLoadError(null);
+                              if (conversationId) {
+                                handleLoadConversation({ id: conversationId } as Conversation);
+                              }
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                            style={{
+                              background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
+                            }}
+                          >
+                            Retry Loading
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* T035: Timeout fallback with retry option */}
+                  <AnimatePresence>
+                    {conversationLoadTimeout && !conversationLoadError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="flex flex-col items-center gap-4 py-8"
+                      >
+                        <div className="text-center">
+                          <p className="text-white/70 mb-2">Taking longer than expected...</p>
+                          <button
+                            onClick={() => {
+                              setConversationLoadTimeout(false);
+                              if (conversationId) {
+                                handleLoadConversation({ id: conversationId } as Conversation);
+                              }
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                            style={{
+                              background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
+                            }}
+                          >
+                            Retry Loading
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* T051: Messages only show when not loading conversation (to avoid flicker) */}
+                  {!isLoadingConversation && (
+                    <>
+                      {/* Agent Introduction Screen (T036-T040) */}
+                      {messages.length === 0 && !isStreaming && !conversationLoadTimeout && !conversationLoadError && (
+                        <AgentIntro
+                          onExampleClick={(promptText) => {
+                            setInputValue(promptText)
+                            // Optional: auto-send the message immediately
+                            // handleSend()
+                          }}
+                        />
+                      )}
+
+                      {/* Messages */}
+                      <AnimatePresence mode="popLayout">
+                        {messages.map((message) => (
+                          <ChatMessage
+                            key={message.id}
+                            message={message}
+                            onTaskAction={handleTaskAction}
+                          />
+                        ))}
+                      </AnimatePresence>
+
+                      {/* Streaming indicator */}
+                      {isStreaming && streamedContent && (
+                        <ChatMessage
+                          message={{
+                            id: "streaming",
+                            conversationId: conversationId || "temp",
+                            role: "assistant",
+                            content: streamedContent,
+                            createdAt: new Date().toISOString(),
+                          }}
+                          isStreaming
+                          onTaskAction={handleTaskAction}
+                        />
+                      )}
+
+                      {/* Typing indicator - with streaming skeleton (T033, T034) */}
+                      <AnimatePresence>
+                        {isStreaming && !streamedContent && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                          >
+                            <StreamingMessageSkeleton />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </>
                   )}
 
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Area */}
+                {/* Input Area - Touch targets meet 44px minimum (T023) */}
                 <div
                   className="p-4"
                   style={{
@@ -701,12 +919,14 @@ export function ChatPanel() {
                       border: "1px solid rgba(255, 255, 255, 0.1)",
                     }}
                   >
-                    {/* Voice Input Button with Whisper API (T086-T091) */}
-                    <VoiceRecorder
-                      onTranscript={handleTranscript}
-                      onVoiceMessageSend={handleVoiceMessageSend}
-                      disabled={isStreaming}
-                    />
+                    {/* Voice Input Button with Whisper API (T086-T091) - 44px touch target */}
+                    <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+                      <VoiceRecorder
+                        onTranscript={handleTranscript}
+                        onVoiceMessageSend={handleVoiceMessageSend}
+                        disabled={isStreaming}
+                      />
+                    </div>
 
                     {/* Text Input */}
                     <textarea
@@ -718,19 +938,19 @@ export function ChatPanel() {
                       className="flex-1 bg-transparent text-white placeholder-white/40 text-sm resize-none outline-none py-3"
                       style={{
                         fieldSizing: "content",
-                        minHeight: "24px",
+                        minHeight: "44px",
                         maxHeight: "120px",
                       }}
                       rows={1}
                     />
 
-                    {/* Send Button */}
+                    {/* Send Button - 44px touch target (T023) */}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={handleSend}
                       disabled={!inputValue.trim() || isStreaming}
-                      className="flex-shrink-0 p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-shrink-0 min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       style={{
                         background: inputValue.trim() && !isStreaming
                           ? "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)"

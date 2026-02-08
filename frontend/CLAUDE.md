@@ -511,6 +511,153 @@ jwt({
 
 ---
 
+### Dual State Management Pattern (Phase 013 - AI Chat UI Redesign)
+
+**Overview**: Phase 013 introduced a dual state management architecture that combines React Context for chat UI state with Zustand for task mutation events. This pattern enables real-time task synchronization between AI actions and the dashboard.
+
+**Architecture Diagram**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SSE Stream (Backend)                         │
+│  - tool_call events (AI invoked action)                          │
+│  - tool_result events (Action completed)                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Frontend SSE Parser (lib/api/chat.ts)              │
+│  - Parse tool_result events                                      │
+│  - Extract task mutation data                                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│         Chat Store (React Context) + Task Events (Zustand)       │
+│  - triggerTaskUpdate() action                                    │
+│  - setTaskMutation() action                                       │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              TanStack Query Cache Update                         │
+│  - queryClient.setQueryData(['tasks', id], updatedTask)         │
+│  - queryClient.invalidateQueries(['tasks']) // Background       │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Dashboard Components                          │
+│  - Task lists auto-re-render with updated data                   │
+│  - Celebration animation plays on task completion                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**State Store Responsibilities**:
+
+| Store | Type | Responsibility | Location |
+|-------|------|----------------|----------|
+| `ChatUIState` | React Context | Chat panel open/close, messages, streaming, language | `lib/stores/chat-store.ts` |
+| `TaskEventStore` | Zustand | Task mutation events from AI (create, complete, update, delete) | `lib/stores/task-events.ts` |
+
+**Why React Context for Chat UI?**
+- Prevents infinite re-render loops with Zustand object selectors in SSR/hydration
+- Chat UI state is transient (doesn't need persistence)
+- Context naturally follows component tree structure
+
+**Why Zustand for Task Events?**
+- Task mutations affect dashboard (outside chat component tree)
+- Zustand persists state across component unmounts
+- Enables cross-component communication without prop drilling
+
+**Key Interfaces**:
+
+```typescript
+// lib/stores/task-events.ts (Zustand)
+interface TaskMutation {
+  type: 'create' | 'complete' | 'update' | 'delete'
+  taskId: number | null
+  timestamp: number
+  data?: Partial<Task>
+  success?: boolean
+  error?: string
+}
+
+interface TaskEventStore {
+  lastMutation: TaskMutation | null
+  setTaskMutation: (mutation: TaskMutation) => void
+  clearMutation: () => void
+}
+
+// lib/stores/chat-store.ts (React Context)
+interface ChatUIState {
+  // UI State
+  isOpen: boolean
+  isMinimized: boolean
+  messages: Message[]
+  isStreaming: boolean
+  streamedContent: string
+  currentConversationId: string | null
+  languagePreference: "auto" | "en" | "ur"
+
+  // Actions
+  toggleOpen: () => void
+  toggleMinimized: () => void
+  addMessage: (message: Message) => void
+  clearMessages: () => void
+  sendMessage: (content: string, isVoice?: boolean) => Promise<void>
+  startStreaming: () => void
+  resetStreamState: () => void
+  appendStreamedContent: (content: string) => void
+  setConversationId: (id: string | null) => void
+
+  // Cache Update Action (Phase 013)
+  triggerTaskUpdate: (taskId: number, mutation: TaskMutation) => void
+}
+```
+
+**Usage Example**:
+
+```typescript
+// In chat-panel.tsx - When AI completes a task via tool_result
+import { useChatStore } from '@/lib/stores/chat-store'
+import { useTaskEventStore } from '@/lib/stores/task-events'
+
+const { triggerTaskUpdate } = useChatStore()
+const setTaskMutation = useTaskEventStore(s => s.setTaskMutation)
+
+// Parse SSE tool_result event
+if (tool === 'complete_task' && output.success) {
+  const taskId = output.data.id
+
+  // Update both stores
+  triggerTaskUpdate(taskId, {
+    type: 'complete',
+    taskId,
+    timestamp: Date.now(),
+    data: { completed: true }
+  })
+
+  setTaskMutation({
+    type: 'complete',
+    taskId,
+    timestamp: Date.now(),
+    data: { completed: true },
+    success: true
+  })
+}
+```
+
+**Best Practices**:
+
+1. **TanStack Query for Server State**: Always use TanStack Query for API data - never duplicate in Zustand/Context
+2. **React Context for Component State**: Use for UI state that's local to a component subtree
+3. **Zustand for Cross-Component Events**: Use when state needs to be accessed across unrelated components
+4. **Cache Updates via queryClient**: Always update TanStack Query cache immediately for optimistic UI
+5. **Background Refetch**: After optimistic updates, invalidate queries for background sync
+
+---
+
 ## Styling Conventions
 
 ### Tailwind v4

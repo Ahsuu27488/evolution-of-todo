@@ -14,6 +14,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, ReactNode, createElement } from "react"
+import type { TaskMutationFromSSE } from "@/lib/utils/sse"
 
 // =============================================================================
 // Types
@@ -80,6 +81,10 @@ interface ChatUIState {
 
   // Language preference for Urdu support
   languagePreference: "auto" | "en" | "ur"
+
+  // Task cache coordination (Phase 1 - FR-001, FR-003)
+  triggerTaskUpdate: (mutation: TaskMutationFromSSE) => void
+  onTaskMutated: (mutation: TaskMutationFromSSE) => void
 
   // Actions
   setOpen: (open: boolean) => void
@@ -241,6 +246,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // Task cache coordination actions
+  const triggerTaskUpdate = useCallback((mutation: TaskMutationFromSSE) => {
+    // This action is called when SSE tool_result events indicate AI performed a task action
+    // Components can listen to this via onTaskMutated callback
+    // The actual TanStack Query cache update happens in the chat API client
+    console.debug("[ChatStore] Task update triggered:", mutation)
+  }, [])
+
+  const onTaskMutated = useCallback((mutation: TaskMutationFromSSE) => {
+    // Callback for when task mutation is processed
+    console.debug("[ChatStore] Task mutation processed:", mutation)
+  }, [])
+
   const reset = useCallback(() => {
     setIsOpen(false)
     setIsMinimized(false)
@@ -315,6 +333,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     setLanguagePreference: setLanguagePreferenceState,
     toggleLanguage,
+
+    triggerTaskUpdate,
+    onTaskMutated,
 
     reset,
   }

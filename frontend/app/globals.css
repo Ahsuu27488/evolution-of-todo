@@ -793,3 +793,28 @@
    import { Noto_Nastaliq_Urdu } from 'next/font/google'
    const notoNastaliqUrdu = Noto_Nastaliq_Urdu({ subsets: ['arabic'], display: 'swap' })
 */
+
+/* =============================================================================
+   Mobile Toast Positioning (T044)
+   Ensures toasts don't interfere with chat input on mobile devices
+   =========================================================================== */
+
+@layer utilities {
+  /* Mobile toast positioning - avoid chat input area at bottom */
+  @media (max-width: 640px) {
+    .mobile-toast-safe {
+      /* On mobile, position toasts at top-center or adjust bottom padding
+         to avoid overlapping with chat panel input area */
+      position: fixed;
+      bottom: max(100px, env(safe-area-inset-bottom)) !important;
+      /* 100px clears the chat input area when chat panel is open */
+    }
+  }
+
+  /* When chat panel is open, push toasts higher on mobile */
+  @media (max-width: 640px) {
+    body:has([data-chat-open="true"]) .sonner-toaster {
+      bottom: max(140px, env(safe-area-inset-bottom)) !important;
+    }
+  }
+}

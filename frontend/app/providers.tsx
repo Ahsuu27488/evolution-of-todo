@@ -8,8 +8,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AdBlockWarning } from "@/components/layout/adblock-warning"
 import { ChatProvider } from "@/lib/stores/chat-store"
 
-// Dynamically import ChatPanel with SSR disabled to prevent hydration issues
-const ChatPanel = dynamic(() => import("@/components/chat").then(m => ({ default: m.ChatPanel })), {
+// Dynamically import ConditionalChatPanel with SSR disabled to prevent hydration issues
+// Per spec.md User Story 2 (FR-005 through FR-008): FAB only visible on dashboard page
+const ConditionalChatPanel = dynamic(() => import("@/components/chat/conditional-chat-panel").then(m => ({ default: m.ConditionalChatPanel })), {
   ssr: false,
 })
 
@@ -46,11 +47,18 @@ export function Providers({ children }: ProvidersProps) {
         disableTransitionOnChange
       >
         {children}
-        <Toaster position="bottom-right" richColors closeButton />
+        {/* T044: Responsive positioning for toasts - top-center on mobile, bottom-right on desktop */}
+        <Toaster position="bottom-right" richColors closeButton gap={8} expand={false} toastOptions={{
+          duration: 3000,
+          classNames: {
+            // Mobile-responsive positioning
+            toast: "mobile:max-w-[calc(100vw-2rem)]",
+          },
+        }} />
         <AdBlockWarning />
         {/* Phase III: AI Chatbot */}
         <ChatProvider>
-          <ChatPanel />
+          <ConditionalChatPanel />
         </ChatProvider>
       </ThemeProvider>
       {process.env.NODE_ENV === "development" && (

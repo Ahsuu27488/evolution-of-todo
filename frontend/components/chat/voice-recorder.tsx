@@ -4,20 +4,24 @@
  * Features:
  * - MediaRecorder API for audio capture
  * - 30-second recording limit (T087)
- * - Visual feedback with pulse animation (T088)
+ * - Visual feedback with pulse animation (T088, T026)
  * - Upload progress indicator (T089)
  * - Whisper API integration (T090)
  * - Urdu language support
- * - Confirmation prompt for transcriptions (T092)
+ * - Direct send to agent (T028) - no confirmation prompts
+ * - Recording duration display (T025) - MM:SS format
+ * - Stop/cancel button (T027) - allows cancel during recording
+ * - Error handling with retry (T030)
  *
  * Per spec.md T086-T092.
+ * Per User Story 4 (FR-015 through FR-019): Streamlined voice recording.
  */
 
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Loader2, Check, X } from "lucide-react";
+import { Mic, MicOff, Loader2 } from "lucide-react";
 import { useChatLanguage } from "@/lib/stores/chat-store";
 import { API_URL } from "@/lib/config/api";
 import { getAuthToken } from "@/lib/auth/token";
@@ -45,25 +49,6 @@ interface RecordingState {
 const MAX_RECORDING_SECONDS = 30; // T087: 30-second limit for cost containment
 const PULSE_ANIMATION_DURATION = 1.5; // Seconds for pulsing effect
 
-// T092: Ambiguous transcription patterns
-const AMBIGUOUS_PATTERNS = [
-  /\b(add|create|make|new)\s*\b/i,
-  /\b(delete|remove|clear)\s*\b/i,
-  /\b(complete|finish|done)\s*\b/i,
-  /\b(schedule|remind|notify)\s*\b/i,
-  /\b(tomorrow|today|week|month)\s*\b/i,
-];
-
-/**
- * Check if transcribed text might be ambiguous (T092)
- * Ambiguous transcriptions need user confirmation before sending.
- */
-function isAmbiguousTranscription(text: string): boolean {
-  if (!text || text.length < 5) return false;
-  // Check if text matches any ambiguous pattern
-  return AMBIGUOUS_PATTERNS.some(pattern => pattern.test(text));
-}
-
 // =============================================================================
 // Component
 // =============================================================================
@@ -81,21 +66,10 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // T092: Pending transcript confirmation state
-  const [pendingTranscript, setPendingTranscript] = useState<{
-    text: string;
-    language?: string;
-  } | null>(null);
-
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  // T092: Check if pending transcript is ambiguous
-  const isAmbiguous = useMemo(() => {
-    return pendingTranscript && isAmbiguousTranscription(pendingTranscript.text);
-  }, [pendingTranscript]);
 
   // Clear error after 3 seconds
   useEffect(() => {
@@ -187,6 +161,7 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
   }, []);
 
   // Transcribe audio using Whisper API
+  // Per T028: Sends directly to agent without confirmation prompt
   const transcribeAudio = useCallback(async () => {
     if (!state.audioBlob) return;
 
@@ -234,17 +209,14 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
 
       const result = await response.json();
 
-      // T092: Set pending transcript for confirmation (if ambiguous)
-      // or send directly (if clear)
+      // T028: Send voice message directly to agent without confirmation
       const transcript = {
         text: result.text,
         language: result.language,
       };
 
-      if (isAmbiguousTranscription(result.text)) {
-        setPendingTranscript(transcript);
-      } else if (onVoiceMessageSend) {
-        // Auto-send voice message directly to chat
+      if (onVoiceMessageSend) {
+        // Auto-send voice message directly to chat (streamlined UX)
         onVoiceMessageSend(transcript.text, transcript.language);
       } else {
         // Fallback: put in input field (original behavior)
@@ -256,26 +228,13 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
 
     } catch (err) {
       console.error("Transcription error:", err);
+      // T030: Inline error message with retry option
       setError("Transcription failed. Please try again or use text input.");
     } finally {
       setIsTranscribing(false);
       setUploadProgress(0);
     }
   }, [state.audioBlob, languagePreference, onTranscript, onVoiceMessageSend]);
-
-  // T092: Confirm pending transcript
-  const handleConfirmTranscript = useCallback(() => {
-    if (pendingTranscript) {
-      onTranscript(pendingTranscript.text, pendingTranscript.language);
-      setPendingTranscript(null);
-    }
-  }, [pendingTranscript, onTranscript]);
-
-  // T092: Reject pending transcript
-  const handleRejectTranscript = useCallback(() => {
-    setPendingTranscript(null);
-    setError("Transcription discarded. Please try again or type manually.");
-  }, []);
 
   // Handle record button click
   const handleRecordClick = () => {
@@ -308,6 +267,21 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
     };
   }, []);
 
+  // Retry button on error (T030)
+  const handleRetry = useCallback(() => {
+    setError(null);
+    if (state.audioBlob) {
+      transcribeAudio();
+    }
+  }, [state.audioBlob, transcribeAudio]);
+
+  // Cancel button during recording (T027)
+  const handleCancelRecording = useCallback(() => {
+    stopRecording();
+    setState({ isRecording: false, duration: 0, audioBlob: null });
+    setError("Recording cancelled. Please try again.");
+  }, [stopRecording]);
+
   // Don't render if disabled and no interaction possible
   if (disabled && !state.isRecording && !state.audioBlob && !isTranscribing) {
     return null;
@@ -315,21 +289,28 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
 
   return (
     <div className="relative flex items-center gap-2">
-      {/* Error message */}
+      {/* Error message with retry button (T030) */}
       <AnimatePresence>
         {error && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="text-xs text-red-400 whitespace-nowrap"
+            className="flex items-center gap-2 text-xs text-red-400 whitespace-nowrap"
           >
-            {error}
+            <span>{error}</span>
+            <button
+              onClick={handleRetry}
+              className="underline hover:text-red-300 transition-colors"
+              title="Retry transcription"
+            >
+              Retry
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Recording duration indicator */}
+      {/* Recording duration indicator (T025) */}
       <AnimatePresence>
         {state.isRecording && (
           <motion.div
@@ -346,13 +327,34 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
         )}
       </AnimatePresence>
 
+      {/* Cancel button during recording (T027) */}
+      <AnimatePresence>
+        {state.isRecording && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={handleCancelRecording}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition-all text-xs font-medium"
+            style={{
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              color: "rgba(255, 255, 255, 0.7)",
+            }}
+            title="Cancel recording"
+          >
+            Cancel
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Record/Stop button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={handleRecordClick}
         disabled={disabled || isTranscribing}
-        className="relative flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50"
+        className="relative flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
         style={{
           background: state.isRecording
             ? "rgba(239, 68, 68, 0.2)"  // Red when recording
@@ -363,8 +365,9 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
             ? "1px solid rgba(239, 68, 68, 0.3)"
             : "none",
         }}
+        title={state.isRecording ? "Stop recording" : "Start voice recording"}
       >
-        {/* Recording indicator with pulse animation (T088) */}
+        {/* Recording indicator with pulse animation (T026, T088) */}
         {state.isRecording && (
           <motion.span
             className="absolute inset-0 rounded-lg"
@@ -401,99 +404,6 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
           style={{ maxWidth: "60px" }}
         />
       )}
-
-      {/* T092: Confirmation prompt for ambiguous transcriptions */}
-      <AnimatePresence>
-        {pendingTranscript && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="absolute bottom-full left-0 mb-2 p-3 rounded-xl z-50"
-            style={{
-              background: "rgba(20, 20, 26, 0.95)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              backdropFilter: "blur(12px)",
-              minWidth: "280px",
-            }}
-          >
-            <div className="space-y-3">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-white/90">
-                  {isAmbiguous ? "Confirm transcription?" : "Transcription ready"}
-                </span>
-                <button
-                  onClick={handleRejectTranscript}
-                  className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Transcript text */}
-              <div
-                className="p-2.5 rounded-lg text-sm text-white/80"
-                style={{
-                  background: "rgba(0, 245, 255, 0.1)",
-                  border: "1px solid rgba(0, 245, 255, 0.2)",
-                }}
-              >
-                &quot;{pendingTranscript.text}&quot;
-              </div>
-
-              {/* Warning for ambiguous transcriptions */}
-              {isAmbiguous && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-start gap-2 text-xs text-amber-400/90"
-                >
-                  <span>⚠️</span>
-                  <span>
-                    This transcription contains task-related keywords.{" "}
-                    Please confirm before sending.
-                  </span>
-                </motion.div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleRejectTranscript}
-                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-1.5">
-                    <X className="w-3.5 h-3.5" />
-                    <span>Retry</span>
-                  </div>
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleConfirmTranscript}
-                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, rgb(0 245 255) 0%, rgb(168 85 247) 100%)",
-                  }}
-                >
-                  <div className="flex items-center justify-center gap-1.5 text-white">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Send</span>
-                  </div>
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

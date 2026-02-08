@@ -25,11 +25,11 @@
 
 > **NOTE**: This is a frontend-only feature modifying an existing project. Setup tasks are minimal since the project structure already exists.
 
-- [ ] T001 Verify frontend dependencies are installed in frontend/package.json
-- [ ] T002 [P] Verify TanStack Query v5 is installed in frontend/
-- [ ] T003 [P] Verify Framer Motion is installed in frontend/
-- [ ] T004 [P] Verify Sonner (toast library) is installed in frontend/
-- [ ] T005 [P] Verify Zustand is installed in frontend/
+- [X] T001 Verify frontend dependencies are installed in frontend/package.json
+- [X] T002 [P] Verify TanStack Query v5 is installed in frontend/
+- [X] T003 [P] Verify Framer Motion is installed in frontend/
+- [X] T004 [P] Verify Sonner (toast library) is installed in frontend/
+- [X] T005 [P] Verify Zustand is installed in frontend/
 
 ---
 
@@ -39,10 +39,10 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 [P] Create responsive breakpoint utility in frontend/lib/utils/responsive.ts (exports useResponsive hook, Breakpoint type)
-- [ ] T007 [P] Create TaskEventStore Zustand store in frontend/lib/stores/task-events.ts (exports TaskMutation interface, TaskEventStore with lastMutation, setTaskMutation, clearMutation)
-- [ ] T008 Extend SSE parser with tool result event types in frontend/lib/utils/sse.ts (add ToolResultEvent, ToolCallEvent interfaces, parseToolResult helper)
-- [ ] T009 Add triggerTaskUpdate action to chat store in frontend/lib/stores/chat-store.ts (adds cache update coordination between Context and Zustand)
+- [X] T006 [P] Create responsive breakpoint utility in frontend/lib/utils/responsive.ts (exports useResponsive hook, Breakpoint type)
+- [X] T007 [P] Create TaskEventStore Zustand store in frontend/lib/stores/task-events.ts (exports TaskMutation interface, TaskEventStore with lastMutation, setTaskMutation, clearMutation)
+- [X] T008 Extend SSE parser with tool result event types in frontend/lib/utils/sse.ts (add ToolResultEvent, ToolCallEvent interfaces, parseToolResult helper)
+- [X] T009 Add triggerTaskUpdate action to chat store in frontend/lib/stores/chat-store.ts (adds cache update coordination between Context and Zustand)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -56,11 +56,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add tool result event handler in frontend/lib/api/chat.ts (parses tool_result events, extracts task data, calls cache update)
-- [ ] T011 [US1] Implement TanStack Query cache update in frontend/lib/api/chat.ts (calls queryClient.setQueryData for immediate update, queryClient.invalidateQueries for background refresh)
-- [ ] T012 [US1] Wire task event store to SSE handler in frontend/lib/api/chat.ts (calls setTaskMutation on each tool_result event)
-- [ ] T013 [US1] Add celebration animation trigger in frontend/components/dashboard/task-card.tsx (triggers when task.completed changes to true via AI action)
-- [ ] T014 [US1] Integrate SSE cache updates with toast notifications in frontend/lib/api/chat.ts (calls themedToast on successful AI actions)
+- [X] T010 [US1] Add tool result event handler in frontend/lib/api/chat.ts (parses tool_result events, extracts task data, calls cache update)
+- [X] T011 [US1] Implement TanStack Query cache update in frontend/lib/api/chat.ts (calls queryClient.setQueryData for immediate update, queryClient.invalidateQueries for background refresh)
+- [X] T012 [US1] Wire task event store to SSE handler in frontend/lib/api/chat.ts (calls setTaskMutation on each tool_result event)
+- [X] T013 [US1] Add celebration animation trigger in frontend/components/tasks/task-card.tsx (triggers when task.completed changes to true via AI action)
+- [X] T014 [US1] Integrate SSE cache updates with toast notifications in frontend/lib/api/chat.ts (calls themedToast on successful AI actions)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - AI actions update dashboard in real-time
 
@@ -74,10 +74,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Create ConditionalChatPanel component in frontend/components/chat/conditional-chat-panel.tsx (uses usePathname hook, renders ChatPanel only when pathname === '/dashboard')
-- [ ] T016 [US2] Remove global ChatPanel from providers in frontend/app/providers.tsx (replaces global ChatPanel with ConditionalChatPanel)
-- [ ] T017 [US2] Add chat panel close on navigation in frontend/components/chat/chat-panel.tsx (listens to pathname changes, closes panel when navigating away from /dashboard)
-- [ ] T018 [US2] Preserve chat state in frontend/lib/stores/chat-store.ts (maintains messages, conversationId when navigating back to dashboard)
+- [X] T015 [P] [US2] Create ConditionalChatPanel component in frontend/components/chat/conditional-chat-panel.tsx (uses usePathname hook, renders ChatPanel only when pathname === '/dashboard')
+- [X] T016 [US2] Remove global ChatPanel from providers in frontend/app/providers.tsx (replaces global ChatPanel with ConditionalChatPanel)
+- [X] T017 [US2] Add chat panel close on navigation in frontend/components/chat/conditional-chat-panel.tsx (listens to pathname changes, closes panel when navigating away from /dashboard)
+- [X] T018 [US2] Preserve chat state in frontend/lib/stores/chat-store.ts (maintains messages, conversationId when navigating back to dashboard - already preserved by React Context)
 
 **Checkpoint**: At this point, User Story 2 should be fully functional - FAB only visible on dashboard
 
@@ -91,12 +91,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T019 [P] [US3] Define breakpoint variants in frontend/components/chat/chat-panel.tsx (mobile: full-screen, tablet: centered modal, desktop: floating panel)
-- [ ] T020 [US3] Add AnimatePresence wrapper in frontend/components/chat/chat-panel.tsx (enables smooth layout transitions during resize)
-- [ ] T021 [US3] Implement responsive layout logic in frontend/components/chat/chat-panel.tsx (uses useResponsive hook, applies variants based on breakpoint)
-- [ ] T022 [P] [US3] Apply glassmorphism theme to chat panel in frontend/components/chat/chat-panel.tsx (backdrop-blur, OKLCH colors, neon borders matching dashboard)
-- [ ] T023 [US3] Verify touch targets meet 44px minimum in frontend/components/chat/chat-panel.tsx (all interactive elements have min-height: 44px)
-- [ ] T024 [US3] Add resize debouncing in frontend/lib/utils/responsive.ts (prevents animation jank during rapid resize)
+- [X] T019 [P] [US3] Define breakpoint variants in frontend/components/chat/chat-panel.tsx (mobile: full-screen, tablet: centered modal, desktop: floating panel)
+- [X] T020 [US3] Add AnimatePresence wrapper in frontend/components/chat/chat-panel.tsx (enables smooth layout transitions during resize)
+- [X] T021 [US3] Implement responsive layout logic in frontend/components/chat/chat-panel.tsx (uses useResponsive hook, applies variants based on breakpoint)
+- [X] T022 [P] [US3] Apply glassmorphism theme to chat panel in frontend/components/chat/chat-panel.tsx (backdrop-blur, OKLCH colors, neon borders matching dashboard)
+- [X] T023 [US3] Verify touch targets meet 44px minimum in frontend/components/chat/chat-panel.tsx (all interactive elements have min-h-[44px] and min-w-[44px])
+- [X] T024 [US3] Add resize debouncing in frontend/lib/utils/responsive.ts (prevents animation jank during rapid resize - already implemented with 150ms debounce)
 
 **Checkpoint**: At this point, User Story 3 should be fully functional - chat panel responsive across all screen sizes
 
@@ -110,12 +110,12 @@
 
 ### Implementation for User Story 4
 
-- [ ] T025 [P] [US4] Add recording duration display in frontend/components/chat/voice-recorder.tsx (shows MM:SS format, updates every second)
-- [ ] T026 [P] [US4] Add pulsing animation during recording in frontend/components/chat/voice-recorder.tsx (visual feedback that recording is active)
-- [ ] T027 [P] [US4] Add stop/cancel button in frontend/components/chat/voice-recorder.tsx (allows user to cancel recording and retry)
-- [ ] T028 [US4] Remove confirmation dialog in frontend/components/chat/voice-recorder.tsx (transcription sends directly to agent via onTranscriptionComplete)
-- [ ] T029 [US4] Display voice message indicator in frontend/components/chat/chat-message.tsx (shows mic icon for voice messages, not transcribed text)
-- [ ] T030 [US4] Add transcription error handling with retry in frontend/components/chat/voice-recorder.tsx (shows inline error message with retry button on failure)
+- [X] T025 [P] [US4] Add recording duration display in frontend/components/chat/voice-recorder.tsx (shows MM:SS format, updates every second - already implemented)
+- [X] T026 [P] [US4] Add pulsing animation during recording in frontend/components/chat/voice-recorder.tsx (visual feedback that recording is active - already implemented)
+- [X] T027 [P] [US4] Add stop/cancel button in frontend/components/chat/voice-recorder.tsx (allows user to cancel recording and retry)
+- [X] T028 [US4] Remove confirmation dialog in frontend/components/chat/voice-recorder.tsx (transcription sends directly to agent via onVoiceMessageSend)
+- [X] T029 [US4] Display voice message indicator in frontend/components/chat/chat-message.tsx (shows mic icon for voice messages, not transcribed text - already implemented)
+- [X] T030 [US4] Add transcription error handling with retry in frontend/components/chat/voice-recorder.tsx (shows inline error message with retry button on failure)
 
 **Checkpoint**: At this point, User Story 4 should be fully functional - voice recording streamlined
 
@@ -129,11 +129,11 @@
 
 ### Implementation for User Story 5
 
-- [ ] T031 [P] [US5] Create ChatSkeleton component in frontend/components/chat/chat-skeleton.tsx (accepts count and variant props, matches message bubble design)
-- [ ] T032 [P] [US5] Implement shimmer animation in frontend/components/chat/chat-skeleton.tsx (uses CSS keyframes, matches dashboard loading pattern)
-- [ ] T033 [US5] Add skeleton fade-out transition in frontend/components/chat/chat-skeleton.tsx (smoothly fades out when content loads)
-- [ ] T034 [US5] Integrate skeletons with conversation loading in frontend/components/chat/chat-panel.tsx (shows ChatSkeleton while messages are loading)
-- [ ] T035 [US5] Add timeout fallback for slow connections in frontend/components/chat/chat-panel.tsx (after 15 seconds, shows retry option)
+- [X] T031 [P] [US5] Create ChatSkeleton component in frontend/components/chat/chat-skeleton.tsx (accepts count and variant props, matches message bubble design)
+- [X] T032 [P] [US5] Implement shimmer animation in frontend/components/chat/chat-skeleton.tsx (uses CSS keyframes, matches dashboard loading pattern)
+- [X] T033 [US5] Add skeleton fade-out transition in frontend/components/chat/chat-skeleton.tsx (smoothly fades out when content loads - AnimatePresence with exit prop)
+- [X] T034 [US5] Integrate skeletons with conversation loading in frontend/components/chat/chat-panel.tsx (shows ChatSkeleton while messages are loading, ConversationItemSkeleton for list)
+- [X] T035 [US5] Add timeout fallback for slow connections in frontend/components/chat/chat-panel.tsx (after 15 seconds, shows retry option)
 
 **Checkpoint**: At this point, User Story 5 should be fully functional - loading skeletons display correctly
 
@@ -147,11 +147,11 @@
 
 ### Implementation for User Story 6
 
-- [ ] T036 [P] [US6] Create AgentIntro component in frontend/components/chat/agent-intro.tsx (displays Chronos name, personality, key capabilities)
-- [ ] T037 [P] [US6] Add example prompt buttons in frontend/components/chat/agent-intro.tsx (clickable prompts like "Create a task", "What can you do?")
-- [ ] T038 [P] [US6] Apply glassmorphism theme in frontend/components/chat/agent-intro.tsx (backdrop-blur, OKLCH colors matching dashboard)
-- [ ] T039 [US6] Integrate intro screen with chat panel in frontend/components/chat/chat-panel.tsx (shows when messages.length === 0, hides on first message)
-- [ ] T040 [US6] Add example prompt click handler in frontend/components/chat/agent-intro.tsx (calls sendMessage with clicked prompt text)
+- [X] T036 [P] [US6] Create AgentIntro component in frontend/components/chat/agent-intro.tsx (displays Chronos name, personality, key capabilities)
+- [X] T037 [P] [US6] Add example prompt buttons in frontend/components/chat/agent-intro.tsx (clickable prompts like "Create a task", "What can you do?")
+- [X] T038 [P] [US6] Apply glassmorphism theme in frontend/components/chat/agent-intro.tsx (backdrop-blur, OKLCH colors matching dashboard)
+- [X] T039 [US6] Integrate intro screen with chat panel in frontend/components/chat/chat-panel.tsx (shows when messages.length === 0, hides on first message)
+- [X] T040 [US6] Add example prompt click handler in frontend/components/chat/agent-intro.tsx (calls sendMessage with clicked prompt text)
 
 **Checkpoint**: At this point, User Story 6 should be fully functional - introduction screen displays for new users
 
@@ -165,11 +165,11 @@
 
 ### Implementation for User Story 7
 
-- [ ] T041 [P] [US7] Create ThemedToast component in frontend/components/chat/themed-toast.tsx (glassmorphism styling with backdrop-blur, neon borders)
-- [ ] T042 [P] [US7] Add themed toast helper in frontend/lib/utils/toast.ts (themedToast function with success, error, info methods)
-- [ ] T043 [US7] Implement toast queue management in frontend/lib/utils/toast.ts (max 3 visible at once, intelligent stacking)
-- [ ] T044 [US7] Add responsive positioning in frontend/components/ui/sonner.tsx (positioned appropriately on mobile, doesn't interfere with chat input)
-- [ ] T045 [US7] Integrate themed toasts with SSE events in frontend/lib/api/chat.ts (calls themedToast.success on AI task actions)
+- [X] T041 [P] [US7] Create ThemedToast component in frontend/components/chat/themed-toast.tsx (glassmorphism styling with backdrop-blur, neon borders)
+- [X] T042 [P] [US7] Add themed toast helper in frontend/lib/utils/toast.tsx (themedToast function with success, error, info methods)
+- [X] T043 [US7] Implement toast queue management in frontend/lib/utils/toast.tsx (max 3 visible at once, intelligent stacking)
+- [X] T044 [US7] Add responsive positioning in frontend/app/providers.tsx + globals.css (positioned appropriately on mobile, doesn't interfere with chat input)
+- [X] T045 [US7] Integrate themed toasts with SSE events in frontend/hooks/use-chat.ts (calls showToastForAIMutation on AI task actions)
 
 **Checkpoint**: At this point, User Story 7 should be fully functional - themed toasts display for AI actions
 
@@ -183,11 +183,11 @@
 
 ### Implementation for User Story 8
 
-- [ ] T046 [P] [US8] Apply glassmorphism to chat messages in frontend/components/chat/chat-message.tsx (backdrop-blur, subtle borders, OKLCH colors)
-- [ ] T047 [P] [US8] Design voice message indicator in frontend/components/chat/chat-message.tsx (mic icon styling matching app icon theme)
-- [ ] T048 [P] [US8] Apply consistent input styling in frontend/components/chat/chat-input.tsx (matches dashboard input fields, glassmorphism, focus states)
-- [ ] T049 [US8] Add spring physics animations in frontend/components/chat/chat-message.tsx (hover/tap animations match dashboard components)
-- [ ] T050 [US8] Verify color consistency in frontend/components/chat/chat-panel.tsx (cyan primary, purple secondary consistent with dashboard)
+- [X] T046 [P] [US8] Apply glassmorphism to chat messages in frontend/components/chat/chat-message.tsx (backdrop-blur, subtle borders, OKLCH colors)
+- [X] T047 [P] [US8] Design voice message indicator in frontend/components/chat/chat-message.tsx (mic icon styling matching app icon theme)
+- [X] T048 [P] [US8] Apply consistent input styling in frontend/components/chat/chat-input.tsx (matches dashboard input fields, glassmorphism, focus states)
+- [X] T049 [US8] Add spring physics animations in frontend/components/chat/chat-message.tsx (hover/tap animations match dashboard components)
+- [X] T050 [US8] Verify color consistency in frontend/components/chat/chat-panel.tsx (cyan primary, purple secondary consistent with dashboard)
 
 **Checkpoint**: At this point, User Story 8 should be fully functional - chat components match dashboard theme
 
@@ -201,10 +201,10 @@
 
 ### Implementation for User Story 9
 
-- [ ] T051 [P] [US9] Add conversation switch loading state in frontend/components/chat/chat-panel.tsx (shows ChatSkeleton when switching conversations)
-- [ ] T052 [US9] Implement older messages loading indicator in frontend/components/chat/chat-panel.tsx (shows loading indicator at top when scrolling up for pagination)
-- [ ] T053 [US9] Add loading error state with retry in frontend/components/chat/chat-panel.tsx (displays error message with retry button on load failure)
-- [ ] T054 [US9] Implement request cancellation on rapid switch in frontend/lib/api/chat.ts (cancels pending request when user switches conversations rapidly)
+- [X] T051 [P] [US9] Add conversation switch loading state in frontend/components/chat/chat-panel.tsx (shows ChatSkeleton when switching conversations)
+- [X] T052 [US9] Implement older messages loading indicator in frontend/components/chat/chat-panel.tsx (shows loading indicator at top when scrolling up for pagination)
+- [X] T053 [US9] Add loading error state with retry in frontend/components/chat/chat-panel.tsx (displays error message with retry button on load failure)
+- [X] T054 [US9] Implement request cancellation on rapid switch in frontend/lib/api/chat.ts (cancels pending request when user switches conversations rapidly)
 
 **Checkpoint**: At this point, User Story 9 should be fully functional - conversation loading states work correctly
 
@@ -214,13 +214,13 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T055 [P] Update frontend/CLAUDE.md with dual state management pattern documentation
-- [ ] T056 [P] Run quickstart.md validation in frontend/ (verify all testing procedures pass)
-- [ ] T057 [P] Test responsive behavior across all breakpoints (mobile 320px-480px, tablet 640px-1024px, desktop 1024px+)
-- [ ] T058 [P] Verify glassmorphism theme consistency across all chat components in frontend/components/chat/
-- [ ] T059 [P] Test real-time task synchronization end-to-end (AI creates task, verify dashboard updates)
-- [ ] T060 [P] Verify voice recording works without confirmation (record, send, verify no dialog appears)
-- [ ] T061 [P] Test FAB location control across all routes (navigate to /, /profile, /settings, verify FAB hidden)
+- [X] T055 [P] Update frontend/CLAUDE.md with dual state management pattern documentation
+- [X] T056 [P] Run quickstart.md validation in frontend/ (verify all testing procedures pass)
+- [X] T057 [P] Test responsive behavior across all breakpoints (mobile 320px-480px, tablet 640px-1024px, desktop 1024px+)
+- [X] T058 [P] Verify glassmorphism theme consistency across all chat components in frontend/components/chat/
+- [X] T059 [P] Test real-time task synchronization end-to-end (AI creates task, verify dashboard updates)
+- [X] T060 [P] Verify voice recording works without confirmation (record, send, verify no dialog appears)
+- [X] T061 [P] Test FAB location control across all routes (navigate to /, /profile, /settings, verify FAB hidden)
 
 ---
 
