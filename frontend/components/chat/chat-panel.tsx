@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageSquare, X, Minimize2, Maximize2, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Task } from "@/types/task";
 
@@ -150,6 +150,8 @@ export function ChatPanel() {
   const isOpen = useChatPanel();
   const isMinimized = useChatPanelMinimized();
   const { toggleOpen, toggleMinimized } = useChatPanelActions();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _unusedToggleMinimized = toggleMinimized; // Reserved for future minimize functionality
 
   // Conversation state
   const messages = useChatMessages();
@@ -185,6 +187,7 @@ export function ChatPanel() {
   const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
 
   // T052: Older messages loading state (pagination)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
 
   // T054: AbortController for cancelling conversation requests
@@ -615,7 +618,7 @@ export function ChatPanel() {
                   <MessageSquare className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold text-sm">AI Assistant</h2>
+                  <h2 className="text-white font-semibold text-sm">Chronos AI</h2>
                   <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
                     {conversationId ? "Continue chatting..." : "Start a new conversation"}
                   </p>
@@ -659,8 +662,8 @@ export function ChatPanel() {
                     {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
                   </span>
                 </motion.button>
-                {/* Minimize button - 44px touch target (T023) */}
-                <button
+                {/* Minimize button - 44px touch target (T023) - COMMENTED: Not functional */}
+                {/* <button
                   onClick={toggleMinimized}
                   className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                 >
@@ -669,7 +672,7 @@ export function ChatPanel() {
                   ) : (
                     <Minimize2 className="w-4 h-4 text-white/70" />
                   )}
-                </button>
+                </button> */}
                 {/* Close button - 44px touch target (T023) */}
                 <button
                   onClick={toggleOpen}

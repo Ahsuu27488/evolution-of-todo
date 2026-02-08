@@ -19,9 +19,9 @@
 
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, Loader2, Send } from "lucide-react";
 import { useChatLanguage } from "@/lib/stores/chat-store";
 import { API_URL } from "@/lib/config/api";
 import { getAuthToken } from "@/lib/auth/token";
@@ -30,10 +30,21 @@ import { getAuthToken } from "@/lib/auth/token";
 // Types
 // =============================================================================
 
+export interface VoiceRecorderRef {
+  /** Stop the current recording (if recording) */
+  stopRecording: () => void;
+  /** Start recording (if not already recording) */
+  startRecording: () => void;
+  /** Check if currently recording */
+  isRecording: () => boolean;
+}
+
 interface VoiceRecorderProps {
   onTranscript: (text: string, language?: string) => void;
   onVoiceMessageSend?: (text: string, language?: string) => void;  // Auto-send callback
   disabled?: boolean;
+  onRecordingStateChange?: (isRecording: boolean) => void;  // Expose recording state to parent
+  hideMainButtonDuringRecording?: boolean;  // Hide the main Record/Stop/Send button when recording (parent takes over)
 }
 
 interface RecordingState {
@@ -53,40 +64,47 @@ const PULSE_ANIMATION_DURATION = 1.5; // Seconds for pulsing effect
 // Component
 // =============================================================================
 
-export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: VoiceRecorderProps) {
-  const { languagePreference } = useChatLanguage();
+export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
+  ({ onTranscript, onVoiceMessageSend, disabled, onRecordingStateChange, hideMainButtonDuringRecording }, ref) => {
+    const { languagePreference } = useChatLanguage();
 
-  const [state, setState] = useState<RecordingState>({
-    isRecording: false,
-    duration: 0,
-    audioBlob: null,
-  });
+    const [state, setState] = useState<RecordingState>({
+      isRecording: false,
+      duration: 0,
+      audioBlob: null,
+    });
 
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+    const [isTranscribing, setIsTranscribing] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const chunksRef = useRef<BlobPart[]>([]);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const isCancellingRef = useRef(false); // Flag to track cancellation intent
 
-  // Clear error after 3 seconds
-  useEffect(() => {
-    if (error) {
-      const timeout = setTimeout(() => setError(null), 3000);
-      return () => clearTimeout(timeout);
-    }
-  }, [error]);
+    // Clear error after 3 seconds
+    useEffect(() => {
+      if (error) {
+        const timeout = setTimeout(() => setError(null), 3000);
+        return () => clearTimeout(timeout);
+      }
+    }, [error]);
 
-  // Format duration as MM:SS
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+    // Notify parent when recording state changes
+    useEffect(() => {
+      onRecordingStateChange?.(state.isRecording);
+    }, [state.isRecording, onRecordingStateChange]);
 
-  // Start recording
+    // Format duration as MM:SS
+    const formatDuration = (seconds: number): string => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    };
+
+    // Start recording
   const startRecording = useCallback(async () => {
     setError(null);
 
@@ -112,6 +130,18 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
 
       // Handle recording stop
       recorder.onstop = () => {
+        // If user cancelled, don't create the audio blob, but still release microphone
+        if (isCancellingRef.current) {
+          isCancellingRef.current = false;
+          chunksRef.current = [];
+          // CRITICAL: Release microphone tracks even when cancelling
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+          }
+          return;
+        }
+
         const blob = new Blob(chunksRef.current, {
           type: "audio/webm",
         });
@@ -159,6 +189,21 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
       timerRef.current = null;
     }
   }, []);
+
+  // Expose methods to parent via ref (must be after stopRecording is defined)
+  useImperativeHandle(ref, () => ({
+    stopRecording: () => {
+      if (state.isRecording) {
+        stopRecording();
+      }
+    },
+    startRecording: () => {
+      if (!state.isRecording) {
+        startRecording();
+      }
+    },
+    isRecording: () => state.isRecording,
+  }), [state.isRecording, stopRecording, startRecording]);
 
   // Transcribe audio using Whisper API
   // Per T028: Sends directly to agent without confirmation prompt
@@ -277,9 +322,10 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
 
   // Cancel button during recording (T027)
   const handleCancelRecording = useCallback(() => {
+    isCancellingRef.current = true; // Set flag BEFORE stopping
     stopRecording();
     setState({ isRecording: false, duration: 0, audioBlob: null });
-    setError("Recording cancelled. Please try again.");
+    // Error removed - cancellation is a user action, not an error
   }, [stopRecording]);
 
   // Don't render if disabled and no interaction possible
@@ -348,52 +394,79 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
         )}
       </AnimatePresence>
 
-      {/* Record/Stop button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleRecordClick}
-        disabled={disabled || isTranscribing}
-        className="relative flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-        style={{
-          background: state.isRecording
-            ? "rgba(239, 68, 68, 0.2)"  // Red when recording
-            : state.audioBlob || isTranscribing
-              ? "rgba(0, 245, 255, 0.2)"  // Cyan when ready to transcribe
-              : "rgba(255, 255, 255, 0.1)",
-          border: state.isRecording
-            ? "1px solid rgba(239, 68, 68, 0.3)"
-            : "none",
-        }}
-        title={state.isRecording ? "Stop recording" : "Start voice recording"}
-      >
-        {/* Recording indicator with pulse animation (T026, T088) */}
-        {state.isRecording && (
-          <motion.span
-            className="absolute inset-0 rounded-lg"
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0, 0.3],
-            }}
-            transition={{
-              duration: PULSE_ANIMATION_DURATION,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            style={{
-              background: "rgba(239, 68, 68, 0.4)",
-            }}
-          />
-        )}
+      {/* Record/Stop/Send button */}
+      {/* Hide during recording if parent component takes over stop button */}
+      {!(hideMainButtonDuringRecording && state.isRecording) && (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleRecordClick}
+          disabled={disabled || isTranscribing}
+          className="relative flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          style={{
+            // Priority order for background:
+            // 1. Transcribing: cyan with spinner
+            // 2. Has audioBlob OR stopping (was just recording): cyan gradient (send action)
+            // 3. Currently recording: cyan gradient (active recording state)
+            // 4. Idle: gray
+            background: isTranscribing
+              ? "rgba(0, 245, 255, 0.2)"
+              : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
+                ? "linear-gradient(135deg, rgba(0, 245, 255, 0.8) 0%, rgba(0, 180, 216, 0.8) 100%)"
+                : state.isRecording
+                  ? "linear-gradient(135deg, rgba(0, 245, 255, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%)"
+                  : "rgba(255, 255, 255, 0.1)",
+            border: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
+              ? "1px solid rgba(0, 245, 255, 0.5)"
+              : state.isRecording
+                ? "1px solid rgba(0, 245, 255, 0.3)"
+                : "none",
+            boxShadow: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
+              ? "0 0 15px rgba(0, 245, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+              : "none",
+          }}
+          title={
+            isTranscribing
+              ? "Transcribing..."
+              : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
+                ? "Send voice message"
+                : state.isRecording
+                  ? "Stop recording"
+                  : "Start voice recording"
+          }
+        >
+          {/* Recording indicator with pulse animation (T026, T088) */}
+          {state.isRecording && !state.audioBlob && (
+            <motion.span
+              className="absolute inset-0 rounded-lg"
+              animate={{
+                scale: [1, 1.15, 1],
+                opacity: [0.4, 0.2, 0.4],
+              }}
+              transition={{
+                duration: PULSE_ANIMATION_DURATION,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              style={{
+                background: "rgba(0, 245, 255, 0.3)",
+              }}
+            />
+          )}
 
-        {isTranscribing ? (
-          <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
-        ) : state.isRecording ? (
-          <MicOff className="w-5 h-5 text-red-400" />
-        ) : (
-          <Mic className="w-5 h-5 text-white/70" />
-        )}
-      </motion.button>
+          {isTranscribing ? (
+            <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+          ) : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0)) ? (
+            // Send icon when ready to send OR when stopping with recorded audio
+            <Send className="w-5 h-5 text-white" />
+          ) : state.isRecording ? (
+            // Square/Stop icon during recording (more appropriate than slashed mic)
+            <div className="w-3.5 h-3.5 rounded-sm bg-white" />
+          ) : (
+            <Mic className="w-5 h-5 text-white/70" />
+          )}
+        </motion.button>
+      )}
 
       {/* Upload progress indicator (T089) */}
       {isTranscribing && (
@@ -406,4 +479,6 @@ export function VoiceRecorder({ onTranscript, onVoiceMessageSend, disabled }: Vo
       )}
     </div>
   );
-}
+});
+
+VoiceRecorder.displayName = "VoiceRecorder";

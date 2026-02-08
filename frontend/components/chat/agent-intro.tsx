@@ -182,7 +182,7 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="flex flex-col items-center justify-center h-full px-6 py-8 text-center"
+      className="flex flex-col items-center h-full px-6 py-8 text-center"
     >
       {/* Chronos Avatar */}
       <motion.div
