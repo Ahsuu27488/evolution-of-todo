@@ -63,7 +63,6 @@ export const timezoneOptions: TimezoneOption[] = [
   { value: "Australia/Brisbane", label: "Australian Eastern Time (AET)", offset: "+10:00", region: "Oceania" },
   { value: "Australia/Perth", label: "Australian Western Time (AWST)", offset: "+08:00", region: "Oceania" },
   { value: "Pacific/Auckland", label: "New Zealand Time (NZST)", offset: "+12:00", region: "Oceania" },
-  { value: "Pacific/Auckland", label: "New Zealand Time (NZST)", offset: "+12:00", region: "Oceania" },
 
   // Africa
   { value: "Africa/Cairo", label: "Eastern European Time (EET)", offset: "+02:00", region: "Africa" },

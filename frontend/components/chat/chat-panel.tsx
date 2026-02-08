@@ -306,7 +306,7 @@ export function ChatPanel() {
               // Show toast notification for AI actions
               showToastForAIMutation(mutation);
             }
-          } catch (e) {
+          } catch {
             console.debug("Could not parse tool result as JSON:", output);
           }
         },
@@ -531,7 +531,7 @@ export function ChatPanel() {
               // Show toast notification for AI actions
               showToastForAIMutation(mutation);
             }
-          } catch (e) {
+          } catch {
             console.debug("Could not parse tool result as JSON:", output);
           }
         },
@@ -564,7 +564,7 @@ export function ChatPanel() {
       resetStream();
     }
   }, [isStreaming, conversationId, addMessage, startStreaming, sendMessage, languagePreference,
-      setStoreConversationId, appendStreamedContent, resetStream]);
+      setStoreConversationId, appendStreamedContent, resetStream, queryClient]);
 
   // Handle task actions from inline task cards (T116, T117)
   const handleTaskAction = async (action: "complete" | "delete" | "edit", task: Task) => {
