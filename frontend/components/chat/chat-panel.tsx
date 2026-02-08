@@ -37,7 +37,6 @@ import {
   useChatInputValue,
   useChatInputActions,
   useChatLanguagePreference,
-  useChatLanguageActions,
   useChatConversationsActions,
 } from "@/lib/stores/chat-store";
 
@@ -189,9 +188,8 @@ export function ChatPanel() {
   const inputValue = useChatInputValue();
   const { setInputValue } = useChatInputActions();
 
-  // Language state
+  // Language state (auto-detect by default)
   const languagePreference = useChatLanguagePreference();
-  const { toggleLanguage } = useChatLanguageActions();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
