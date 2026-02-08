@@ -504,13 +504,11 @@ eventSource.addEventListener('notification', (event) => {
 ```
 
 ## Recent Changes
+- 014-upgrade-home-page: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 013-ai-chat-ui-redesign: Added TypeScript (Next.js 15.2+ with App Router) + React 19, TanStack Query v5, Framer Motion, Sonner (toasts), Next.js 15
 - **012-ai-chatbot-phase3** (Complete): ⭐ **Chronos AI Assistant** — Multi-agent system with OpenAI Agents SDK, semantic search (Qdrant), voice input (Whisper), bilingual English/Urdu support, SSE streaming
-- 012-notification-system: Comprehensive multi-channel notification system with SSE, push, email
 
 ## Active Technologies
-- TypeScript (Next.js 15.2+ with App Router) + React 19, TanStack Query v5, Framer Motion, Sonner (toasts), Next.js 15 (013-ai-chat-ui-redesign)
-- N/A (frontend-only feature, uses existing backend SSE) (013-ai-chat-ui-redesign)
 
 ---
 

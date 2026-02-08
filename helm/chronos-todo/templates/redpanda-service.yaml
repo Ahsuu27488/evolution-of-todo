@@ -1,0 +1,44 @@
+{{- if .Values.redpanda.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chronos-todo.fullname" . }}-redpanda
+  labels:
+    {{- include "chronos-todo.redpanda.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.redpanda.service.type }}
+  ports:
+  - name: kafka
+    port: {{ .Values.redpanda.service.ports.kafka }}
+    targetPort: kafka
+    protocol: TCP
+  - name: http-proxy
+    port: {{ .Values.redpanda.service.ports.httpProxy }}
+    targetPort: http-proxy
+    protocol: TCP
+  - name: admin
+    port: {{ .Values.redpanda.service.ports.admin }}
+    targetPort: admin
+    protocol: TCP
+  selector:
+    app.kubernetes.io/component: redpanda
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+{{- if .Values.redpanda.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chronos-todo.fullname" . }}-redpanda-data
+  labels:
+    {{- include "chronos-todo.redpanda.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.redpanda.persistence.size }}
+  {{- with .Values.redpanda.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
