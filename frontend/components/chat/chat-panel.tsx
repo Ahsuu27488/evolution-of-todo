@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageSquare, X, Send, Loader2, Languages, History, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, X, Send, Loader2, History, Plus, Trash2 } from "lucide-react";
 import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -701,8 +701,9 @@ export function ChatPanel() {
                   )}
                 </motion.button>
 
-                {/* Language toggle button - 44px touch target (T023, T079) */}
-                <motion.button
+                {/* Language toggle button - HIDDEN per user request (T023, T079) */}
+                {/* Language remains "auto" by default - Chronos auto-detects English/Urdu */}
+                {/* <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={toggleLanguage}
@@ -721,7 +722,7 @@ export function ChatPanel() {
                   >
                     {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
                   </span>
-                </motion.button>
+                </motion.button> */}
                 {/* Minimize button - 44px touch target (T023) - COMMENTED: Not functional */}
                 {/* <button
                   onClick={toggleMinimized}
