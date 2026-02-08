@@ -253,6 +253,8 @@ class TodoContext:
             user_first_name=data.get("user_first_name"),
             user_last_name=data.get("user_last_name"),
             user_display_name=data.get("user_display_name"),
+            # Runtime state (for MCP tool access)
+            session=data.get("session"),
         )
 
 
@@ -361,6 +363,7 @@ async def create_context_with_user_profile(
         "language_preference": language_preference,
         "timezone": timezone,
         "current_date": current_date,
+        "session": session,  # Include session for MCP tool access
     }
 
     if user_profile:
