@@ -1,3 +1,13 @@
+---
+title: Evolution of Todo API
+emoji: ⚡
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+license: mit
+---
+
 # Chronos Todo API Backend
 
 FastAPI REST API serving the Evolution of Todo application with comprehensive task management, multi-channel notifications, and AI-powered chatbot.
