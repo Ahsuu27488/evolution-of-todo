@@ -18,7 +18,7 @@
 import { Button } from "@/components/ui/button"
 import { Link } from "next-view-transitions"
 import { motion } from "framer-motion"
-import { Sparkles, Mic, Zap, Shield, Rocket, ChevronRight, ArrowRight } from "lucide-react"
+import { Sparkles, Mic, Rocket, ChevronRight, ArrowRight, Bot, Search, Languages, Bell, CheckSquare } from "lucide-react"
 import { fadeInUp, staggerContainer } from "@/lib/animations"
 import { useEffect, useState } from "react"
 import { HeroHeader } from "./hero-header"
@@ -118,7 +118,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass border-primary/30">
               <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
               <span className="text-xs sm:text-sm font-medium text-foreground">
-                Phase II: Chronos Professional Web App
+                ✨ AI-Powered Productivity Assistant
               </span>
             </div>
           </motion.div>
@@ -138,7 +138,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
           >
             {user
               ? `Welcome back, ${user.display_name || user.first_name || user.email}! Ready to be productive?`
-              : "Experience the future of productivity with our stunning deep space interface. Voice commands coming soon in Phase III."}
+              : "Meet Chronos — Your AI-powered time guardian. Manage tasks with natural language, voice commands, and semantic search in English and Urdu."}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -196,7 +196,23 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             variants={staggerContainer}
             className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-12 sm:mt-16"
           >
-            {/* Voice Commands (Coming Soon) */}
+            {/* AI Chatbot */}
+            <motion.div
+              variants={fadeInUp}
+              className="glass p-4 sm:p-6 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300 group will-change-transform"
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
+                Chronos AI Assistant
+              </h3>
+              <p className="text-muted-foreground text-xs sm:text-sm">
+                Conversational task management with multi-agent intelligence.
+              </p>
+            </motion.div>
+
+            {/* Voice Commands */}
             <motion.div
               variants={fadeInUp}
               className="glass p-4 sm:p-6 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all duration-300 group will-change-transform"
@@ -208,39 +224,71 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
                 Voice Commands
               </h3>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                Coming in Phase III: Manage tasks with natural language voice input.
+                Record voice memos transcribed instantly via Whisper API.
               </p>
             </motion.div>
 
-            {/* Advanced Features */}
+            {/* Semantic Search */}
             <motion.div
               variants={fadeInUp}
               className="glass p-4 sm:p-6 rounded-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-300 group will-change-transform"
             >
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
-                <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
+                <Search className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
-                Advanced Features
+                Smart Search
               </h3>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                Priorities, tags, due dates, recurring tasks, and intelligent search.
+                Find tasks by meaning using vector embeddings, not just keywords.
               </p>
             </motion.div>
 
-            {/* Secure & Private */}
+            {/* Bilingual Support */}
             <motion.div
               variants={fadeInUp}
-              className="glass p-4 sm:p-6 rounded-2xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 group will-change-transform sm:col-span-2 lg:col-span-1"
+              className="glass p-4 sm:p-6 rounded-2xl border border-secondary/20 hover:border-secondary/40 transition-all duration-300 group will-change-transform"
             >
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
-                <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Languages className="h-5 w-5 sm:h-6 sm:w-6 text-secondary" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
-                Secure & Private
+                English + Urdu
               </h3>
               <p className="text-muted-foreground text-xs sm:text-sm">
-                Your data is encrypted and stored securely. We value your privacy.
+                Full bilingual support with RTL rendering for Urdu text.
+              </p>
+            </motion.div>
+
+            {/* Multi-Channel Notifications */}
+            <motion.div
+              variants={fadeInUp}
+              className="glass p-4 sm:p-6 rounded-2xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 group will-change-transform"
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
+                Multi-Channel Alerts
+              </h3>
+              <p className="text-muted-foreground text-xs sm:text-sm">
+                Real-time notifications via in-app, push, and email.
+              </p>
+            </motion.div>
+
+            {/* Task Management */}
+            <motion.div
+              variants={fadeInUp}
+              className="glass p-4 sm:p-6 rounded-2xl border border-green-500/20 hover:border-green-500/40 transition-all duration-300 group will-change-transform"
+            >
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-green-500/20 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform will-change-transform">
+                <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold mb-2 text-foreground">
+                Powerful Tasks
+              </h3>
+              <p className="text-muted-foreground text-xs sm:text-sm">
+                Priorities, tags, due dates, and recurring task patterns.
               </p>
             </motion.div>
           </motion.div>
@@ -250,8 +298,8 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             variants={fadeInUp}
             className="mt-16 sm:mt-20 text-muted-foreground text-xs sm:text-sm"
           >
-            <p>Built with Next.js 16, FastAPI, and Neon PostgreSQL</p>
-            <p className="mt-2">Part of the AI-Driven Development Hackathon Series</p>
+            <p>Built with Next.js 15, FastAPI, and Neon PostgreSQL</p>
+            <p className="mt-2">Production-ready task management</p>
           </motion.div>
         </motion.div>
       </div>
