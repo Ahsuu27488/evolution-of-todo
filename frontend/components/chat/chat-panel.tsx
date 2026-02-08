@@ -73,23 +73,28 @@ interface Conversation {
 /**
  * Responsive panel variants for different screen sizes.
  * Per User Story 3 (FR-009 through FR-011):
- * - Mobile (< 640px): full-screen layout with dynamic height for keyboard handling
+ * - Mobile (< 640px): full-screen layout with keyboard handling
  * - Tablet (640px - 1024px): centered modal
  * - Desktop (> 1024px): floating panel bottom-right
+ *
+ * Mobile keyboard handling uses 100dvh (Dynamic Viewport Height):
+ * - dvh automatically adjusts when keyboard opens/closes on iOS
+ * - interactive-widget=resizes-content in viewport meta tag enables this
+ * - The browser handles scroll position automatically
  */
 const getResponsivePanelStyles = (
   breakpoint: Breakpoint,
-  visualViewportHeight?: number,
   safeAreaBottom?: number
 ) => {
   switch (breakpoint) {
     case "mobile":
-      // Full-screen on mobile with dynamic height to handle keyboard
-      // Uses visualViewport.height which shrinks when keyboard opens
+      // Full-screen on mobile using dvh (dynamic viewport height)
+      // This works with interactive-widget=resizes-content to handle keyboard
       return {
-        className: "fixed left-0 right-0 top-0 z-50 w-full rounded-none",
+        className: "fixed left-0 right-0 bottom-0 z-50 w-full rounded-none flex flex-col",
         style: {
-          height: visualViewportHeight ? `${visualViewportHeight - (safeAreaBottom || 0)}px` : '100vh',
+          height: safeAreaBottom ? `calc(100dvh - ${safeAreaBottom}px)` : '100dvh',
+          maxHeight: safeAreaBottom ? `calc(100dvh - ${safeAreaBottom}px)` : '100dvh',
           background: "rgba(15, 23, 42, 0.98)",
           backdropFilter: "blur(20px)",
           border: "none",
@@ -189,7 +194,6 @@ export function ChatPanel() {
   const { toggleLanguage } = useChatLanguageActions();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputAreaRef = useRef<HTMLDivElement>(null);
 
   // API hooks
   const sendMessage = useSendMessage();
@@ -215,14 +219,6 @@ export function ChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamedContent]);
-
-  // Mobile keyboard handling: Scroll to input when keyboard opens
-  useEffect(() => {
-    if (breakpoint === "mobile" && visualViewport.isKeyboardOpen) {
-      // Scroll input into view when keyboard opens
-      inputAreaRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [breakpoint, visualViewport.isKeyboardOpen]);
 
   // T052: Scroll handler for loading older messages (pagination)
   // Detects when user scrolls near top of messages and triggers loading
@@ -657,8 +653,8 @@ export function ChatPanel() {
             animate="open"
             exit="closed"
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`${getResponsivePanelStyles(breakpoint, visualViewport.height, visualViewport.safeAreaBottom).className} shadow-2xl flex flex-col overflow-hidden`}
-            style={getResponsivePanelStyles(breakpoint, visualViewport.height, visualViewport.safeAreaBottom).style}
+            className={`${getResponsivePanelStyles(breakpoint, visualViewport.safeAreaBottom).className} shadow-2xl overflow-hidden`}
+            style={getResponsivePanelStyles(breakpoint, visualViewport.safeAreaBottom).style}
           >
             {/* Header - Touch targets meet 44px minimum (T023) */}
             <div
@@ -972,7 +968,6 @@ export function ChatPanel() {
                 {/* Input Area - Touch targets meet 44px minimum (T023) */}
                 {/* On mobile, add padding for safe area (home indicator) */}
                 <div
-                  ref={inputAreaRef}
                   className="p-4"
                   style={{
                     borderTop: "1px solid rgba(168, 85, 247, 0.2)",
