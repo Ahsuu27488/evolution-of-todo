@@ -102,7 +102,7 @@ const getResponsivePanelStyles = (
     case "tablet":
       // Centered modal on tablet
       return {
-        className: "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[600px] max-w-[90vw] h-[80vh] rounded-2xl",
+        className: "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[600px] max-w-[90vw] h-[80vh] rounded-2xl flex flex-col",
         style: {
           background: "rgba(15, 23, 42, 0.95)",
           backdropFilter: "blur(20px)",
@@ -113,7 +113,7 @@ const getResponsivePanelStyles = (
     default:
       // Floating panel on desktop
       return {
-        className: "fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-2xl",
+        className: "fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-2xl flex flex-col",
         style: {
           background: "rgba(15, 23, 42, 0.95)",
           backdropFilter: "blur(20px)",
