@@ -1,22 +1,19 @@
-{{- if .Values.frontend.enabled -}}
+{{- if .Values.frontend.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "chronos-todo.fullname" . }}-frontend
   labels:
-    {{- include "chronos-todo.frontend.labels" . | nindent 4 }}
-  {{- if and .Values.oracle.enabled .Values.oracle.loadBalancerAnnotations }}
-  annotations:
-    {{- toYaml .Values.oracle.loadBalancerAnnotations | nindent 4 }}
-  {{- end }}
+    {{- include "chronos-todo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
 spec:
   type: {{ .Values.frontend.service.type }}
   ports:
-  - port: {{ .Values.frontend.service.port }}
-    targetPort: http
+  - name: http
+    port: {{ .Values.frontend.service.port }}
+    targetPort: 3000
     protocol: TCP
-    name: http
   selector:
+    {{- include "chronos-todo.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
-    app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

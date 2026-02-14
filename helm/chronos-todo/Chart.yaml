@@ -1,17 +1,15 @@
 apiVersion: v2
 name: chronos-todo
-description: Chronos Todo - Full-stack task management app with AI chatbot
+description: Chronos Todo - Evolution of Task Management (Phase IV+)
 type: application
-version: 1.0.0
+version: 0.4.0
 appVersion: "3.0.0"
 keywords:
   - todo
   - task-management
-  - ai
-  - chatbot
+  - chronos
+  - fastapi
+  - nextjs
 maintainers:
-  - name: Chronos Team
-home: https://github.com/yourusername/evolution-of-todo
-sources:
-  - https://github.com/yourusername/evolution-of-todo
-icon: https://raw.githubusercontent.com/yourusername/evolution-of-todo/main/public/favicon.png
+  - name: Chronos
+    email: chronos@example.com

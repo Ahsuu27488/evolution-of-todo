@@ -1,26 +1,19 @@
-{{- if .Values.backend.enabled -}}
+{{- if .Values.backend.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "chronos-todo.fullname" . }}-backend
   labels:
-    {{- include "chronos-todo.backend.labels" . | nindent 4 }}
-  {{- if and .Values.oracle.enabled .Values.oracle.loadBalancerAnnotations }}
-  annotations:
-    {{- toYaml .Values.oracle.loadBalancerAnnotations | nindent 4 }}
-  {{- end }}
+    {{- include "chronos-todo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
 spec:
   type: {{ .Values.backend.service.type }}
   ports:
-  - port: {{ .Values.backend.service.port }}
-    targetPort: http
+  - name: http
+    port: {{ .Values.backend.service.port }}
+    targetPort: 8000
     protocol: TCP
-    name: http
-  - port: {{ .Values.backend.dapr.httpPort }}
-    targetPort: {{ .Values.backend.dapr.httpPort }}
-    protocol: TCP
-    name: dapr-http
   selector:
+    {{- include "chronos-todo.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: backend
-    app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

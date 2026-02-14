@@ -1,4 +1,5 @@
-# Chronos Todo Frontend - Next.js Dockerfile
+# Chronos Todo Frontend - Dockerfile for Kubernetes Deployment
+# Phase IV: Local Minikube | Phase V: Cloud K8s
 # Multi-stage build for optimized production image
 
 # Stage 1: Dependencies
@@ -7,7 +8,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Builder
@@ -20,22 +21,16 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_APP_URL
 ARG BETTER_AUTH_URL
-ARG DATABASE_URL
-ARG BETTER_AUTH_SECRET
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 # Set environment variables during build
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
 ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
 ENV BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
-ENV DATABASE_URL=${DATABASE_URL}
-ENV BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
-ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
 
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
+# Build application
 RUN npm run build
 
 # Stage 3: Runner
@@ -66,6 +61,6 @@ ENV HOSTNAME="0.0.0.0"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
+    CMD node server.js
 
 CMD ["node", "server.js"]

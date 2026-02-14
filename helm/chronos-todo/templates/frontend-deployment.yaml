@@ -1,20 +1,21 @@
-{{- if .Values.frontend.enabled -}}
+{{- if .Values.frontend.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "chronos-todo.fullname" . }}-frontend
   labels:
-    {{- include "chronos-todo.frontend.labels" . | nindent 4 }}
+    {{- include "chronos-todo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
-      {{- include "chronos-todo.frontend.labels" . | nindent 6 }}
+      {{- include "chronos-todo.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        {{- include "chronos-todo.frontend.labels" . | nindent 8 }}
+        {{- include "chronos-todo.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
       containers:
@@ -23,7 +24,7 @@ spec:
         imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
         ports:
         - name: http
-          containerPort: {{ .Values.frontend.service.port }}
+          containerPort: 3000
           protocol: TCP
         env:
         - name: NEXT_PUBLIC_API_URL
@@ -31,16 +32,27 @@ spec:
         - name: NEXT_PUBLIC_APP_URL
           value: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_APP_URL | quote }}
         - name: BETTER_AUTH_URL
-          value: {{ .Values.frontend.buildArgs.NEXT_PUBLIC_APP_URL | quote }}
-        envFrom:
-        - configMapRef:
-            name: chronos-config
-        - secretRef:
-            name: chronos-secrets
+          value: {{ .Values.frontend.buildArgs.BETTER_AUTH_URL | quote }}
+        - name: BETTER_AUTH_SECRET
+          value: {{ .Values.global.betterAuth.secret | quote }}
+        - name: NEXT_PUBLIC_VAPID_PUBLIC_KEY
+          value: {{ .Values.global.vapid.publicKey | quote }}
         resources:
           {{- toYaml .Values.frontend.resources | nindent 10 }}
         livenessProbe:
-          {{- toYaml .Values.frontend.livenessProbe | nindent 10 }}
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
-          {{- toYaml .Values.frontend.readinessProbe | nindent 10 }}
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
 {{- end }}

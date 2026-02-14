@@ -2,211 +2,202 @@
 
 This guide covers deploying the Chronos Todo application on a local Kubernetes cluster using Minikube and Helm.
 
+## Overview
+
+Phase IV transforms the application from a development setup to a containerized, cloud-native architecture:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Minikube Kubernetes Cluster                    │
+│                                                                 │
+│  ┌────────────────┐  ┌────────────────┐                      │
+│  │   Frontend     │  │   Backend       │                      │
+│  │   (Next.js)    │  │   (FastAPI)      │                      │
+│  │   Pod 1        │  │   Pod 1          │                      │
+│  │   Port: 3000   │  │   Port: 8000      │                      │
+│  └────────┬────────┘  └────────┬────────┘                      │
+│           │                      │                                 │
+│           └──────────┬───────────┘                             │
+│                          │                                        │
+│                          ▼                                        │
+│               ┌────────────────────────────────┐                   │
+│               │   Neon PostgreSQL (External)   │                   │
+│               │   - Database                      │                   │
+│               │   - User sessions                │                   │
+│               └────────────────────────────────┘                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Prerequisites
 
-1. **Minikube** - Local Kubernetes cluster
-   ```bash
-   # Install Minikube
-   curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-   sudo install minikube-linux-amd64 /usr/local/bin/minikube
+### 1. Minikube Installation
 
-   # Start Minikube
-   minikube start --cpus=4 --memory=8192 --driver=docker
-   ```
+```bash
+# Install Minikube on Linux
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-2. **Helm** - Kubernetes package manager
-   ```bash
-   # Install Helm
-   curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-   ```
+# Start Minikube with recommended settings
+minikube start --cpus=4 --memory=8192 --driver=docker
 
-3. **Dapr** - Distributed Application Runtime (for Phase V)
-   ```bash
-   # Install Dapr CLI
-   wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s 1.0.0
+# Enable kubectl to use Minikube's context
+minikube profile kubectl
+```
 
-   # Initialize Dapr on Kubernetes
-   dapr init -k
-   ```
+### 2. Helm Installation
 
-4. **kubectl** - Kubernetes CLI
-   ```bash
-   # Install kubectl
-   curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-   sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-   ```
+```bash
+# Install Helm v3
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+# Verify installation
+helm version
+```
+
+### 3. Docker Installation
+
+```bash
+# Install Docker Desktop
+# https://docs.docker.com/desktop/install/linux/
+```
 
 ## Quick Start
 
-### 1. Build Docker Images
+### 1. Build and Deploy
+
+The deployment script automates the entire process:
 
 ```bash
-# Backend
-docker build -t chronos-backend:latest ./backend
-
-# Frontend
-docker build -t chronos-frontend:latest ./frontend
+# From project root
+./scripts/deploy-minikube.sh
 ```
 
-### 2. Set Environment Variables
+This script:
+1. Checks Minikube status
+2. Loads environment variables from `backend/.env`
+3. Builds Docker images
+4. Loads images into Minikube
+5. Creates Kubernetes namespace
+6. Deploys Helm chart with your configuration
 
-Create a `secrets.env` file (don't commit this):
+### 2. Access the Application
+
+#### Option A: Port Forwarding (Recommended for Development)
 
 ```bash
-# Neon PostgreSQL (existing cloud database)
-NEON_DB_PASSWORD=npg_cXY2EI8DAqhx
+# Forward backend to localhost:8000
+kubectl port-forward -n chronos svc/chronos-todo-backend 8000:8000
 
-# OpenAI API
-OPENAI_API_KEY=sk-proj-...
-
-# Qdrant
-QDRANT_API_KEY=eyJhbGci...
-
-# Resend Email
-RESEND_API_KEY=re_MycPDamK...
-RESEND_WEBHOOK_SECRET=whsec_TrpKkWU...
-
-# Better Auth
-BETTER_AUTH_SECRET=mlHt/eQkNbw8oSExN56WdGS0dxwBdNGtMtG0XJ7jveE=
-
-# VAPID Keys
-VAPID_PUBLIC_KEY=BLnlI3_WvJ6cDbDuyen07L4GOcqxPZFAoJJ4z48mvaK3VC2XMSylx6xlTTUTFWTuMyvIoVMZRe43PHubaZXEysY
-VAPID_PRIVATE_KEY=J4fh6gilYWT5RXJdm211piusPnlRsVVF2-vqwS3yGpA
+# Forward frontend to localhost:3000 (in a new terminal)
+kubectl port-forward -n chronos svc/chronos-todo-frontend 3000:3000
 ```
 
-### 3. Install the Helm Chart
+Then visit: http://localhost:3000
+
+#### Option B: Minikube Tunnel
 
 ```bash
-# Deploy to Minikube
-helm install chronos-todo ./helm/chronos-todo \
-  --set global.neon.password=$NEON_DB_PASSWORD \
-  --set global.openai.apiKey=$OPENAI_API_KEY \
-  --set global.qdrant.apiKey=$QDRANT_API_KEY \
-  --set global.resend.apiKey=$RESEND_API_KEY \
-  --set global.resend.webhookSecret=$RESEND_WEBHOOK_SECRET \
-  --namespace chronos \
-  --create-namespace
-```
-
-### 4. Access the Application
-
-```bash
-# Tunnel services to access them
+# Start tunnel (exposes services via LoadBalancer)
 minikube tunnel
-
-# Get service URLs
-minikube service chronos-todo-frontend --namespace chronos --url
-minikube service chronos-todo-backend --namespace chronos --url
 ```
 
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Minikube Kubernetes Cluster                  │
-│                                                                 │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
-│  │  Frontend    │  │  Backend     │  │     Redpanda           │ │
-│  │  (Next.js)   │  │  (FastAPI)   │  │     (Kafka)            │ │
-│  │              │◄─┤              │◄─┤                        │ │
-│  │   Pod 1      │  │   Pod 1      │  │     Pod 1              │ │
-│  └──────────────┘  └──────┬───────┘  └────────────────────────┘ │
-│                           │                                    │
-│                           ▼                                    │
-│                    ┌─────────────┐                            │
-│                    │ Dapr Sidecar│                           │
-│                    │  (Pod 1)    │                            │
-│                    └─────────────┘                            │
-└─────────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    External Services                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
-│  │  Neon    │  │  Qdrant  │  │  OpenAI  │  │   Resend     │   │
-│  │  Postgres│  │  Cloud   │  │   API    │  │   Email      │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+Get service URLs:
+```bash
+minikube service chronos-todo-frontend --url -n chronos
+minikube service chronos-todo-backend --url -n chronos
 ```
 
-## Dapr Integration (Phase V)
+## Architecture Details
 
-The backend includes Dapr sidecar integration for:
+### Docker Images
 
-- **Pub/Sub**: Publish events to Kafka (Redpanda)
-- **State**: Store conversation state in PostgreSQL
-- **Secrets**: Access Kubernetes secrets
-- **Service Invocation**: Call other services
+| Component | Image Name | Port | Health Check |
+|-----------|------------|------|---------------|
+| Backend | `chronos-backend` | 8000 | `/api/health` |
+| Frontend | `chronos-frontend` | 3000 | `/api/health` |
 
-### Dapr Topics
+### Kubernetes Resources
 
-The following Kafka topics are created:
+| Resource | Name | Namespace |
+|----------|------|-----------|
+| Deployment | `chronos-todo-backend` | `chronos` |
+| Deployment | `chronos-todo-frontend` | `chronos` |
+| Service | `chronos-todo-backend` | `chronos` |
+| Service | `chronos-todo-frontend` | `chronos` |
 
-| Topic | Purpose |
-|-------|---------|
-| `task-events` | All task CRUD operations |
-| `reminders` | Task due date reminders |
-| `task-updates` | Real-time client sync |
+### Environment Configuration
+
+All sensitive configuration is passed via Helm values at deployment time:
+
+| Variable | Description | Source |
+|----------|-------------|---------|
+| `global.neon.password` | Neon database password | `.env` |
+| `global.openai.apiKey` | OpenAI API key | `.env` |
+| `global.qdrant.apiKey` | Qdrant vector DB key | `.env` |
+| `global.resend.apiKey` | Resend email key | `.env` |
+| `global.betterAuth.secret` | JWT shared secret | `.env` |
+| `global.vapid.publicKey` | Web Push public key | `.env` |
+| `global.vapid.privateKey` | Web Push private key | `.env` |
 
 ## Troubleshooting
 
 ### Check Pod Status
 
 ```bash
+# List all pods
 kubectl get pods -n chronos
+
+# Describe specific pod
 kubectl describe pod <pod-name> -n chronos
-```
 
-### View Logs
-
-```bash
-# Backend logs
+# Pod logs
 kubectl logs -f deployment/chronos-todo-backend -n chronos
-
-# Frontend logs
 kubectl logs -f deployment/chronos-todo-frontend -n chronos
-
-# Dapr sidecar logs
-kubectl logs -f deployment/chronos-todo-backend -c daprd -n chronos
-```
-
-### Check Services
-
-```bash
-kubectl get svc -n chronos
-```
-
-### Port Forward to Localhost
-
-```bash
-# Forward frontend
-kubectl port-forward -n chronos svc/chronos-todo-frontend 3000:3000
-
-# Forward backend
-kubectl port-forward -n chronos svc/chronos-todo-backend 8000:8000
 ```
 
 ### Common Issues
 
-1. **Dapr sidecar not starting**
-   ```bash
-   # Check Dapr installation
-   dapr status -k
+#### 1. Image Pull Errors
 
-   # Reinstall Dapr
-   dapr uninstall -k
-   dapr init -k
-   ```
+If pods show `ErrImageNeverPull`:
 
-2. **Redpanda not connecting**
-   ```bash
-   # Check Redpanda pod
-   kubectl logs -f deployment/chronos-todo-redpanda -n chronos
-   ```
+```bash
+# Check if images exist in Minikube
+minikube image list
 
-3. **Database connection errors**
-   - Verify Neon database is accessible
-   - Check connection string in secrets
+# Load images manually
+minikube image load chronos-backend:latest
+minikube image load chronos-frontend:latest
+```
+
+#### 2. CrashLoopBackOff
+
+```bash
+# Check logs for error messages
+kubectl logs -f deployment/chronos-todo-backend -n chronos
+
+# Common causes:
+# - Missing environment variables
+# - Database connection failure
+# - Port conflicts
+```
+
+#### 3. Health Check Failures
+
+```bash
+# Check if service is running inside pod
+kubectl exec -n chronos deployment/chronos-todo-backend -- curl localhost:8000/api/health
+
+# Adjust probe thresholds in helm/chronos-todo/values.yaml if needed
+```
+
+#### 4. Minikube Out of Memory
+
+```bash
+# Stop Minikube and increase memory
+minikube stop
+minikube start --memory=10240 --cpus=4
+```
 
 ## Cleanup
 
@@ -217,10 +208,16 @@ helm uninstall chronos-todo -n chronos
 # Delete namespace
 kubectl delete namespace chronos
 
-# Stop Minikube
-minikube stop
+# Remove Docker images (optional)
+docker rmi chronos-backend chronos-frontend
 ```
 
 ## Next Steps
 
-Proceed to [Phase V: Oracle Cloud Deployment](../phase5/README.md) for production deployment on Oracle Kubernetes Engine (OKE).
+After successfully deploying to Minikube:
+
+1. **Verify all features work** - Tasks, chat, notifications
+2. **Test resource limits** - Monitor memory/CPU usage
+3. **Prepare for Phase V** - Cloud deployment to Oracle OKE
+
+Proceed to [Phase V: Cloud Deployment](../phase5/README.md)

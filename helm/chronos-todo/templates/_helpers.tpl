@@ -47,27 +47,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "chronos-todo.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Backend labels
-*/}}
-{{- define "chronos-todo.backend.labels" -}}
-{{ include "chronos-todo.labels" . }}
-app.kubernetes.io/component: backend
-{{- end }}
-
-{{/*
-Frontend labels
-*/}}
-{{- define "chronos-todo.frontend.labels" -}}
-{{ include "chronos-todo.labels" . }}
-app.kubernetes.io/component: frontend
-{{- end }}
-
-{{/*
-Redpanda labels
-*/}}
-{{- define "chronos-todo.redpanda.labels" -}}
-{{ include "chronos-todo.labels" . }}
-app.kubernetes.io/component: redpanda
-{{- end }}

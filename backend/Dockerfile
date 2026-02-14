@@ -1,7 +1,6 @@
-# Chronos Todo Backend - FastAPI Dockerfile
-# Supports both Hugging Face Spaces (port 7860) and Docker Compose (port 8000)
+# Chronos Todo Backend - Dockerfile for Kubernetes Deployment
+# Phase IV: Local Minikube | Phase V: Cloud K8s
 
-# Use Python 3.13 slim image
 FROM python:3.13-slim
 
 # Set working directory
@@ -27,13 +26,12 @@ COPY . .
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose ports (both Hugging Face and standard)
-EXPOSE 7860
+# Expose port (standard FastAPI port)
 EXPOSE 8000
 
-# Health check (port 7860 for Hugging Face Spaces)
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:7860/api/health || exit 1
+    CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Run uvicorn on port 7860 for Hugging Face Spaces
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run uvicorn on port 8000 (Kubernetes service will expose this)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
