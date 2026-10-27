@@ -446,7 +446,7 @@ class TestUpdateTask:
         )
 
         assert response.status == "error"
-        assert "not found" in response.message.lower()
+        assert response.error == "Task not found"
 
 
 # =============================================================================
@@ -506,7 +506,7 @@ class TestCompleteTask:
         )
 
         assert response.status == "error"
-        assert "not found" in response.message.lower()
+        assert response.error == "Task not found"
 
 
 # =============================================================================
@@ -582,7 +582,7 @@ class TestDeleteTask:
         )
 
         assert response.status == "error"
-        assert "not found" in response.message.lower()
+        assert response.error == "Task not found"
 
         # Verify task still exists for owner
         owner_get = await task_tools.get_task(

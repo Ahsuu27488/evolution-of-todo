@@ -14,8 +14,8 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
   (3 tests), `npm run build` all pass with no env vars set (2026-10-27).
 - Backend installs from `requirements.txt` on Python 3.14 and the app imports with all 30 API paths
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
-- Backend tests: 8 DB-free tests pass; the 34 MCP tool tests skip unless `TEST_DATABASE_URL` points at a
-  Postgres database (no local Postgres on the dev machine, 2026-10-27).
+- Backend tests: 43 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
+  tests pass and the 34 MCP tool tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`
   cookie (`frontend/lib/routes.test.ts`; the old middleware treated every path as public).
 
@@ -34,7 +34,7 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 
 ## Known gaps
 
-1. MCP tool tests (`backend/tests/test_mcp/`) have not been run in this pass: they need a Postgres test DB.
+1. CI runs backend tests without Postgres, so the MCP tool tests skip there (add a Postgres service to ci.yml).
 2. Vercel's package manager may change: `pnpm-lock.yaml` was removed (npm + `package-lock.json` only, D-004).
 3. Many specs/docs still describe Better Auth; the live auth is the backend JWT in the `auth_token` cookie (D-003).
 4. `datetime.utcnow()` and Pydantic class-based `Config` deprecation warnings in the backend.
@@ -43,7 +43,7 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 ## Next
 
 1. Finish and review the 3D redesign on this branch, then open the PR (human merges; see Live state).
-2. Run the MCP tool tests against a Postgres test database (`TEST_DATABASE_URL=... pytest`).
+2. Add a Postgres service to CI so the MCP tool tests run on every PR.
 3. Confirm the frontend host builds with npm after the lockfile change.
 
 ## How to run and check
@@ -52,4 +52,7 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 - Frontend checks: `npm run typecheck && npm run lint && npm test && npm run build`
 - Backend: `cd backend && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt pytest pytest-asyncio`
   then `uvicorn app.main:app --reload` (needs `DATABASE_URL`, `BETTER_AUTH_SECRET`)
-- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (8 passing, 34 skipped without a test DB)
+- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (43 passing with `TEST_DATABASE_URL`, e.g.
+  `postgresql+asyncpg://postgres@127.0.0.1:<port>/test_todo`; 9 passing + 34 skipped without)
+- No local Postgres? `py -3.12 -m pip install pgserver` gives an embedded one; append `?sslmode=disable` to a
+  local `DATABASE_URL` (Neon URLs keep SSL required).

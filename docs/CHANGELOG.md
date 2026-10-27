@@ -3,6 +3,15 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · fix(backend): MCP tool calls and local Postgres
+
+- `app/ai/mcp/server.py`: `_execute_tool_call` passed a removed `autocommit=` argument to `TaskTools`
+  (every MCP `call_tool` raised TypeError), used `get_session()` (a FastAPI generator dependency) as a context
+  manager, and referenced `ToolResponse` without importing it. Fixed; the caller now commits.
+- `app/db.py:ssl_mode`: `sslmode=disable` in `DATABASE_URL` turns SSL off (SSL stays required by default).
+- Tests: test engine uses `NullPool` (pooled asyncpg connections broke across per-test event loops); ownership
+  tests assert the structured `error` field instead of message wording. 43/43 pass on Postgres 16.
+
 ## 2026-10-27 · shipshape adoption
 
 - Project memory and workflow set up with shipshape (D-001): docs/, AGENTS.md, .shipshape/, .githooks/, CI

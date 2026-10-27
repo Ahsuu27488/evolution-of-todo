@@ -8,7 +8,7 @@ FastAPI app's route table.
 import pytest
 from fastapi import HTTPException
 
-from app.db import to_async_url
+from app.db import ssl_mode, to_async_url
 
 
 @pytest.mark.parametrize(
@@ -25,6 +25,12 @@ from app.db import to_async_url
 )
 def test_to_async_url(url: str, expected: str) -> None:
     assert to_async_url(url) == expected
+
+
+def test_ssl_required_unless_disabled() -> None:
+    assert ssl_mode("postgresql://u:p@neon/db?sslmode=require") == "require"
+    assert ssl_mode("postgresql://u:p@neon/db") == "require"
+    assert ssl_mode("postgresql://postgres@127.0.0.1:5432/db?sslmode=disable") is False
 
 
 def test_async_url_is_accepted_by_sqlalchemy() -> None:

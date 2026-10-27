@@ -20,7 +20,7 @@ from mcp.types import Tool, TextContent
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.utils.logging import get_logger
-from app.ai.mcp.tools import TaskTools
+from app.ai.mcp.tools import TaskTools, ToolResponse
 
 
 # =============================================================================
@@ -278,9 +278,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     if not session:
         # Create a temporary session for this tool call with autocommit=True
         # because this session is not managed by an outer transaction
-        from app.db import get_session
+        from app.db import async_session_maker
 
-        async with get_session() as temp_session:
+        async with async_session_maker() as temp_session:
             return await _execute_tool_call(name, arguments, temp_session, logger, autocommit=True)
 
     return await _execute_tool_call(name, arguments, session, logger, autocommit=False)
@@ -303,11 +303,12 @@ async def _execute_tool_call(
         arguments: Tool parameters
         session: Database session
         logger: Logger instance
-        autocommit: If True, TaskTools will commit after operations.
-                    Use True for standalone tool calls, False for integrated sessions.
+        autocommit: If True, commit the session after a successful tool call.
+                    Use True for standalone tool calls, False for integrated sessions
+                    (TaskTools never commits; its caller owns the transaction).
     """
 
-    tools = TaskTools(session, autocommit=autocommit)
+    tools = TaskTools(session)
     TOOL_TIMEOUT = 30.0  # seconds per spec.md T103
 
     # Route to appropriate tool method with timeout
@@ -381,6 +382,9 @@ async def _execute_tool_call(
             error=type(e).__name__,
             message=f"Tool execution failed: {str(e)}",
         )
+
+    if autocommit and response.status == "success":
+        await session.commit()
 
     # Format response for MCP
     if response.status == "success":

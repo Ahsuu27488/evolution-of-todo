@@ -15,6 +15,7 @@ os.environ.setdefault("BETTER_AUTH_SECRET", "test-secret-that-is-at-least-32-cha
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 from app.ai.mcp.tools import TaskTools
@@ -30,10 +31,12 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://postgres:postgres@localhost:5432/test_todo"
 )
 
-# Create test engine
+# Create test engine. NullPool: each test runs in its own event loop, and a
+# pooled asyncpg connection cannot be reused from a different loop.
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     echo=False,
+    poolclass=NullPool,
 )
 
 # Create test session factory
