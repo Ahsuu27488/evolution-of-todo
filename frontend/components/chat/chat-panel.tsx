@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageSquare, X, Send, Loader2, History, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, History, Loader2, Plus, Square, Trash2, X } from "lucide-react";
 import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,6 +51,19 @@ import { ChatMessage } from "./chat-message";
 import { VoiceRecorder } from "./voice-recorder";
 import { ChatSkeleton, ConversationItemSkeleton, StreamingMessageSkeleton } from "./chat-skeleton";
 import { AgentIntro } from "./agent-intro";
+import { KairosAvatar } from "./kairos-avatar";
+
+/** Turn backend error strings into something a person can act on. */
+function friendlyChatError(error?: string): string {
+  if (!error) return "something went wrong. Try again in a moment.";
+  if (/auth|sign in|401/i.test(error)) return "your session ended. Sign in again.";
+  if (/rate|limit|429/i.test(error)) return "too many messages at once. Wait a minute and try again.";
+  if (/network|fetch|failed to fetch/i.test(error)) return "the server can't be reached. Check your connection.";
+  return error.replace(/^Sorry,\s*/i, "").replace(/\.$/, "") + ".";
+}
+
+// Backend rejects longer messages (MAX_MESSAGE_LENGTH); keep the composer in step.
+const MAX_MESSAGE_LENGTH = Number(process.env.NEXT_PUBLIC_CHAT_MAX_MESSAGE_LENGTH) || 5000;
 
 // =============================================================================
 // Types
@@ -213,34 +226,54 @@ export function ChatPanel() {
   // T054: AbortController for cancelling conversation requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamedContent]);
+  // Stick to the bottom only while the user is there; scrolling up to read stays put.
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const isAtBottomRef = useRef(true);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // T052: Scroll handler for loading older messages (pagination)
-  // Detects when user scrolls near top of messages and triggers loading
-  useEffect(() => {
-    const messagesArea = document.getElementById('chat-messages-area');
-    if (!messagesArea || !conversationId || isLoadingConversation || isLoadingOlderMessages) {
-      return;
-    }
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const el = scrollAreaRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
 
-    const handleScroll = () => {
-      // Check if scrolled near top (within 100px)
-      if (messagesArea.scrollTop < 100 && messages.length > 0) {
-        // TODO: Implement actual pagination API call
-        // For now, this is a placeholder for when pagination is added
-        console.log('[DEBUG] Near top - would load older messages for conversation:', conversationId);
-        // setIsLoadingOlderMessages(true);
-        // await loadOlderMessages(conversationId);
-        // setIsLoadingOlderMessages(false);
+  const handleMessagesScroll = useCallback(() => {
+    const el = scrollAreaRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    isAtBottomRef.current = atBottom;
+    setIsAtBottom(atBottom);
+  }, []);
+
+  useEffect(() => {
+    if (isAtBottomRef.current) scrollToBottom(streamedContent ? "auto" : "smooth");
+  }, [messages, streamedContent, scrollToBottom]);
+
+  // Focus the composer when the panel opens; Esc closes it.
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 250);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") toggleOpen();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, toggleOpen]);
+
+  // Ctrl/Cmd+K opens or closes Kairos from anywhere on the page.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        toggleOpen();
       }
     };
-
-    messagesArea.addEventListener('scroll', handleScroll);
-    return () => messagesArea.removeEventListener('scroll', handleScroll);
-  }, [conversationId, messages.length, isLoadingConversation, isLoadingOlderMessages]);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleOpen]);
 
   // Load conversations when panel opens
   useEffect(() => {
@@ -265,10 +298,11 @@ export function ChatPanel() {
     };
   }, []);
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isStreaming) return;
+  const handleSend = async (override?: string) => {
+    const message = (override ?? inputValue).trim();
+    if (!message || isStreaming) return;
+    isAtBottomRef.current = true; // the user's own message always scrolls into view
 
-    const message = inputValue;
     setInputValue("");
 
     // Add user message immediately
@@ -347,7 +381,14 @@ export function ChatPanel() {
             setStoreConversationId(newConversationId);
             console.log("Error but received conversation_id:", newConversationId);
           }
-          toast.error(error || "Failed to send message");
+          // Show the failure where the user is looking, not only in a toast that fades
+          addMessage({
+            id: `error-${Date.now()}`,
+            conversationId: conversationId || "temp",
+            role: "system",
+            content: `Kairos couldn't reply: ${friendlyChatError(error)}`,
+            createdAt: new Date().toISOString(),
+          });
           resetStream();
         },
       });
@@ -355,6 +396,22 @@ export function ChatPanel() {
       console.error("Send message error:", error);
       resetStream();
     }
+  };
+
+  // Stop the reply; keep whatever arrived so far.
+  const handleStop = () => {
+    sendMessage.stop();
+    if (streamedContent.trim()) {
+      addMessage({
+        id: `assistant-stopped-${Date.now()}`,
+        conversationId: conversationId || "temp",
+        role: "assistant",
+        content: streamedContent,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    resetStream();
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -569,7 +626,14 @@ export function ChatPanel() {
           if (!conversationId && newConversationId) {
             setStoreConversationId(newConversationId);
           }
-          toast.error(error || "Failed to send message");
+          // Show the failure where the user is looking, not only in a toast that fades
+          addMessage({
+            id: `error-${Date.now()}`,
+            conversationId: conversationId || "temp",
+            role: "system",
+            content: `Kairos couldn't reply: ${friendlyChatError(error)}`,
+            createdAt: new Date().toISOString(),
+          });
           resetStream();
         },
       });
@@ -631,11 +695,11 @@ export function ChatPanel() {
             exit={{ scale: 0, rotate: 180 }}
             transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }}
             onClick={toggleOpen}
-            aria-label="Ask Chronos"
+            aria-label="Ask Kairos (Ctrl+K)"
             className={`${getFABPosition(breakpoint)} flex items-center gap-2 rounded-full bg-primary py-3.5 pl-4 pr-5 font-medium text-primary-foreground shadow-[0_10px_30px_-8px_color-mix(in_oklch,var(--custom-primary)_60%,transparent)] transition-transform active:scale-[0.97]`}
           >
-            <MessageSquare className="w-5 h-5" strokeWidth={2.25} />
-            <span className="hidden sm:inline">Ask Chronos</span>
+            <KairosAvatar className="size-6 bg-transparent" />
+            <span className="hidden sm:inline">Ask Kairos</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -650,89 +714,61 @@ export function ChatPanel() {
             animate="open"
             exit="closed"
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            role="dialog"
+            aria-labelledby="kairos-title"
             className={`${getResponsivePanelStyles(breakpoint, visualViewport.safeAreaBottom).className} shadow-2xl overflow-hidden`}
             style={getResponsivePanelStyles(breakpoint, visualViewport.safeAreaBottom).style}
           >
-            {/* Header - Touch targets meet 44px minimum (T023) */}
-            <div
-              className="flex items-center justify-between px-4 py-3"
-              style={{
-                background: "transparent",
-                borderBottom: "1px solid var(--custom-border)",
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center"
-                  style={{
-                    background: "var(--custom-primary)",
-                  }}
-                >
-                  <MessageSquare className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h2 className="text-foreground font-semibold text-sm">Chronos</h2>
-                  <p className="text-xs" style={{ color: "color-mix(in oklch, var(--custom-foreground) 60%, transparent)" }}>
-                    {conversationId ? "Continue chatting..." : "Start a new conversation"}
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5 sm:px-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <KairosAvatar thinking={isStreaming} />
+                <div className="min-w-0">
+                  <h2 id="kairos-title" className="font-display text-base font-semibold leading-tight text-foreground">
+                    Kairos
+                  </h2>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+                    <span
+                      className={`size-1.5 rounded-full ${isStreaming ? "bg-primary motion-safe:animate-pulse" : "bg-chart-3"}`}
+                      aria-hidden
+                    />
+                    {isStreaming ? "Thinking…" : "Your task assistant"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                {/* History button - 44px touch target (T023) */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={handleNewConversation}
+                  className="grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label="New conversation"
+                  title="New conversation"
+                >
+                  <Plus className="size-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowHistory(!showHistory)}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors relative flex items-center justify-center"
+                  className={`relative grid size-10 place-items-center rounded-full transition-colors hover:bg-accent hover:text-foreground ${showHistory ? "bg-accent text-foreground" : "text-muted-foreground"}`}
+                  aria-label="Conversation history"
+                  aria-expanded={showHistory}
                   title="Conversation history"
                 >
-                  <History className="w-4 h-4 text-foreground/70" />
+                  <History className="size-4" />
                   {conversationsData?.conversations && conversationsData.conversations.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full bg-primary">
+                    <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold tabular-nums text-primary-foreground">
                       {conversationsData.conversations.length}
                     </span>
                   )}
-                </motion.button>
-
-                {/* Language toggle button - HIDDEN per user request (T023, T079) */}
-                {/* Language remains "auto" by default - Chronos auto-detects English/Urdu */}
-                {/* <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={toggleLanguage}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors relative flex items-center justify-center"
-                  title={`Language: ${languagePreference === "auto" ? "Auto-detect" : languagePreference === "en" ? "English" : "اردو"}`}
-                >
-                  <Languages className="w-4 h-4 text-foreground/70" />
-                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full"
-                    style={{
-                      background: languagePreference === "auto"
-                        ? "var(--custom-primary)"
-                        : languagePreference === "en"
-                          ? "color-mix(in oklch, var(--custom-primary) 80%, transparent)"
-                          : "color-mix(in oklch, var(--custom-secondary) 80%, transparent)",
-                    }}
-                  >
-                    {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
-                  </span>
-                </motion.button> */}
-                {/* Minimize button - 44px touch target (T023) - COMMENTED: Not functional */}
-                {/* <button
-                  onClick={toggleMinimized}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors flex items-center justify-center"
-                >
-                  {isMinimized ? (
-                    <Maximize2 className="w-4 h-4 text-foreground/70" />
-                  ) : (
-                    <Minimize2 className="w-4 h-4 text-foreground/70" />
-                  )}
-                </button> */}
-                {/* Close button - 44px touch target (T023) */}
+                </button>
                 <button
+                  type="button"
                   onClick={toggleOpen}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors flex items-center justify-center"
+                  className="grid size-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label="Close chat"
+                  title="Close (Esc)"
                 >
-                  <X className="w-4 h-4 text-foreground/70" />
+                  <X className="size-4" />
                 </button>
               </div>
             </div>
@@ -750,17 +786,8 @@ export function ChatPanel() {
                   }}
                 >
                   <div className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-foreground/70">Conversations</span>
-                      <button
-                        onClick={handleNewConversation}
-                        className="p-1 rounded hover:bg-foreground/10 transition-colors"
-                        title="New conversation"
-                      >
-                        <Plus className="w-4 h-4 text-primary" />
-                      </button>
-                    </div>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">Recent conversations</p>
+                    <div className="chat-scroll -mr-1 max-h-44 space-y-1 overflow-y-auto pr-1">
                       {/* T034: Conversation list skeleton while loading */}
                       {isLoadingConversations ? (
                         <>
@@ -785,15 +812,16 @@ export function ChatPanel() {
                             </button>
                             <button
                               onClick={() => handleDeleteConversation(conv.id)}
-                              className="p-1 rounded hover:bg-red-500/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="grid size-8 place-items-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/15 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                              aria-label="Delete conversation"
                               title="Delete conversation"
                             >
-                              <Trash2 className="w-3 h-3 text-red-400" />
+                              <Trash2 className="size-3.5" />
                             </button>
                           </div>
                         ))
                       ) : (
-                        <p className="text-xs text-foreground/40 text-center py-2">No conversations yet</p>
+                        <p className="py-2 text-center text-xs text-muted-foreground">No conversations yet. Your chats will show up here.</p>
                       )}
                     </div>
                   </div>
@@ -804,7 +832,16 @@ export function ChatPanel() {
             {/* Messages Area */}
             {!isMinimized && (
               <>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages-area">
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                <div
+                  ref={scrollAreaRef}
+                  onScroll={handleMessagesScroll}
+                  className="chat-scroll chat-scroll-fade flex-1 space-y-4 overflow-y-auto px-4 py-5"
+                  id="chat-messages-area"
+                  role="log"
+                  aria-label="Conversation with Kairos"
+                  aria-live="polite"
+                >
                   {/* T051: Skeleton when loading conversation (shows instead of old messages during switch) */}
                   <AnimatePresence>
                     {isLoadingConversation && (
@@ -904,11 +941,7 @@ export function ChatPanel() {
                       {/* Agent Introduction Screen (T036-T040) */}
                       {messages.length === 0 && !isStreaming && !conversationLoadTimeout && !conversationLoadError && (
                         <AgentIntro
-                          onExampleClick={(promptText) => {
-                            setInputValue(promptText)
-                            // Optional: auto-send the message immediately
-                            // handleSend()
-                          }}
+                          onExampleClick={(promptText) => handleSend(promptText)}
                         />
                       )}
 
@@ -956,26 +989,35 @@ export function ChatPanel() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input Area - Touch targets meet 44px minimum (T023) */}
-                {/* On mobile, add padding for safe area (home indicator) */}
+                {/* Jump back down when the user has scrolled up and new content arrives */}
+                <AnimatePresence>
+                  {!isAtBottom && (messages.length > 0 || isStreaming) && (
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.18 }}
+                      onClick={() => scrollToBottom("smooth")}
+                      className="glass absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium text-foreground"
+                    >
+                      <ArrowDown className="size-3.5" /> Jump to latest
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                </div>
+
+                {/* Composer */}
                 <div
-                  className="p-4"
+                  className="border-t border-border p-3 sm:p-4"
                   style={{
-                    borderTop: "1px solid var(--custom-border)",
                     paddingBottom: breakpoint === "mobile"
-                      ? `calc(1rem + ${visualViewport.safeAreaBottom}px)`
+                      ? `calc(0.75rem + ${visualViewport.safeAreaBottom}px)`
                       : undefined,
                   }}
                 >
-                  <div
-                    className="flex items-end gap-2 px-4 py-3 rounded-xl"
-                    style={{
-                      background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
-                      border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
-                    }}
-                  >
-                    {/* Voice Input Button with Whisper API (T086-T091) - 44px touch target */}
-                    <div className="min-h-[44px] min-w-[44px] flex items-center justify-center">
+                  <div className="flex items-end gap-1.5 rounded-[var(--radius-2xl)] border border-border bg-background/70 p-1.5 transition-[border-color,box-shadow] duration-200 focus-within:border-primary/60 focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--custom-primary)_18%,transparent)]">
+                    <div className="grid size-11 shrink-0 place-items-center">
                       <VoiceRecorder
                         onTranscript={handleTranscript}
                         onVoiceMessageSend={handleVoiceMessageSend}
@@ -983,42 +1025,55 @@ export function ChatPanel() {
                       />
                     </div>
 
-                    {/* Text Input */}
+                    <label htmlFor="kairos-input" className="sr-only">Message Kairos</label>
                     <textarea
+                      id="kairos-input"
+                      ref={inputRef}
                       value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
+                      onChange={(e) => setInputValue(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                       onKeyDown={handleKeyDown}
-                      placeholder="Ask me anything..."
+                      placeholder="Message Kairos"
                       disabled={isStreaming}
-                      className="flex-1 bg-transparent text-foreground placeholder-white/40 resize-none outline-none py-3"
+                      dir="auto"
+                      className="chat-scroll flex-1 resize-none bg-transparent px-1 py-2.5 text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-60"
                       style={{
                         fieldSizing: "content",
                         minHeight: "44px",
-                        maxHeight: "120px",
+                        maxHeight: "140px",
                         fontSize: "16px", // Prevents iOS auto-zoom on focus (T044)
                       }}
                       rows={1}
                     />
 
-                    {/* Send Button - 44px touch target (T023) */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleSend}
-                      disabled={!inputValue.trim() || isStreaming}
-                      className="flex-shrink-0 min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                      style={{
-                        background: inputValue.trim() && !isStreaming
-                          ? "var(--custom-primary)"
-                          : "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
-                      }}
-                    >
-                      {isStreaming ? (
-                        <Loader2 className="w-4 h-4 text-foreground animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 text-foreground" />
-                      )}
-                    </motion.button>
+                    {isStreaming ? (
+                      <button
+                        type="button"
+                        onClick={handleStop}
+                        className="grid size-11 shrink-0 place-items-center rounded-full bg-foreground text-background transition-transform active:scale-95"
+                        aria-label="Stop generating"
+                        title="Stop"
+                      >
+                        <Square className="size-3.5 fill-current" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleSend()}
+                        disabled={!inputValue.trim()}
+                        className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-[transform,opacity] active:scale-95 disabled:bg-muted disabled:text-muted-foreground"
+                        aria-label="Send message"
+                      >
+                        <ArrowUp className="size-4" strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between px-2 text-[11px] text-muted-foreground">
+                    <span className="hidden sm:inline">Enter to send, Shift+Enter for a new line</span>
+                    {inputValue.length > MAX_MESSAGE_LENGTH * 0.9 && (
+                      <span className="ml-auto tabular-nums" aria-live="polite">
+                        {inputValue.length} / {MAX_MESSAGE_LENGTH}
+                      </span>
+                    )}
                   </div>
                 </div>
               </>

@@ -40,10 +40,11 @@ pydantic-settings>=2.0.0
 # Phase III: AI Chatbot Dependencies (012)
 # =============================================================================
 # OpenAI Agents SDK (pinned to the majors the code was written against, Feb 2026;
-# mcp 2.x removed Server.list_tools(), openai 3.x and agents 0.9+ changed APIs)
+# mcp 2.x removed Server.list_tools(), agents 0.9+ changed APIs, openai 2.45+ breaks
+# agents 0.8 Usage() (InputTokensDetails.cache_write_tokens became required))
 openai-agents>=0.8,<0.9
 # OpenAI API client
-openai>=2.16,<3
+openai>=2.19,<2.45
 # MCP Python SDK for in-process server
 mcp>=1.25,<2
 # Qdrant vector database client

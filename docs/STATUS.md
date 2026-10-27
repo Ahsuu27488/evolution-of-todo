@@ -17,6 +17,9 @@ again after a repair pass, and the frontend has a new "night observatory" design
   320 and 375 px with no horizontal scroll (theme toggle reachable on phones). Before/after screenshots in
   `docs/design/`.
 - Fresh-eyes review (shipshape-reviewer) run on the whole branch; its 5 findings are fixed (CHANGELOG).
+- Kairos chat (2026-10-28): opens (button, Ctrl/Cmd+K), sends, and shows failures inline; with no
+  `OPENAI_API_KEY` locally the agent stops at "Missing credentials", so real replies are NOT verified here.
+- Brand assets served: favicon.ico, icon.svg, apple-icon, manifest, share card (checked in the browser).
 - Backend installs from `requirements.txt` on Python 3.14 and the app imports with all 30 API paths
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
 - Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser), thanks to
@@ -47,8 +50,10 @@ again after a repair pass, and the frontend has a new "night observatory" design
 4. ~40 `datetime.utcnow()` call sites write naive datetimes; they block upgrading past `sqlmodel<0.0.45` (D-005).
    Pydantic class-based `Config` deprecation warnings too.
 5. Root `CLAUDE.md` and `backend/CLAUDE.md` contain long phase-era notes that partly predate the code.
-6. Redesign not yet covered: profile and notification-settings pages got the new tokens and headings but no
-   layout pass; Lighthouse and a real-phone test of the orrery have not been run.
+6. Many components still use old styles (dialogs, dropdowns, forms, notifications, profile, settings,
+   empty/loading states): a full component-by-component pass is running in a separate session.
+   Lighthouse and a real-phone test of the orrery have not been run.
+7. Kairos replies untested end to end (needs an OpenAI key); the share card uses the default font.
 
 ## Next
 

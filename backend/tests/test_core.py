@@ -77,3 +77,11 @@ def test_app_registers_all_routers() -> None:
         "/api/chat",
     ):
         assert path in paths, path
+
+
+def test_agents_sdk_usage_accepts_installed_openai() -> None:
+    """Regression: openai 2.45+ made InputTokensDetails.cache_write_tokens required,
+    so openai-agents 0.8 failed every chat run while building Usage()."""
+    from agents.usage import Usage
+
+    Usage()

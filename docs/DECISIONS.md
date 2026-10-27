@@ -33,7 +33,7 @@ disabled live notifications. The env var keeps its historical name. *Where:* fil
 
 **D-005 `requirements.txt` is the backend's install source; AI SDK majors are pinned.** (2026-10-27)
 Docker and the Hugging Face Space install from `backend/requirements.txt`; `pyproject.toml` mirrors it for uv
-and must be kept in sync (`uv lock` after changes). `mcp<2`, `openai<3`, `openai-agents<0.9`, `sqlmodel<0.0.45`
+and must be kept in sync (`uv lock` after changes). `mcp<2`, `openai>=2.19,<2.45`, `openai-agents<0.9`, `sqlmodel<0.0.45`
 (0.0.45+ rejects naive datetimes, which the code still writes in ~40 places, including signup in
 `routes/auth.py`; raising this pin means converting all of them to aware UTC first).
 *Why:* unpinned, a fresh install pulled mcp 2.x (removed `Server.list_tools()`, crashing app import) and newer
@@ -53,6 +53,13 @@ surfaces. Replaces the "Deep Space" cyan/purple neon theme (specs 008/009).
 product no identity; an orrery maps directly onto the product (tasks orbiting "now" by due date). App screens
 stay fast (Operate mode): no heavy effects beyond the lazy mini orrery. *Where:* `frontend/app/globals.css`,
 `frontend/components/three/`, `frontend/components/landing/`, `frontend/lib/orbits.ts`, `docs/design/README.md`.
+
+**D-008 The assistant is named Kairos; the app stays Chronos.** (2026-10-28)
+Kairos (Greek: "the right moment") is the chat assistant's name in the UI and in its prompts; planning and
+search hand-offs are internal modes of the same persona. Prompts live in `backend/app/ai/agents/prompts.py`.
+*Why:* chosen by the project owner; a distinct name separates the product from the assistant, and one
+persona avoids confusing "let me transfer you" messages. *Where:* `prompts.py`, `todo_agent.py`,
+`frontend/components/chat/`.
 
 <!-- Template for the next entry:
 

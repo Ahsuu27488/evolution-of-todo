@@ -1,6 +1,9 @@
 /** Signup page. New accounts are signed in and sent to the dashboard. */
 
 import { SignupForm } from "@/components/auth/signup-form"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Create account" }
 
 export default function SignupPage() {
   return (

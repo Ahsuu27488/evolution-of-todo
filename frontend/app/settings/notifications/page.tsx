@@ -15,6 +15,9 @@
 import { Header } from "@/components/layout/header"
 import { requireAuth } from "@/app/actions/auth"
 import { NotificationTabs } from "@/components/notifications/notification-tabs"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Notification settings" }
 
 export default async function NotificationSettingsPage({
   searchParams,

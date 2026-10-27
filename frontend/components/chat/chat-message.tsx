@@ -14,14 +14,15 @@
  */
 
 import { motion } from "framer-motion";
-import { User, Bot, Wrench, Mic } from "lucide-react";
+import { Check, Copy, Wrench, Mic } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Task } from "@/types/task";
 import type { Message } from "@/types/chat";
 import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
+import { KairosAvatar } from "./kairos-avatar";
 
 // =============================================================================
 // Mixed Language Text Renderer
@@ -246,27 +247,13 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       variants={messageVariants}
       initial="hidden"
       animate="visible"
-      whileHover={{ scale: 1.002 }}
-      whileTap={{ scale: 0.998 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      className={`group/message flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
-      {/* Avatar */}
-      <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? "bg-primary text-primary-foreground" : ""
-        }`}
-        style={!isUser ? { background: "var(--custom-muted)" } : undefined}
-      >
-        {isUser ? (
-          <User className="w-4 h-4" />
-        ) : (
-          <Bot className="w-4 h-4 text-primary" />
-        )}
-      </div>
+      {/* Avatar: Kairos only; your own messages need none */}
+      {!isUser && <KairosAvatar className="mt-0.5 size-8" thinking={isStreaming} />}
 
       {/* Message Content */}
-      <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} max-w-[80%]`}>
+      <div className={`flex min-w-0 flex-col ${isUser ? "items-end" : "items-start"} max-w-[85%]`}>
         {isVoice && isUser ? (
           // T047: Voice Message Indicator - Glassmorphism styling
           <motion.div
@@ -318,7 +305,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     </li>
                   ),
                   strong: ({ children }) => (
-                    <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "var(--custom-primary)" }}>
+                    <strong style={{ fontWeight: 650 }}>
                       {renderMixedLanguageText(children)}
                     </strong>
                   ),
@@ -419,7 +406,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
 
         {/* Tool Calls Indicator */}
         {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="flex items-center gap-2 mt-1 px-2 py-1 rounded-lg text-xs text-foreground/50">
+          <div className="mt-1 flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-muted-foreground">
             <Wrench className="w-3 h-3" />
             <span>
               Used {message.toolCalls.length} tool{message.toolCalls.length > 1 ? "s" : ""}
@@ -427,11 +414,36 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
           </div>
         )}
 
-        {/* Timestamp */}
-        <span className="text-xs text-foreground/40 mt-1 px-1">
-          {safeFormatDistanceToNow(message.createdAt)}
-        </span>
+        {/* Timestamp, and copy for Kairos's replies */}
+        <div className="mt-1 flex items-center gap-1 px-1 text-xs text-muted-foreground">
+          <span>{safeFormatDistanceToNow(message.createdAt)}</span>
+          {!isUser && !isStreaming && message.content && <CopyButton text={message.content} />}
+        </div>
       </div>
     </motion.div>
+  );
+}
+
+/** Copies a reply to the clipboard; visible on hover, focus, and always on touch screens. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          // Clipboard blocked (permissions/insecure context): nothing useful to show
+        }
+      }}
+      className="grid size-7 place-items-center rounded-full transition-[opacity,background-color] hover:bg-accent hover:text-foreground focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/message:opacity-100"
+      aria-label={copied ? "Copied" : "Copy reply"}
+      title={copied ? "Copied" : "Copy"}
+    >
+      {copied ? <Check className="size-3.5 text-chart-3" /> : <Copy className="size-3.5" />}
+    </button>
   );
 }

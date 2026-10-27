@@ -8,7 +8,7 @@
  * Features:
  * - Push event handler with notification display
  * - Notification click handler for navigation
- * - Deep Space themed notifications (icon, badge, colors)
+ * - Branded notifications (app icon + monochrome badge)
  *
  * NOTE: This file must be plain JavaScript, not TypeScript.
  * Browsers cannot execute TypeScript in service workers.
@@ -18,8 +18,8 @@
 // Configuration
 // =============================================================================
 
-const NOTIFICATION_ICON = "/icon.png"
-const NOTIFICATION_BADGE = "/icon.png"  // Using same icon for badge
+const NOTIFICATION_ICON = "/icon-192.png"
+const NOTIFICATION_BADGE = "/badge-96.png"  // monochrome, as Android requires for badges
 const DEFAULT_TITLE = "Chronos Todo"
 
 // =============================================================================

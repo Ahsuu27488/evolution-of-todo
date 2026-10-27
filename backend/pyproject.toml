@@ -35,7 +35,7 @@ dependencies = [
     "sse-starlette>=3.2.0",
     # Phase III AI chatbot (majors pinned to what the code was written against)
     "openai-agents>=0.8,<0.9",
-    "openai>=2.16,<3",
+    "openai>=2.19,<2.45",  # 2.45+ breaks openai-agents 0.8 Usage()
     "mcp>=1.25,<2",
     "qdrant-client>=1.12.0",
     "structlog>=24.1.0",

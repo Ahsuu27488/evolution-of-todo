@@ -8,6 +8,9 @@
 import { Header } from "@/components/layout/header"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSession } from "@/app/actions/auth"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "My tasks" }
 
 export default async function DashboardPage() {
   // Get session (user data) from server-side cookie

@@ -1,6 +1,9 @@
 /** Login page. Layout and artwork come from app/(auth)/layout.tsx. */
 
 import { LoginForm } from "@/components/auth/login-form"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Sign in" }
 
 export default function LoginPage() {
   return (

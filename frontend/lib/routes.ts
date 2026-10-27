@@ -4,8 +4,11 @@
  * Kept free of Next.js imports so it can be unit-tested with `node --test`.
  */
 
-/** Routes anyone can open. "/" matches only the landing page itself. */
-const PUBLIC_EXACT = ["/"]
+/**
+ * Routes anyone can open. "/" matches only the landing page itself.
+ * /opengraph-image is the share card; crawlers fetch it without a session.
+ */
+const PUBLIC_EXACT = ["/", "/opengraph-image"]
 /** Route prefixes anyone can open (the route and everything below it). */
 const PUBLIC_PREFIXES = ["/login", "/signup"]
 

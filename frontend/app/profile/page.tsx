@@ -8,6 +8,9 @@ Per spec.md: User profile personalization.
 import { Header } from "@/components/layout/header"
 import { ProfileForm } from "@/components/auth/profile-form"
 import { requireAuth } from "@/app/actions/auth"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Profile" }
 
 export default async function ProfilePage() {
   // Get session (user data) from server-side cookie

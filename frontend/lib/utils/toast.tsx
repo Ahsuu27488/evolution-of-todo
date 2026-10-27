@@ -182,15 +182,15 @@ export function showToastForAIMutation(
   }
 ): void {
   if (!mutation.success) {
-    themedToast.error(`AI action failed: ${mutation.error || "Unknown error"}`)
+    themedToast.error(`Kairos couldn't finish that: ${mutation.error || "please try again"}`)
     return
   }
 
   const messages = {
-    create: "Task created",
-    complete: "Task completed",
-    update: "Task updated",
-    delete: "Task deleted",
+    create: "Kairos added a task",
+    complete: "Kairos completed a task",
+    update: "Kairos updated a task",
+    delete: "Kairos deleted a task",
   } as const
 
   const type = mutation.type as keyof typeof messages

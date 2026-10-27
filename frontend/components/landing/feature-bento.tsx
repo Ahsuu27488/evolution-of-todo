@@ -45,10 +45,10 @@ export function FeatureBento() {
       <div className="mx-auto max-w-6xl">
         <div className="max-w-2xl">
           <h2 id="features-title" className="text-[length:var(--step-h1)] font-semibold leading-[1.05]">
-            Say what needs doing. Chronos files it.
+            Say what needs doing. Kairos files it.
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            An AI assistant works with your list: it creates, updates and finds tasks for you, and you can always edit
+            Kairos, the assistant built into Chronos, creates, updates and finds tasks for you. You can always edit
             them by hand.
           </p>
         </div>
@@ -58,7 +58,7 @@ export function FeatureBento() {
           <Tile index={0} className="md:col-span-4 md:row-span-2">
             <TileTitle>Chat with your list</TileTitle>
             <p className="mt-2 max-w-md text-muted-foreground">
-              Ask in plain words. Chronos picks out the date, priority and tags, then shows you the task it made.
+              Ask in plain words. Kairos picks out the date, priority and tags, then shows you the task it made.
             </p>
             <div className="mt-8 flex flex-1 flex-col justify-end gap-3" aria-label="Example conversation">
               <span className="text-xs text-muted-foreground">Example</span>
@@ -155,7 +155,7 @@ export function FeatureBento() {
               <div>
                 <TileTitle>English and Urdu</TileTitle>
                 <p className="mt-2 max-w-lg text-muted-foreground">
-                  Write or speak in either language. Chronos answers in the one you used and lays Urdu out right to left.
+                  Write or speak in either language. Kairos answers in the one you used and lays Urdu out right to left.
                 </p>
               </div>
               <p

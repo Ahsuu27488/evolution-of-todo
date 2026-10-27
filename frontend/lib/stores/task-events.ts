@@ -1,7 +1,7 @@
 /**
  * Task Event Store - Zustand store for task mutation events.
  *
- * Tracks task mutations initiated by AI agent (Chronos) via SSE tool results.
+ * Tracks task mutations initiated by the AI assistant (Kairos) via SSE tool results.
  * This store persists across component unmounts and coordinates cache updates
  * between chat SSE events and TanStack Query cache.
  *
@@ -24,7 +24,7 @@ export type TaskMutationType = "create" | "complete" | "update" | "delete"
 /**
  * Task mutation event from AI tool result.
  *
- * Emitted when Chronos AI performs a task action via MCP tools.
+ * Emitted when Kairos performs a task action via MCP tools.
  */
 export interface TaskMutation {
   /** Type of mutation performed */

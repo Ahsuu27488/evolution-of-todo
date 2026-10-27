@@ -139,7 +139,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
                 </h1>
                 <p className="mt-5 max-w-md text-lg leading-relaxed text-muted-foreground sm:text-xl">
                   {user
-                    ? "Your orbits are where you left them. Pick up today's tasks or ask Chronos what's next."
+                    ? "Your orbits are where you left them. Pick up today's tasks or ask Kairos what's next."
                     : "Chronos is a to-do list you can talk to. Add, plan and find tasks by typing or speaking, in English or Urdu."}
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -207,7 +207,7 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
                 Start with one task.
               </h2>
               <p className="mt-2 text-muted-foreground">
-                Type it, say it, or ask Chronos to plan your week.
+                Type it, say it, or ask Kairos to plan your week.
               </p>
             </div>
             <Button asChild size="lg" className="h-12 shrink-0 rounded-full px-7 text-base pressable">

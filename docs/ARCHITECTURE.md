@@ -40,7 +40,8 @@ Phase I lives separately in `phase1/` (in-memory Python CLI). Kubernetes: `helm/
 | `backend/app/main.py` | App factory, CORS, middleware, lifespan (DB tables, Qdrant, scheduler), `/api/health` |
 | `backend/app/routes/` | `auth.py`, `tasks.py`, `notifications.py` (incl. SSE `/stream`), `chat.py` (SSE chat, transcribe) |
 | `backend/app/models/` | SQLModel tables: `core.py` (Task, TaskLog, User), `notification.py`, `push_subscription.py`, `email_delivery_log.py` |
-| `backend/app/ai/` | Agents (`agents/todo_agent.py`), MCP tools (`mcp/tools.py` `TaskTools`), `services/runner_service.py`, Qdrant |
+| `backend/app/ai/` | Agents (`agents/todo_agent.py`), Kairos prompts and time helpers (`agents/prompts.py`), MCP tools (`mcp/tools.py` `TaskTools`), `services/runner_service.py`, Qdrant |
+| `frontend/app/` file metadata | `icon.svg`, `favicon.ico`, `apple-icon.png`, `opengraph-image.tsx`, `manifest.ts`; PNG icons from `frontend/scripts/make-icons.py` |
 | `backend/app/services/` | Email, push, notifications, SSE fan-out, scheduler, migrations |
 | `backend/app/simple_auth.py` | JWT create/verify, password hashing, `get_current_user_id` dependency |
 | `backend/alembic/` | Migrations (tables are also created on startup by `create_db_and_tables`) |

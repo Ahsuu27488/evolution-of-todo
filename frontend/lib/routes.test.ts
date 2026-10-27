@@ -5,7 +5,7 @@ import assert from "node:assert/strict"
 import { isAuthPage, isPublicPath } from "./routes.ts"
 
 test("landing, login and signup are public", () => {
-  for (const path of ["/", "/login", "/signup", "/signup/verify"]) {
+  for (const path of ["/", "/login", "/signup", "/signup/verify", "/opengraph-image"]) {
     assert.equal(isPublicPath(path), true, path)
   }
 })
