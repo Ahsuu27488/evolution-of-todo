@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · fix(frontend): reduced-motion users saw no orbit legend
+
+- The "Three orbits, one glance" legend was revealed only by scroll-linked opacity, which stayed at 0 with
+  reduced motion. With reduced motion the hero is now one screen and the legend a normal section; the
+  preference is read after mount so server and client HTML match.
+
 ## 2026-10-27 · feat(frontend): "night observatory" redesign with a 3D orrery
 
 - New design tokens (OKLCH ink/starlight palette, sun-gold accent, Funnel Display + Hanken Grotesk, motion,

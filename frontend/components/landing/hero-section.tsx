@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Link } from "next-view-transitions"
-import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion"
+import { motion, useMotionValueEvent, useScroll, useTransform } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
 import { Orrery } from "@/components/three/orrery"
@@ -35,9 +35,48 @@ const ORBIT_LEGEND = [
   { name: "Later", detail: "Everything else, still in view." },
 ]
 
+/**
+ * prefers-reduced-motion, read after mount so the first client render matches
+ * the server HTML (the value changes page structure, not just styles).
+ */
+function useReducedMotionAfterMount(): boolean {
+  const [reduce, setReduce] = useState(false)
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setReduce(media.matches)
+    const onChange = () => setReduce(media.matches)
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
+  }, [])
+  return reduce
+}
+
+function OrbitLegend() {
+  return (
+    <div className="max-w-sm">
+      <h2 className="text-[length:var(--step-h2)] font-semibold leading-tight">Three orbits, one glance.</h2>
+      <ol className="mt-6 space-y-4">
+        {ORBIT_LEGEND.map((orbit, i) => (
+          <li key={orbit.name} className="flex gap-3">
+            <span
+              className="mt-1.5 size-2.5 shrink-0 rounded-full"
+              style={{ background: i === 0 ? "var(--custom-primary)" : "var(--custom-secondary)", opacity: 1 - i * 0.22 }}
+              aria-hidden
+            />
+            <p>
+              <span className="font-medium">{orbit.name}.</span>{" "}
+              <span className="text-muted-foreground">{orbit.detail}</span>
+            </p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
   const [user, setUser] = useState<User | null>(initialUser)
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useReducedMotionAfterMount()
 
   useEffect(() => {
     const handleLogout = () => setUser(null)
@@ -71,7 +110,11 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
 
       <main id="main">
         {/* Stage: 220svh of scroll, the first screen stays pinned */}
-        <section ref={stage} aria-labelledby="hero-title" className="relative h-[220svh]">
+        <section
+          ref={stage}
+          aria-labelledby="hero-title"
+          className={reduceMotion ? "relative h-svh" : "relative h-[220svh]"}
+        >
           <div className="sticky top-0 h-svh overflow-hidden">
             {/* The orrery: right half on desktop, upper half on phones */}
             <Orrery
@@ -119,31 +162,14 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             </motion.div>
 
             {/* Revealed once the orbits lie flat: what each orbit means */}
-            <motion.div
-              style={reduceMotion ? { opacity: 0 } : { opacity: legendOpacity, y: legendY }}
-              className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-5 pb-10 sm:px-8 md:inset-y-0 md:flex md:items-center md:pb-0"
-            >
-              <div className="max-w-sm">
-                <h2 className="text-[length:var(--step-h2)] font-semibold leading-tight">
-                  Three orbits, one glance.
-                </h2>
-                <ol className="mt-6 space-y-4">
-                  {ORBIT_LEGEND.map((orbit, i) => (
-                    <li key={orbit.name} className="flex gap-3">
-                      <span
-                        className="mt-1.5 size-2.5 shrink-0 rounded-full"
-                        style={{ background: i === 0 ? "var(--custom-primary)" : "var(--custom-secondary)", opacity: 1 - i * 0.22 }}
-                        aria-hidden
-                      />
-                      <p>
-                        <span className="font-medium">{orbit.name}.</span>{" "}
-                        <span className="text-muted-foreground">{orbit.detail}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </motion.div>
+            {!reduceMotion && (
+              <motion.div
+                style={{ opacity: legendOpacity, y: legendY }}
+                className="pointer-events-none absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-5 pb-10 sm:px-8 md:inset-y-0 md:flex md:items-center md:pb-0"
+              >
+                <OrbitLegend />
+              </motion.div>
+            )}
 
             {/* Scroll cue */}
             {!reduceMotion && (
@@ -163,6 +189,13 @@ export function HeroSection({ initialUser, className = "" }: HeroSectionProps) {
             )}
           </div>
         </section>
+
+        {/* Reduced motion: no scroll-driven reveal, so the legend is a plain section */}
+        {reduceMotion && (
+          <section className="mx-auto max-w-6xl px-5 pt-16 sm:px-8">
+            <OrbitLegend />
+          </section>
+        )}
 
         <FeatureBento />
 

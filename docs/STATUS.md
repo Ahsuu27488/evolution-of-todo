@@ -19,7 +19,7 @@ again after a repair pass, and the frontend has a new "night observatory" design
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
 - Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser).
 - Backend tests: 44 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
-  tests pass and the 34 MCP tool tests skip.
+  tests pass and the 35 DB tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`
   cookie (`frontend/lib/routes.test.ts`; the old middleware treated every path as public).
 
@@ -59,7 +59,7 @@ again after a repair pass, and the frontend has a new "night observatory" design
 - Frontend checks: `npm run typecheck && npm run lint && npm test && npm run build`
 - Backend: `cd backend && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt pytest pytest-asyncio`
   then `uvicorn app.main:app --reload` (needs `DATABASE_URL`, `BETTER_AUTH_SECRET`)
-- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (43 passing with `TEST_DATABASE_URL`, e.g.
-  `postgresql+asyncpg://postgres@127.0.0.1:<port>/test_todo`; 9 passing + 34 skipped without)
+- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (44 passing with `TEST_DATABASE_URL`, e.g.
+  `postgresql+asyncpg://postgres@127.0.0.1:<port>/test_todo`; 9 passing + 35 skipped without)
 - No local Postgres? `py -3.12 -m pip install pgserver` gives an embedded one; append `?sslmode=disable` to a
   local `DATABASE_URL` (Neon URLs keep SSL required).
