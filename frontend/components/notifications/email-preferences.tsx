@@ -42,6 +42,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { api } from "@/lib/api-client"
+import { API_URL } from "@/lib/config/api"
+import { getAuthToken } from "@/lib/auth/token"
 import { timezoneOptions, getUserBrowserTimezone, getTimezoneAbbreviation } from "@/lib/constants/timezones"
 
 // =============================================================================
@@ -119,10 +121,14 @@ export function EmailPreferences() {
 
   // Fetch current user timezone on mount
   useEffect(() => {
-    // Get user timezone from session/me endpoint
-    fetch("/api/auth/me", {
-      credentials: "include",
-    })
+    // Get user timezone from the backend /me endpoint
+    getAuthToken()
+      .then((token) => {
+        if (!token) throw new Error("Not authenticated")
+        return fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+      })
       .then((res) => res.json())
       .then((userData) => {
         if (userData.timezone) {

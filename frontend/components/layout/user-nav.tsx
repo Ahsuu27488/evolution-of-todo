@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { signOutAction } from "@/app/actions/auth"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 interface UserNavProps {
   user: User

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { updateProfileAction } from "@/app/actions/auth"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 // Validation schema for profile update
 const profileSchema = z.object({

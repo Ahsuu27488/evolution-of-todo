@@ -6,7 +6,7 @@ import { UserNav } from "./user-nav"
 import { ThemeToggle } from "./theme-toggle"
 import { BrandLogo } from "./brand-logo"
 import { NotificationsClient } from "@/components/notifications/notifications-client"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 interface HeaderProps {
   isAuthenticated?: boolean

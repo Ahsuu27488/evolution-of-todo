@@ -22,7 +22,7 @@ import { Sparkles, Mic, Rocket, ChevronRight, ArrowRight, Bot, Search, Languages
 import { fadeInUp, staggerContainer } from "@/lib/animations"
 import { useEffect, useState } from "react"
 import { HeroHeader } from "./hero-header"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 interface HeroSectionProps {
   initialUser: User | null

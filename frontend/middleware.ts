@@ -1,16 +1,15 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { isAuthPage, isPublicPath } from "@/lib/routes"
 
 /**
  * Middleware for route protection.
  * Redirects unauthenticated users to login for protected routes.
  *
- * Checks for either:
- * - "auth_token" cookie (backend JWT auth)
- * - "better-auth.session_token" cookie (Better Auth)
+ * Signed-in means the "auth_token" httpOnly cookie (backend JWT) is present;
+ * the pages themselves verify it against the backend.
  *
  * IMPORTANT: This middleware does NOT interfere with API routes.
- * Better Auth API routes at /api/auth/* are handled separately.
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -29,28 +28,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/signup", "/"]
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(route)
-  )
-
-  // Check for auth cookies - either backend auth_token or Better Auth session token
-  // Backend auth stores JWT in 'auth_token' httpOnly cookie
-  // Better Auth stores session in 'better-auth.session_token' cookie
-  const authToken = request.cookies.get("auth_token")
-  const betterAuthCookie = request.cookies.get("better-auth.session_token")
-  const isAuthenticated = authToken || betterAuthCookie
+  const isAuthenticated = Boolean(request.cookies.get("auth_token"))
 
   // If accessing protected route without auth, redirect to login
-  if (!isPublicRoute && !isAuthenticated) {
+  if (!isPublicPath(pathname) && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // If authenticated user tries to access login/signup, redirect to dashboard
-  if (isAuthenticated && (pathname === "/login" || pathname === "/signup")) {
+  if (isAuthenticated && isAuthPage(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
