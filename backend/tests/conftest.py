@@ -4,17 +4,21 @@ Test configuration and fixtures for MCP tool integration tests.
 Per T105: MCP tool integration tests for User Story 7.
 """
 
-import asyncio
 import os
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
+
+# app.db and app.simple_auth read these at import time. Tests that need a real
+# database use TEST_DATABASE_URL below; these defaults only let modules import.
+os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/test_todo")
+os.environ.setdefault("BETTER_AUTH_SECRET", "test-secret-that-is-at-least-32-characters")
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlmodel import SQLModel
 
 from app.ai.mcp.tools import TaskTools
-from app.models import Task, Base
-from app.simple_auth import get_password_hash
+from app.models import Task
 
 
 # =============================================================================
@@ -40,19 +44,13 @@ TestSessionLocal = async_sessionmaker(
 )
 
 
+# Set by db_session the first time the test database cannot be reached.
+_db_unavailable: str | None = None
+
+
 # =============================================================================
 # Fixtures
 # =============================================================================
-
-@pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    """
-    Create an instance of the default event loop for the test session.
-    """
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -61,10 +59,17 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
     Per FR-027: Stateless tool execution - each test gets isolated state.
     """
-    # Create tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    # Create tables (skip when no test database is reachable; probe only once)
+    global _db_unavailable
+    if _db_unavailable:
+        pytest.skip(_db_unavailable)
+    try:
+        async with test_engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.drop_all)
+            await conn.run_sync(SQLModel.metadata.create_all)
+    except (OSError, ConnectionError) as exc:
+        _db_unavailable = f"Test database unavailable ({exc.__class__.__name__}); set TEST_DATABASE_URL"
+        pytest.skip(_db_unavailable)
 
     # Create session
     async with TestSessionLocal() as session:

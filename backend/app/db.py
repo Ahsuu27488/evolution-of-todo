@@ -27,17 +27,22 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-# Convert postgresql:// to postgresql+asyncpg:// for async driver
-if DATABASE_URL.startswith("postgresql://"):
-    ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif DATABASE_URL.startswith("postgres://"):
-    ASYNC_DATABASE_URL = DATABASE_URL.replace("postgres://", "postgres+asyncpg://", 1)
-else:
-    ASYNC_DATABASE_URL = DATABASE_URL
+def to_async_url(url: str) -> str:
+    """Convert a libpq-style URL into one SQLAlchemy's asyncpg dialect accepts.
 
-# STRIP SSL parameters from URL to prevent SQLAlchemy from passing channel_binding
-# We'll configure SSL via code instead (connect_args)
-ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.split("?")[0]
+    Both postgresql:// and the legacy postgres:// scheme map to
+    postgresql+asyncpg:// (SQLAlchemy has no "postgres" dialect). Query
+    parameters are stripped so sslmode/channel_binding never reach asyncpg;
+    SSL is configured through connect_args instead.
+    """
+    for scheme in ("postgresql://", "postgres://"):
+        if url.startswith(scheme):
+            url = "postgresql+asyncpg://" + url[len(scheme):]
+            break
+    return url.split("?")[0]
+
+
+ASYNC_DATABASE_URL = to_async_url(DATABASE_URL)
 
 # Create async engine with connection pooling for serverless Neon
 # Settings per research.md for optimal serverless performance
@@ -65,7 +70,7 @@ async def create_db_and_tables() -> None:
     """Create all SQLModel tables asynchronously.
 
     Called on application startup via lifespan handler.
-    This creates all tables defined in models.py if they don't exist.
+    This creates all tables defined in app/models/ if they don't exist.
     """
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
