@@ -1,7 +1,7 @@
 "use client"
 
 import { UserNav } from "./user-nav"
-import { ThemeToggle } from "./theme-toggle"
+import { ThemeToggle, ThemeToggleCompact } from "./theme-toggle"
 import { BrandLogo } from "./brand-logo"
 import { NotificationsClient } from "@/components/notifications/notifications-client"
 import type { User } from "@/types/user"
@@ -22,6 +22,9 @@ export function Header({ isAuthenticated, user }: HeaderProps) {
         <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
           <div className="hidden sm:block">
             <ThemeToggle />
+          </div>
+          <div className="sm:hidden">
+            <ThemeToggleCompact />
           </div>
           {isAuthenticated && <NotificationsClient />}
           {isAuthenticated && user && <UserNav user={user} />}

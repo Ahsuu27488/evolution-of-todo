@@ -198,7 +198,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 disabled={isUpdating}
                 className={cn(
                   "h-5 w-5 transition-all duration-300",
-                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(242, 184, 75,0.4),0_0_12px_rgba(242, 184, 75,0.5)]"
+                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(242,184,75,0.4),0_0_12px_rgba(242,184,75,0.5)]"
                 )}
                 aria-label={optimisticCompleted ? "Mark as incomplete" : "Mark as complete"}
               />

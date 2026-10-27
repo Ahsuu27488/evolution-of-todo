@@ -61,7 +61,7 @@ const priorityConfig: Record<
     bg: "color-mix(in oklch, var(--custom-chart-3) 15%, transparent)",
     border: "color-mix(in oklch, var(--custom-chart-3) 40%, transparent)",
     text: "text-green-300",
-    glow: "shadow-[0_0_15px_color-mix(in oklch, var(--custom-chart-3) 20%, transparent)]",
+    glow: "shadow-[0_0_15px_color-mix(in_oklch,var(--custom-chart-3)_20%,transparent)]",
   },
 }
 

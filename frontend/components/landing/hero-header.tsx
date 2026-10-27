@@ -3,7 +3,7 @@
 import { Link } from "next-view-transitions"
 
 import { Button } from "@/components/ui/button"
-import { ThemeToggle } from "@/components/layout/theme-toggle"
+import { ThemeToggle, ThemeToggleCompact } from "@/components/layout/theme-toggle"
 import { BrandLogo } from "@/components/layout/brand-logo"
 import { UserNav } from "@/components/layout/user-nav"
 import type { User } from "@/types/user"
@@ -30,6 +30,9 @@ export function HeroHeader({ user, isLoading }: HeroHeaderProps) {
           <div className="hidden sm:block">
             <ThemeToggle />
           </div>
+          <div className="sm:hidden">
+            <ThemeToggleCompact />
+          </div>
           {!isLoading &&
             (user ? (
               <>
@@ -40,7 +43,8 @@ export function HeroHeader({ user, isLoading }: HeroHeaderProps) {
               </>
             ) : (
               <>
-                <Button asChild size="sm" variant="ghost" className="rounded-full">
+                {/* Phones: "Sign in" sits in the hero right below, so the pill stays uncrowded */}
+                <Button asChild size="sm" variant="ghost" className="hidden rounded-full sm:inline-flex">
                   <Link href="/login">Sign in</Link>
                 </Button>
                 <Button asChild size="sm" className="rounded-full pressable">

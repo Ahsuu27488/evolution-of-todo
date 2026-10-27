@@ -260,7 +260,10 @@ class User(SQLModel, table=True):
     )
 
     created_at: datetime = SQLField(
-        default_factory=lambda: datetime.now(timezone.utc),
+        # Naive UTC on purpose: with sqlmodel<0.0.45 this column is timezone-naive and
+        # asyncpg rejects aware values. Moving to aware datetimes is one change across
+        # all utcnow() call sites plus the sqlmodel pin (docs/STATUS.md known gaps).
+        default_factory=datetime.utcnow,
         description="Account creation timestamp",
     )
 

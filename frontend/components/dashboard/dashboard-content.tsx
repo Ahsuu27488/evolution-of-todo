@@ -111,7 +111,8 @@ export function DashboardContent({
         {/* Heading with the add button */}
         <div className="mb-5 flex items-end justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">{todayLabel}</p>
+            {/* Locale and time zone differ between server and browser; the browser's value wins */}
+            <p className="text-sm text-muted-foreground" suppressHydrationWarning>{todayLabel}</p>
             <h1 id="tasks-title" className="text-[length:var(--step-h1)] font-semibold leading-tight">
               My tasks
             </h1>

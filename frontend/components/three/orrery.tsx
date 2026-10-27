@@ -42,18 +42,27 @@ const PALETTES: Record<"dark" | "light", OrreryPalette> = {
   },
 }
 
+// Probed once per page load; browsers cap live WebGL contexts (~16).
+let webglSupport: boolean | undefined
+
 function canRunWebGL(): boolean {
-  try {
-    const canvas = document.createElement("canvas")
-    if (!(canvas.getContext("webgl2") || canvas.getContext("webgl"))) return false
-  } catch {
-    return false
-  }
+  if (webglSupport !== undefined) return webglSupport
   const nav = navigator as Navigator & { deviceMemory?: number }
   const lowPower =
     (nav.hardwareConcurrency !== undefined && nav.hardwareConcurrency <= 2) ||
     (nav.deviceMemory !== undefined && nav.deviceMemory <= 2)
-  return !lowPower
+  let hasWebGL = false
+  try {
+    const canvas = document.createElement("canvas")
+    const gl = canvas.getContext("webgl2") || canvas.getContext("webgl")
+    hasWebGL = Boolean(gl)
+    // Release the probe context right away instead of waiting for GC.
+    gl?.getExtension("WEBGL_lose_context")?.loseContext()
+  } catch {
+    hasWebGL = false
+  }
+  webglSupport = hasWebGL && !lowPower
+  return webglSupport
 }
 
 interface OrreryProps {

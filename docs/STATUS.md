@@ -14,10 +14,13 @@ again after a repair pass, and the frontend has a new "night observatory" design
   (5 tests), `npm run build` all pass with no env vars set (2026-10-27).
 - Redesign checked in the browser against the local backend (2026-10-27): landing (orrery hero, scroll-to-dial,
   bento), login/signup, dashboard (orbit panel updates live when a task is completed), chat panel, light mode,
-  375 px with no horizontal scroll. Before/after screenshots in `docs/design/`.
+  320 and 375 px with no horizontal scroll (theme toggle reachable on phones). Before/after screenshots in
+  `docs/design/`.
+- Fresh-eyes review (shipshape-reviewer) run on the whole branch; its 5 findings are fixed (CHANGELOG).
 - Backend installs from `requirements.txt` on Python 3.14 and the app imports with all 30 API paths
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
-- Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser).
+- Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser), thanks to
+  the `sqlmodel<0.0.45` pin (the test fails on 0.0.48).
 - Backend tests: 44 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
   tests pass and the 35 DB tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`

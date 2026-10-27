@@ -3,6 +3,16 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · fix: review findings
+
+- Theme toggle was unreachable below 640 px (both headers hid it); phones now get the compact toggle.
+- Landing nav overflowed its pill at 375 px; "Sign in" is hidden there (it is in the hero).
+- Dashboard date heading: server and browser format the date with different locales/time zones; the text
+  now opts out of the hydration check.
+- Three Tailwind arbitrary values broken by the colour migration (spaces inside `shadow-[...]`) fixed.
+- `canRunWebGL()` probed a new WebGL context on every mount; it now runs once and releases the context.
+- `User.created_at` default back to naive UTC to match the column on the pinned sqlmodel.
+
 ## 2026-10-27 · fix(frontend): reduced-motion users saw no orbit legend
 
 - The "Three orbits, one glance" legend was revealed only by scroll-linked opacity, which stayed at 0 with
@@ -25,10 +35,11 @@
 ## 2026-10-27 · fix(backend): signup failed on current sqlmodel
 
 - Sign-up raised "Datetime values must have timezone information": sqlmodel 0.0.45+ makes datetime columns
-  timezone-aware and rejects naive values, and `User.created_at` defaulted to `datetime.utcnow()`. Default is
-  now `datetime.now(timezone.utc)`; `sqlmodel<0.0.45` pinned because ~40 other `utcnow()` call sites still
-  write naive datetimes. Regression test `tests/test_auth_routes.py` (signup, signin, /me) fails on the old
-  code with sqlmodel 0.0.48 and passes now.
+  timezone-aware and rejects naive values, and `routes/auth.py` writes `created_at=datetime.utcnow()`. Fixed by
+  pinning `sqlmodel<0.0.45` (~40 `utcnow()` call sites write naive datetimes). Regression test
+  `tests/test_auth_routes.py` (signup, signin, /me) fails on sqlmodel 0.0.48 and passes on the pin.
+  (Corrected after review: an earlier note credited a `User.created_at` default change, which was reverted;
+  signup never used that default.)
 
 ## 2026-10-27 · fix(backend): MCP tool calls and local Postgres
 

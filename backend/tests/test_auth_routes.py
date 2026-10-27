@@ -1,8 +1,8 @@
 """Auth routes against a real database (skipped without TEST_DATABASE_URL).
 
 Regression: signup failed with "Datetime values must have timezone information"
-once sqlmodel >= 0.0.45 was installed, because User.created_at defaulted to a
-naive datetime.utcnow().
+once sqlmodel >= 0.0.45 was installed (routes/auth.py writes a naive
+datetime.utcnow()). Fixed by pinning sqlmodel<0.0.45; this test fails on 0.0.48.
 """
 
 from collections.abc import AsyncGenerator
