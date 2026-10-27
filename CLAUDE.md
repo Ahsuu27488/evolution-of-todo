@@ -1,4 +1,7 @@
-@/home/ahsan/Dev/Hackathons/evolution-of-todo/specs/012-ai-chatbot-phase3/CLAUDE.md
+@AGENTS.md
+@docs/STATUS.md
+@docs/DECISIONS.md
+@docs/ARCHITECTURE.md
 # Evolution of Todo — Project Architecture
 
 **Claude Code Context** for the Evolution of Todo Hackathon II project.
@@ -16,7 +19,7 @@ This is a **5-phase evolution** demonstrating Spec-Driven Development:
 
 | Directory | Purpose | Context File |
 |-----------|---------|--------------|
-| `src/` | Phase I console app | [`src/CLAUDE.md`](src/CLAUDE.md) |
+| `phase1/src/` | Phase I console app | [`phase1/src/CLAUDE.md`](phase1/src/CLAUDE.md) |
 | `backend/` | Phase II FastAPI backend | [`backend/CLAUDE.md`](backend/CLAUDE.md) |
 | `frontend/` | Phase II Next.js frontend | [`frontend/CLAUDE.md`](frontend/CLAUDE.md) |
 
