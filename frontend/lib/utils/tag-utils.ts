@@ -5,8 +5,8 @@
  * validation, and persistence.
  *
  * Per contracts/components.ts: Predefined Deep Space color palette:
- * - Cyan: #00f5ff
- * - Purple: #a855f7
+ * - Cyan: #f2b84b
+ * - Purple: #7fa8e8
  * - Green: #22c55e
  * - Yellow: #eab308
  * - Pink: #ec4899
@@ -21,8 +21,8 @@ import type { Tag } from "@/types/task"
 
 /** Deep Space theme colors for tags */
 export const TAG_COLORS = [
-  "#00f5ff", // Cyan
-  "#a855f7", // Purple
+  "#f2b84b", // Cyan
+  "#7fa8e8", // Purple
   "#22c55e", // Green
   "#eab308", // Yellow
   "#ec4899", // Pink

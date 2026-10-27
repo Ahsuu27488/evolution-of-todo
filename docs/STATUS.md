@@ -6,12 +6,15 @@
 
 **Last updated:** 2026-10-27 · **Code at:** branch `chore/repair-shipshape-3d-redesign`
 **In one line:** Chronos (Next.js 15 + FastAPI + Neon + OpenAI Agents) builds, installs and passes its checks
-again after a repair pass; the frontend is being redesigned as an immersive 3D experience on this branch.
+again after a repair pass, and the frontend has a new "night observatory" design with a 3D orrery (D-007).
 
 ## What works (verified)
 
 - Frontend type check, lint, unit tests and production build: `npm run typecheck`, `npm run lint`, `npm test`
-  (3 tests), `npm run build` all pass with no env vars set (2026-10-27).
+  (5 tests), `npm run build` all pass with no env vars set (2026-10-27).
+- Redesign checked in the browser against the local backend (2026-10-27): landing (orrery hero, scroll-to-dial,
+  bento), login/signup, dashboard (orbit panel updates live when a task is completed), chat panel, light mode,
+  375 px with no horizontal scroll. Before/after screenshots in `docs/design/`.
 - Backend installs from `requirements.txt` on Python 3.14 and the app imports with all 30 API paths
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
 - Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser).
@@ -22,8 +25,8 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 
 ## In progress
 
-- `chore/repair-shipshape-3d-redesign` - repairs (done, committed), shipshape adoption (this commit), then the
-  3D frontend redesign (landing, auth, dashboard, chat). Not merged; lands through a pull request.
+- `chore/repair-shipshape-3d-redesign` - repairs, shipshape adoption and the 3D redesign, all committed.
+  Not pushed or merged; lands through a pull request.
 
 ## Live state
 
@@ -41,10 +44,12 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 4. ~40 `datetime.utcnow()` call sites write naive datetimes; they block upgrading past `sqlmodel<0.0.45` (D-005).
    Pydantic class-based `Config` deprecation warnings too.
 5. Root `CLAUDE.md` and `backend/CLAUDE.md` contain long phase-era notes that partly predate the code.
+6. Redesign not yet covered: profile and notification-settings pages got the new tokens and headings but no
+   layout pass; Lighthouse and a real-phone test of the orrery have not been run.
 
 ## Next
 
-1. Finish and review the 3D redesign on this branch, then open the PR (human merges; see Live state).
+1. Review the branch and open the PR (human merges; merging deploys the backend, see Live state).
 2. Add a Postgres service to CI so the MCP tool tests run on every PR.
 3. Confirm the frontend host builds with npm after the lockfile change.
 

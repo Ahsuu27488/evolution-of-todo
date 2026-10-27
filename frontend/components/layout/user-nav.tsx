@@ -44,8 +44,8 @@ export function UserNav({ user }: UserNavProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0" aria-label="Account menu">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
             <UserIcon className="h-4 w-4" />
           </div>
         </Button>

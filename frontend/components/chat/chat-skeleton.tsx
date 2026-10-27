@@ -48,7 +48,7 @@ function Shimmer({ className }: { className?: string }) {
     <div
       className={`shimmer ${className || ""}`}
       style={{
-        background: "linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%)",
+        background: "linear-gradient(90deg, color-mix(in oklch, var(--custom-foreground) 5%, transparent) 25%, color-mix(in oklch, var(--custom-foreground) 10%, transparent) 50%, color-mix(in oklch, var(--custom-foreground) 5%, transparent) 75%)",
         backgroundSize: "200% 100%",
         animation: "shimmer 1.5s infinite",
       }}
@@ -77,7 +77,7 @@ function UserMessageSkeleton() {
       <div
         className="flex-shrink-0 w-8 h-8 rounded-full"
         style={{
-          background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
+          background: "color-mix(in oklch, var(--custom-primary) 20%, transparent)",
         }}
       />
 
@@ -86,7 +86,7 @@ function UserMessageSkeleton() {
         <div
           className="px-4 py-2.5 rounded-2xl rounded-tr-sm"
           style={{
-            background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
+            background: "color-mix(in oklch, var(--custom-primary) 20%, transparent)",
             minWidth: "120px",
             height: "44px",
           }}
@@ -116,7 +116,7 @@ function AssistantMessageSkeleton() {
       <div
         className="flex-shrink-0 w-8 h-8 rounded-full"
         style={{
-          background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)",
+          background: "color-mix(in oklch, var(--custom-secondary) 20%, transparent)",
         }}
       />
 
@@ -125,8 +125,8 @@ function AssistantMessageSkeleton() {
         <div
           className="px-4 py-2.5 rounded-2xl rounded-tl-sm"
           style={{
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
+            border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
             minWidth: "160px",
             height: "44px",
           }}
@@ -205,7 +205,7 @@ export function ConversationItemSkeleton() {
       exit={{ opacity: 0 }}
       className="flex items-center gap-2 p-2 rounded-lg"
       style={{
-        background: "rgba(255, 255, 255, 0.02)",
+        background: "color-mix(in oklch, var(--custom-foreground) 2%, transparent)",
         minWidth: "200px",
       }}
     >
@@ -213,7 +213,7 @@ export function ConversationItemSkeleton() {
       <div
         className="w-6 h-6 rounded-full flex-shrink-0"
         style={{
-          background: "rgba(255, 255, 255, 0.1)",
+          background: "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
         }}
       >
         <Shimmer className="w-full h-full rounded-full" />
@@ -225,7 +225,7 @@ export function ConversationItemSkeleton() {
           className="h-3 rounded"
           style={{
             width: "70%",
-            background: "rgba(255, 255, 255, 0.05)",
+            background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
           }}
         >
           <Shimmer className="w-full h-full rounded" />
@@ -251,7 +251,7 @@ export function StreamingMessageSkeleton() {
       <div
         className="flex-shrink-0 w-8 h-8 rounded-full"
         style={{
-          background: "linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)",
+          background: "color-mix(in oklch, var(--custom-secondary) 20%, transparent)",
         }}
       />
 
@@ -260,8 +260,8 @@ export function StreamingMessageSkeleton() {
         <div
           className="px-4 py-2.5 rounded-2xl rounded-tl-sm"
           style={{
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
+            border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
             minWidth: "60px",
             height: "32px",
           }}

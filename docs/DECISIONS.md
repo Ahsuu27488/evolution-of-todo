@@ -43,6 +43,16 @@ openai/agents majors the code was not written for. Raise the pins deliberately, 
 *Why:* `app/models.py` was shadowed by the `app/models/` package and loaded via importlib under a fake module
 name. Import from `app.models` as before. *Where:* `backend/app/models/__init__.py`, `backend/app/models/core.py`.
 
+**D-007 Visual direction: "night observatory" with the orrery as the one signature.** (2026-10-27)
+Ink-blue OKLCH palette, one accent (sun gold) plus orbit blue, Funnel Display + Hanken Grotesk. The 3D
+orrery (React Three Fiber + three, no drei) is the only 3D element: full on the landing page, calm beside the
+auth forms, a small data-driven version on the dashboard. Glass only on the floating layer; content on solid
+surfaces. Replaces the "Deep Space" cyan/purple neon theme (specs 008/009).
+*Why:* the old look used generic AI tells (gradient text, neon glows, identical icon cards) and gave the
+product no identity; an orrery maps directly onto the product (tasks orbiting "now" by due date). App screens
+stay fast (Operate mode): no heavy effects beyond the lazy mini orrery. *Where:* `frontend/app/globals.css`,
+`frontend/components/three/`, `frontend/components/landing/`, `frontend/lib/orbits.ts`, `docs/design/README.md`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

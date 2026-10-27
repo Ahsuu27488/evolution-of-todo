@@ -363,7 +363,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="text-xs font-mono text-white/70"
+            className="text-xs font-mono text-foreground/70"
             style={{
               fontFamily: "monospace",
             }}
@@ -383,9 +383,9 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
             onClick={handleCancelRecording}
             className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition-all text-xs font-medium"
             style={{
-              background: "rgba(255, 255, 255, 0.1)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              color: "rgba(255, 255, 255, 0.7)",
+              background: "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
+              border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
+              color: "color-mix(in oklch, var(--custom-foreground) 70%, transparent)",
             }}
             title="Cancel recording"
           >
@@ -410,19 +410,19 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
             // 3. Currently recording: cyan gradient (active recording state)
             // 4. Idle: gray
             background: isTranscribing
-              ? "rgba(0, 245, 255, 0.2)"
+              ? "color-mix(in oklch, var(--custom-primary) 20%, transparent)"
               : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-                ? "linear-gradient(135deg, rgba(0, 245, 255, 0.8) 0%, rgba(0, 180, 216, 0.8) 100%)"
+                ? "color-mix(in oklch, var(--custom-primary) 80%, transparent)"
                 : state.isRecording
-                  ? "linear-gradient(135deg, rgba(0, 245, 255, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%)"
-                  : "rgba(255, 255, 255, 0.1)",
+                  ? "linear-gradient(135deg, color-mix(in oklch, var(--custom-primary) 40%, transparent) 0%, color-mix(in oklch, var(--custom-secondary) 40%, transparent) 100%)"
+                  : "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
             border: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-              ? "1px solid rgba(0, 245, 255, 0.5)"
+              ? "1px solid color-mix(in oklch, var(--custom-primary) 50%, transparent)"
               : state.isRecording
-                ? "1px solid rgba(0, 245, 255, 0.3)"
+                ? "1px solid color-mix(in oklch, var(--custom-primary) 30%, transparent)"
                 : "none",
             boxShadow: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-              ? "0 0 15px rgba(0, 245, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
+              ? "0 0 15px color-mix(in oklch, var(--custom-primary) 30%, transparent), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 20%, transparent)"
               : "none",
           }}
           title={
@@ -449,21 +449,21 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
                 ease: "easeInOut",
               }}
               style={{
-                background: "rgba(0, 245, 255, 0.3)",
+                background: "color-mix(in oklch, var(--custom-primary) 30%, transparent)",
               }}
             />
           )}
 
           {isTranscribing ? (
-            <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+            <Loader2 className="w-5 h-5 text-primary animate-spin" />
           ) : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0)) ? (
             // Send icon when ready to send OR when stopping with recorded audio
-            <Send className="w-5 h-5 text-white" />
+            <Send className="w-5 h-5 text-foreground" />
           ) : state.isRecording ? (
             // Square/Stop icon during recording (more appropriate than slashed mic)
             <div className="w-3.5 h-3.5 rounded-sm bg-white" />
           ) : (
-            <Mic className="w-5 h-5 text-white/70" />
+            <Mic className="w-5 h-5 text-foreground/70" />
           )}
         </motion.button>
       )}
@@ -473,7 +473,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${uploadProgress}%` }}
-          className="h-1 bg-cyan-500 rounded-full"
+          className="h-1 bg-primary rounded-full"
           style={{ maxWidth: "60px" }}
         />
       )}

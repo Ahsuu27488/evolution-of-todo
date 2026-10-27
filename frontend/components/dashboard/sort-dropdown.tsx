@@ -32,8 +32,8 @@ interface SortDropdownProps {
 }
 
 const sortOptions = [
-  { value: "created_at" as const, label: "Created Date", description: "When task was added" },
-  { value: "due_date" as const, label: "Due Date", description: "Task deadline" },
+  { value: "created_at" as const, label: "Created date", description: "When task was added" },
+  { value: "due_date" as const, label: "Due date", description: "Task deadline" },
   { value: "priority" as const, label: "Priority", description: "Task importance" },
   { value: "title" as const, label: "Title", description: "Alphabetical order" },
 ]

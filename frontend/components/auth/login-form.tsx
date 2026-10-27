@@ -69,7 +69,7 @@ export function LoginForm() {
                   placeholder="name@example.com"
                   autoComplete="email"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -89,7 +89,7 @@ export function LoginForm() {
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -99,7 +99,7 @@ export function LoginForm() {
         />
         <Button
           type="submit"
-          className="w-full shadow-lg shadow-primary/20"
+          className="w-full h-11"
           disabled={isLoading}
         >
           {isLoading ? (

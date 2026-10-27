@@ -156,18 +156,10 @@ export function TaskForm({ task, trigger, onSuccess, open: controlledOpen, onOpe
       {controlledOpen === undefined && (
         <DialogTrigger asChild>
           {trigger || (
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button
-                size="lg"
-                className="gap-2 shadow-lg shadow-primary/20"
-              >
-                <Plus className="h-5 w-5" />
-                <span className="hidden sm:inline">Add Task</span>
-              </Button>
-            </motion.div>
+            <Button size="lg" className="gap-2 rounded-full px-4 sm:px-5" aria-label="Add task">
+              <Plus className="h-5 w-5" />
+              <span className="hidden sm:inline">Add task</span>
+            </Button>
           )}
         </DialogTrigger>
       )}

@@ -2,7 +2,7 @@
  *
  * This component wraps canvas-confetti for task completion celebrations.
  * Per spec.md FR-040: confetti particle effect on task completion.
- * Per research.md: Custom colors cyan (#00f5ff) and purple (#a855f7).
+ * Per research.md: Custom colors cyan (#f2b84b) and purple (#7fa8e8).
  *
  * Usage:
  *   <Confetti trigger={showConfetti} />
@@ -35,7 +35,7 @@ export interface ConfettiProps {
 }
 
 /** Default confetti colors matching Deep Space theme */
-const DEFAULT_COLORS = ['#00f5ff', '#a855f7', '#22c55e', '#fbbf24'];
+const DEFAULT_COLORS = ['#f2b84b', '#7fa8e8', '#22c55e', '#fbbf24'];
 
 /**
  * Confetti component that triggers animation when trigger prop changes to true.

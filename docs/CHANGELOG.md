@@ -3,6 +3,19 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · feat(frontend): "night observatory" redesign with a 3D orrery
+
+- New design tokens (OKLCH ink/starlight palette, sun-gold accent, Funnel Display + Hanken Grotesk, motion,
+  radius) and Liquid Glass limited to the floating layer (D-007, `docs/design/README.md`).
+- `components/three/`: WebGL orrery (React Three Fiber + three) with a CSS poster, lazy loading, off-screen
+  pause, reduced-motion still frame and low-power fallback.
+- Landing rebuilt: pinned orrery hero that flattens into a dial on scroll, product bento with a labelled
+  example conversation, closing call to action, footer. Auth pages split with a calm orrery. Dashboard:
+  "Your orbits" panel (`lib/orbits.ts`, unit-tested), date-led heading, solid wrapping toolbar, compact task
+  cards with friendly dates. Chat panel moved onto theme tokens (light mode works) with a labelled button.
+- Removed gradient text and all hard-coded neon cyan/purple; larger touch targets on Button/Input; labels on
+  icon-only buttons (account menu, task actions, add task).
+
 ## 2026-10-27 · fix(backend): signup failed on current sqlmodel
 
 - Sign-up raised "Datetime values must have timezone information": sqlmodel 0.0.45+ makes datetime columns

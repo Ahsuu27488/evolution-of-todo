@@ -28,7 +28,7 @@ export function ThemeToggle() {
   return (
     <div className="relative">
       {/* Dropdown menu */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass border-primary/20">
+      <div className="flex items-center gap-0.5 p-1 rounded-full bg-muted/70 border border-border">
         {themes.map(({ value, icon: Icon, label }) => {
           const isActive = theme === value
           return (
@@ -36,10 +36,8 @@ export function ThemeToggle() {
               key={value}
               onClick={() => setTheme(value)}
               className={cn(
-                "relative h-7 w-7 rounded-lg flex items-center justify-center transition-all duration-300",
-                isActive
-                  ? "bg-primary/20 shadow-[0_0_15px_rgba(0,245,255,0.3)]"
-                  : "hover:bg-muted/50"
+                "relative h-8 w-8 rounded-full flex items-center justify-center transition-colors duration-200",
+                isActive ? "bg-background" : "hover:bg-accent"
               )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -52,7 +50,7 @@ export function ThemeToggle() {
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.5 }}
-                    className="absolute inset-0 rounded-lg bg-primary/10"
+                    className="absolute inset-0 rounded-full bg-primary/15"
                     transition={{ duration: 0.15 }}
                   />
                 )}
@@ -114,7 +112,7 @@ export function ThemeToggleCompact() {
   return (
     <motion.button
       onClick={cycleTheme}
-      className="h-9 w-9 rounded-lg glass border-primary/20 flex items-center justify-center hover:bg-primary/10 hover:border-primary/40 transition-all duration-300"
+      className="h-9 w-9 rounded-full bg-muted/70 border border-border flex items-center justify-center hover:bg-accent transition-colors duration-200"
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label="Toggle theme"

@@ -41,10 +41,10 @@ function ThemedToast({ message, description, type = "info" }: ThemedToastOptions
   // Define type configurations
   const configs = {
     success: {
-      icon: <CheckCircle2 className="h-4 w-4 text-cyan-400" />,
-      borderColor: "border-cyan-500/50",
-      bgColor: "bg-cyan-500/10",
-      glowColor: "shadow-[0_0_20px_rgba(0,245,255,0.3)]",
+      icon: <CheckCircle2 className="h-4 w-4 text-primary" />,
+      borderColor: "border-primary/50",
+      bgColor: "bg-primary/10",
+      glowColor: "shadow-[0_0_20px_rgba(242, 184, 75,0.3)]",
     },
     error: {
       icon: <XCircle className="h-4 w-4 text-red-400" />,

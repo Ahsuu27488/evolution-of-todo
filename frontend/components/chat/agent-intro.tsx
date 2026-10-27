@@ -72,22 +72,22 @@ function CapabilityCard({
       whileHover={{ scale: 1.02 }}
       className="p-4 rounded-xl border"
       style={{
-        background: "rgba(255, 255, 255, 0.03)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        background: "color-mix(in oklch, var(--custom-foreground) 3%, transparent)",
+        border: "1px solid color-mix(in oklch, var(--custom-foreground) 8%, transparent)",
       }}
     >
       <div className="flex items-start gap-3">
         <div
           className="p-2 rounded-lg flex-shrink-0"
           style={{
-            background: "linear-gradient(135deg, rgba(0, 245, 255, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)",
+            background: "linear-gradient(135deg, color-mix(in oklch, var(--custom-primary) 15%, transparent) 0%, color-mix(in oklch, var(--custom-secondary) 15%, transparent) 100%)",
           }}
         >
           {icon}
         </div>
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-white mb-1">{title}</h4>
-          <p className="text-xs text-white/50">{description}</p>
+          <h4 className="text-sm font-semibold text-foreground mb-1">{title}</h4>
+          <p className="text-xs text-foreground/50">{description}</p>
         </div>
       </div>
     </motion.div>
@@ -117,21 +117,21 @@ function ExamplePromptButton({
       onClick={onClick}
       className="w-full px-4 py-3 rounded-xl text-left text-sm transition-all"
       style={{
-        background: "rgba(255, 255, 255, 0.04)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        background: "color-mix(in oklch, var(--custom-foreground) 4%, transparent)",
+        border: "1px solid color-mix(in oklch, var(--custom-foreground) 8%, transparent)",
       }}
     >
       <div className="flex items-center gap-3">
         <div
           className="p-1.5 rounded-md flex-shrink-0"
           style={{
-            background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(168, 85, 247, 0.2) 100%)",
-            color: "#00f5ff",
+            background: "linear-gradient(135deg, color-mix(in oklch, var(--custom-primary) 20%, transparent) 0%, var(--custom-border) 100%)",
+            color: "var(--custom-primary)",
           }}
         >
           {icon}
         </div>
-        <span className="text-white/80 flex-1">{text}</span>
+        <span className="text-foreground/80 flex-1">{text}</span>
       </div>
     </motion.button>
   )
@@ -193,18 +193,18 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
         <div
           className="absolute inset-0 blur-3xl rounded-full"
           style={{
-            background: "linear-gradient(135deg, rgba(0, 245, 255, 0.3) 0%, rgba(168, 85, 247, 0.3) 100%)",
+            background: "linear-gradient(135deg, color-mix(in oklch, var(--custom-primary) 30%, transparent) 0%, color-mix(in oklch, var(--custom-secondary) 30%, transparent) 100%)",
           }}
         />
         {/* Avatar circle */}
         <div
           className="relative w-20 h-20 rounded-full flex items-center justify-center"
           style={{
-            background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
-            boxShadow: "0 0 30px rgba(0, 245, 255, 0.3), 0 0 60px rgba(168, 85, 247, 0.2)",
+            background: "var(--custom-primary)",
+            boxShadow: "0 0 30px color-mix(in oklch, var(--custom-primary) 30%, transparent), 0 0 60px var(--custom-border)",
           }}
         >
-          <MessageSquare className="w-10 h-10 text-white" strokeWidth={2} />
+          <MessageSquare className="w-10 h-10 text-primary-foreground" strokeWidth={2} />
         </div>
         {/* Sparkle decorations */}
         <motion.div
@@ -212,14 +212,14 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           className="absolute -top-1 -right-1"
         >
-          <Sparkles className="w-5 h-5 text-cyan-400" />
+          <Sparkles className="w-5 h-5 text-primary" />
         </motion.div>
       </motion.div>
 
       {/* Title and Greeting */}
       <motion.div variants={itemVariants} className="mb-2">
-        <h1 className="text-2xl font-bold text-white mb-1">Meet Chronos</h1>
-        <p className="text-sm" style={{ color: "rgba(255, 255, 255, 0.6)" }}>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Meet Chronos</h1>
+        <p className="text-sm" style={{ color: "color-mix(in oklch, var(--custom-foreground) 60%, transparent)" }}>
           Your AI Time Guardian
         </p>
       </motion.div>
@@ -227,7 +227,7 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
       {/* Description */}
       <motion.p
         variants={itemVariants}
-        className="text-sm text-white/50 max-w-xs mb-8"
+        className="text-sm text-foreground/50 max-w-xs mb-8"
       >
         I can help you manage tasks naturally — just tell me what you need
         in plain English or Urdu (اردو).
@@ -239,22 +239,22 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
         className="w-full max-w-sm grid grid-cols-2 gap-3 mb-8"
       >
         <CapabilityCard
-          icon={<Sparkles className="w-4 h-4 text-cyan-400" />}
+          icon={<Sparkles className="w-4 h-4 text-primary" />}
           title="Natural Tasks"
           description="Create tasks using plain language"
         />
         <CapabilityCard
-          icon={<Mic className="w-4 h-4 text-purple-400" />}
+          icon={<Mic className="w-4 h-4 text-secondary" />}
           title="Voice Input"
           description="Speak naturally, I'll transcribe"
         />
         <CapabilityCard
-          icon={<Search className="w-4 h-4 text-cyan-400" />}
+          icon={<Search className="w-4 h-4 text-primary" />}
           title="Smart Search"
           description="Find tasks by meaning, not words"
         />
         <CapabilityCard
-          icon={<Languages className="w-4 h-4 text-purple-400" />}
+          icon={<Languages className="w-4 h-4 text-secondary" />}
           title="Bilingual"
           description="English aur Urdu (اردو) support"
         />
@@ -262,7 +262,7 @@ export function AgentIntro({ onExampleClick }: AgentIntroProps) {
 
       {/* Example Prompts Section */}
       <motion.div variants={itemVariants} className="w-full max-w-sm">
-        <p className="text-xs text-white/40 mb-3 text-left uppercase tracking-wider">
+        <p className="text-xs text-foreground/40 mb-3 text-left uppercase tracking-wider">
           Try saying something like...
         </p>
         <div className="space-y-2">

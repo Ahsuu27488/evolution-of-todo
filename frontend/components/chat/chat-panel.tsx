@@ -94,7 +94,7 @@ const getResponsivePanelStyles = (
         style: {
           height: safeAreaBottom ? `calc(100dvh - ${safeAreaBottom}px)` : '100dvh',
           maxHeight: safeAreaBottom ? `calc(100dvh - ${safeAreaBottom}px)` : '100dvh',
-          background: "rgba(15, 23, 42, 0.98)",
+          background: "var(--custom-popover)",
           backdropFilter: "blur(20px)",
           border: "none",
         },
@@ -104,20 +104,20 @@ const getResponsivePanelStyles = (
       return {
         className: "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[600px] max-w-[90vw] h-[80vh] rounded-2xl flex flex-col",
         style: {
-          background: "rgba(15, 23, 42, 0.95)",
+          background: "var(--custom-popover)",
           backdropFilter: "blur(20px)",
-          border: "1px solid rgba(168, 85, 247, 0.2)",
+          border: "1px solid var(--custom-border)",
         },
       }
     case "desktop":
     default:
       // Floating panel on desktop
       return {
-        className: "fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-2xl flex flex-col",
+        className: "glass-modal fixed bottom-6 right-6 z-50 w-[400px] h-[600px] rounded-[var(--radius-3xl)] flex flex-col",
         style: {
-          background: "rgba(15, 23, 42, 0.95)",
+          background: "var(--custom-popover)",
           backdropFilter: "blur(20px)",
-          border: "1px solid rgba(168, 85, 247, 0.2)",
+          border: "1px solid var(--custom-border)",
         },
       }
   }
@@ -631,12 +631,11 @@ export function ChatPanel() {
             exit={{ scale: 0, rotate: 180 }}
             transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }}
             onClick={toggleOpen}
-            className={`${getFABPosition(breakpoint)} p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow`}
-            style={{
-              background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
-            }}
+            aria-label="Ask Chronos"
+            className={`${getFABPosition(breakpoint)} flex items-center gap-2 rounded-full bg-primary py-3.5 pl-4 pr-5 font-medium text-primary-foreground shadow-[0_10px_30px_-8px_color-mix(in_oklch,var(--custom-primary)_60%,transparent)] transition-transform active:scale-[0.97]`}
           >
-            <MessageSquare className="w-6 h-6 text-white" strokeWidth={2.5} />
+            <MessageSquare className="w-5 h-5" strokeWidth={2.25} />
+            <span className="hidden sm:inline">Ask Chronos</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -658,22 +657,22 @@ export function ChatPanel() {
             <div
               className="flex items-center justify-between px-4 py-3"
               style={{
-                background: "linear-gradient(90deg, rgba(168, 85, 247, 0.1) 0%, rgba(0, 245, 255, 0.1) 100%)",
-                borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+                background: "transparent",
+                borderBottom: "1px solid var(--custom-border)",
               }}
             >
               <div className="flex items-center gap-3">
                 <div
                   className="w-10 h-10 min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center"
                   style={{
-                    background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
+                    background: "var(--custom-primary)",
                   }}
                 >
-                  <MessageSquare className="w-5 h-5 text-white" />
+                  <MessageSquare className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold text-sm">Chronos AI</h2>
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  <h2 className="text-foreground font-semibold text-sm">Chronos</h2>
+                  <p className="text-xs" style={{ color: "color-mix(in oklch, var(--custom-foreground) 60%, transparent)" }}>
                     {conversationId ? "Continue chatting..." : "Start a new conversation"}
                   </p>
                 </div>
@@ -684,12 +683,12 @@ export function ChatPanel() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowHistory(!showHistory)}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors relative flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors relative flex items-center justify-center"
                   title="Conversation history"
                 >
-                  <History className="w-4 h-4 text-white/70" />
+                  <History className="w-4 h-4 text-foreground/70" />
                   {conversationsData?.conversations && conversationsData.conversations.length > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full bg-cyan-500">
+                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full bg-primary">
                       {conversationsData.conversations.length}
                     </span>
                   )}
@@ -701,17 +700,17 @@ export function ChatPanel() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={toggleLanguage}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors relative flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors relative flex items-center justify-center"
                   title={`Language: ${languagePreference === "auto" ? "Auto-detect" : languagePreference === "en" ? "English" : "اردو"}`}
                 >
-                  <Languages className="w-4 h-4 text-white/70" />
+                  <Languages className="w-4 h-4 text-foreground/70" />
                   <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[8px] font-bold rounded-full"
                     style={{
                       background: languagePreference === "auto"
-                        ? "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)"
+                        ? "var(--custom-primary)"
                         : languagePreference === "en"
-                          ? "rgba(0, 245, 255, 0.8)"
-                          : "rgba(168, 85, 247, 0.8)",
+                          ? "color-mix(in oklch, var(--custom-primary) 80%, transparent)"
+                          : "color-mix(in oklch, var(--custom-secondary) 80%, transparent)",
                     }}
                   >
                     {languagePreference === "auto" ? "A" : languagePreference === "en" ? "E" : "U"}
@@ -720,20 +719,20 @@ export function ChatPanel() {
                 {/* Minimize button - 44px touch target (T023) - COMMENTED: Not functional */}
                 {/* <button
                   onClick={toggleMinimized}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors flex items-center justify-center"
                 >
                   {isMinimized ? (
-                    <Maximize2 className="w-4 h-4 text-white/70" />
+                    <Maximize2 className="w-4 h-4 text-foreground/70" />
                   ) : (
-                    <Minimize2 className="w-4 h-4 text-white/70" />
+                    <Minimize2 className="w-4 h-4 text-foreground/70" />
                   )}
                 </button> */}
                 {/* Close button - 44px touch target (T023) */}
                 <button
                   onClick={toggleOpen}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-foreground/10 transition-colors flex items-center justify-center"
                 >
-                  <X className="w-4 h-4 text-white/70" />
+                  <X className="w-4 h-4 text-foreground/70" />
                 </button>
               </div>
             </div>
@@ -747,18 +746,18 @@ export function ChatPanel() {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                   style={{
-                    borderBottom: "1px solid rgba(168, 85, 247, 0.2)",
+                    borderBottom: "1px solid var(--custom-border)",
                   }}
                 >
                   <div className="p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-white/70">Conversations</span>
+                      <span className="text-xs font-medium text-foreground/70">Conversations</span>
                       <button
                         onClick={handleNewConversation}
-                        className="p-1 rounded hover:bg-white/10 transition-colors"
+                        className="p-1 rounded hover:bg-foreground/10 transition-colors"
                         title="New conversation"
                       >
-                        <Plus className="w-4 h-4 text-cyan-400" />
+                        <Plus className="w-4 h-4 text-primary" />
                       </button>
                     </div>
                     <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -773,14 +772,14 @@ export function ChatPanel() {
                         conversationsData.conversations.map((conv) => (
                           <div
                             key={conv.id}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors group cursor-pointer"
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-foreground/5 transition-colors group cursor-pointer"
                             style={{
-                              background: conv.id === conversationId ? "rgba(0, 245, 255, 0.1)" : undefined,
+                              background: conv.id === conversationId ? "color-mix(in oklch, var(--custom-primary) 10%, transparent)" : undefined,
                             }}
                           >
                             <button
                               onClick={() => handleLoadConversation(conv as Conversation)}
-                              className="flex-1 text-left text-sm text-white/80 truncate"
+                              className="flex-1 text-left text-sm text-foreground/80 truncate"
                             >
                               {formatConversationTitle(conv as Conversation)}
                             </button>
@@ -794,7 +793,7 @@ export function ChatPanel() {
                           </div>
                         ))
                       ) : (
-                        <p className="text-xs text-white/40 text-center py-2">No conversations yet</p>
+                        <p className="text-xs text-foreground/40 text-center py-2">No conversations yet</p>
                       )}
                     </div>
                   </div>
@@ -829,10 +828,10 @@ export function ChatPanel() {
                         exit={{ opacity: 0, y: -10 }}
                         className="flex justify-center py-2"
                       >
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-white/60"
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs text-foreground/60"
                           style={{
-                            background: "rgba(255, 255, 255, 0.05)",
-                            border: "1px solid rgba(168, 85, 247, 0.2)",
+                            background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
+                            border: "1px solid var(--custom-border)",
                           }}
                         >
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -863,12 +862,9 @@ export function ChatPanel() {
                                 handleLoadConversation({ id: conversationId } as Conversation);
                               }
                             }}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                            style={{
-                              background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
-                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-primary text-primary-foreground"
                           >
-                            Retry Loading
+                            Retry loading
                           </button>
                         </div>
                       </motion.div>
@@ -885,7 +881,7 @@ export function ChatPanel() {
                         className="flex flex-col items-center gap-4 py-8"
                       >
                         <div className="text-center">
-                          <p className="text-white/70 mb-2">Taking longer than expected...</p>
+                          <p className="text-foreground/70 mb-2">Taking longer than expected...</p>
                           <button
                             onClick={() => {
                               setConversationLoadTimeout(false);
@@ -893,12 +889,9 @@ export function ChatPanel() {
                                 handleLoadConversation({ id: conversationId } as Conversation);
                               }
                             }}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                            style={{
-                              background: "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)",
-                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-all bg-primary text-primary-foreground"
                           >
-                            Retry Loading
+                            Retry loading
                           </button>
                         </div>
                       </motion.div>
@@ -968,7 +961,7 @@ export function ChatPanel() {
                 <div
                   className="p-4"
                   style={{
-                    borderTop: "1px solid rgba(168, 85, 247, 0.2)",
+                    borderTop: "1px solid var(--custom-border)",
                     paddingBottom: breakpoint === "mobile"
                       ? `calc(1rem + ${visualViewport.safeAreaBottom}px)`
                       : undefined,
@@ -977,8 +970,8 @@ export function ChatPanel() {
                   <div
                     className="flex items-end gap-2 px-4 py-3 rounded-xl"
                     style={{
-                      background: "rgba(255, 255, 255, 0.05)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
+                      border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
                     }}
                   >
                     {/* Voice Input Button with Whisper API (T086-T091) - 44px touch target */}
@@ -997,7 +990,7 @@ export function ChatPanel() {
                       onKeyDown={handleKeyDown}
                       placeholder="Ask me anything..."
                       disabled={isStreaming}
-                      className="flex-1 bg-transparent text-white placeholder-white/40 resize-none outline-none py-3"
+                      className="flex-1 bg-transparent text-foreground placeholder-white/40 resize-none outline-none py-3"
                       style={{
                         fieldSizing: "content",
                         minHeight: "44px",
@@ -1016,14 +1009,14 @@ export function ChatPanel() {
                       className="flex-shrink-0 min-h-[44px] min-w-[44px] p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                       style={{
                         background: inputValue.trim() && !isStreaming
-                          ? "linear-gradient(135deg, #00f5ff 0%, #a855f7 100%)"
-                          : "rgba(255,255,255,0.1)",
+                          ? "var(--custom-primary)"
+                          : "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
                       }}
                     >
                       {isStreaming ? (
-                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        <Loader2 className="w-4 h-4 text-foreground animate-spin" />
                       ) : (
-                        <Send className="w-4 h-4 text-white" />
+                        <Send className="w-4 h-4 text-foreground" />
                       )}
                     </motion.button>
                   </div>

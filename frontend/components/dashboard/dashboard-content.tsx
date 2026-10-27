@@ -26,6 +26,7 @@ import { TaskList } from "@/components/tasks/task-list"
 import { DashboardToolbar } from "@/components/dashboard/dashboard-toolbar"
 import { DualRingSpinner } from "@/components/ui/dual-ring-spinner"
 import { LoadingErrorCard } from "@/components/dashboard/loading-error-card"
+import { OrbitPanel } from "@/components/dashboard/orbit-panel"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useTaskFilters } from "@/lib/hooks/use-task-filters"
 import { Button } from "@/components/ui/button"
@@ -75,86 +76,85 @@ export function DashboardContent({
         animate="visible"
         className="mx-auto max-w-md text-center py-12"
       >
-        <h2 className="text-2xl font-bold mb-4">Welcome to Todo App</h2>
+        <h2 className="text-2xl font-semibold mb-4">Sign in to see your tasks</h2>
         <p className="text-muted-foreground mb-6">
-          Please sign in to manage your tasks.
+          Your session ended or you are not signed in yet.
         </p>
         <div className="flex gap-4 justify-center">
           <Button asChild>
-            <Link href="/login">Sign In</Link>
+            <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/signup">Sign Up</Link>
+            <Link href="/signup">Create account</Link>
           </Button>
         </div>
       </motion.div>
     )
   }
 
+  const todayLabel = new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date())
+
   return (
     <motion.div
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
-      className="mx-auto w-full max-w-2xl lg:max-w-3xl"
+      className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[minmax(0,17.5rem)_minmax(0,1fr)] lg:gap-10"
     >
-      {/* Dashboard Toolbar - integrates search, filters, and sort */}
-      <DashboardToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={filters.status}
-        onStatusChange={setStatusFilter}
-        priorityFilter={filters.priority}
-        onPriorityChange={setPriorityFilter}
-        sortBy={filters.sortBy}
-        onSortChange={setSortBy}
-        sortOrder={filters.sortOrder}
-        onSortOrderToggle={toggleSortOrder}
-        totalCount={totalCount}
-        pendingCount={pendingCount}
-        completedCount={completedCount}
-      />
+      <OrbitPanel className="lg:sticky lg:top-24 lg:self-start" />
 
-      {/* Section header with title and add button */}
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h1 className="text-2xl font-bold bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] sm:text-3xl">
-          My Tasks
-        </h1>
-
-        {/* Floating Action Button */}
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="shrink-0"
-        >
-          <TaskForm />
-        </motion.div>
-      </div>
-
-      {/* [T021] Task List with Loading States */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="min-h-[300px] sm:min-h-[400px] relative"
-      >
-        {isLoading ? (
-          /* [T021] Show dual-ring spinner during data fetch */
-          <div className="flex items-center justify-center h-full min-h-[250px] sm:min-h-[300px]">
-            <DualRingSpinner show={true} />
+      <section aria-labelledby="tasks-title" className="min-w-0">
+        {/* Heading with the add button */}
+        <div className="mb-5 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">{todayLabel}</p>
+            <h1 id="tasks-title" className="text-[length:var(--step-h1)] font-semibold leading-tight">
+              My tasks
+            </h1>
           </div>
-        ) : error ? (
-          /* [T021] Show error card with retry button on failure */
-          <LoadingErrorCard
-            message="Unable to load tasks. Please check your connection and try again."
-            onRetry={() => refetch()}
-            isRetrying={isLoading}
-          />
-        ) : (
-          /* Show task list when data is loaded successfully */
-          <TaskList tasks={filteredTasks} />
-        )}
-      </motion.div>
+          <div className="shrink-0">
+            <TaskForm />
+          </div>
+        </div>
+
+        {/* Search, filters and sort */}
+        <DashboardToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={filters.status}
+          onStatusChange={setStatusFilter}
+          priorityFilter={filters.priority}
+          onPriorityChange={setPriorityFilter}
+          sortBy={filters.sortBy}
+          onSortChange={setSortBy}
+          sortOrder={filters.sortOrder}
+          onSortOrderToggle={toggleSortOrder}
+          totalCount={totalCount}
+          pendingCount={pendingCount}
+          completedCount={completedCount}
+        />
+
+        {/* Task list with loading and error states */}
+        <div className="relative min-h-[300px]">
+          {isLoading ? (
+            <div className="flex h-full min-h-[250px] items-center justify-center sm:min-h-[300px]">
+              <DualRingSpinner show={true} />
+            </div>
+          ) : error ? (
+            <LoadingErrorCard
+              message="Unable to load tasks. Please check your connection and try again."
+              onRetry={() => refetch()}
+              isRetrying={isLoading}
+            />
+          ) : (
+            <TaskList tasks={filteredTasks} />
+          )}
+        </div>
+      </section>
     </motion.div>
   )
 }

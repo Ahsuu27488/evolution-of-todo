@@ -58,10 +58,10 @@ const priorityConfig: Record<
     glow: "shadow-[0_0_15px_rgba(251,191,36,0.2)]",
   },
   LOW: {
-    bg: "rgba(34, 197, 94, 0.15)",
-    border: "rgba(34, 197, 94, 0.4)",
+    bg: "color-mix(in oklch, var(--custom-chart-3) 15%, transparent)",
+    border: "color-mix(in oklch, var(--custom-chart-3) 40%, transparent)",
     text: "text-green-300",
-    glow: "shadow-[0_0_15px_rgba(34,197,94,0.2)]",
+    glow: "shadow-[0_0_15px_color-mix(in oklch, var(--custom-chart-3) 20%, transparent)]",
   },
 }
 
@@ -174,7 +174,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
       `}
       style={{
         background: "rgba(20, 20, 26, 0.6)",
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
       }}
     >
       {/* Priority indicator bar */}
@@ -199,8 +199,8 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
             flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center
             transition-all duration-200 mt-0.5
             ${task.completed
-              ? "bg-gradient-to-br from-cyan-400 to-cyan-500 border-cyan-400"
-              : "border-white/30 hover:border-cyan-400 hover:bg-cyan-400/10"
+              ? "bg-gradient-to-br from-primary to-primary border-primary"
+              : "border-foreground/30 hover:border-primary hover:bg-primary/10"
             }
             ${isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
           `}
@@ -212,7 +212,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <Check className="w-3 h-3 text-white" strokeWidth={3} />
+              <Check className="w-3 h-3 text-foreground" strokeWidth={3} />
             </motion.div>
           )}
         </button>
@@ -230,8 +230,8 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
                   if (e.key === "Escape") setEditing({ isEditing: false, title: task.title })
                 }}
                 className={`
-                  flex-1 px-2 py-1 rounded bg-white/10 border border-white/20
-                  text-sm text-white outline-none focus:border-cyan-400
+                  flex-1 px-2 py-1 rounded bg-foreground/10 border border-foreground/20
+                  text-sm text-foreground outline-none focus:border-primary
                   ${task.completed ? "line-through opacity-60" : ""}
                 `}
                 autoFocus
@@ -262,7 +262,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
                     task.completed ? "line-through opacity-50" : ""
                   }`}
                   style={{
-                    color: task.completed ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.9)",
+                    color: task.completed ? "color-mix(in oklch, var(--custom-foreground) 50%, transparent)" : "color-mix(in oklch, var(--custom-foreground) 90%, transparent)",
                   }}
                 >
                   {task.title}
@@ -272,7 +272,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => setEditing({ isEditing: true, title: task.title })}
-                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-foreground/10 text-foreground/50 hover:text-foreground transition-colors"
                     title="Edit task"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -280,7 +280,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
                   <button
                     onClick={handleDelete}
                     disabled={isProcessing}
-                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-foreground/50 hover:text-red-400 transition-colors"
                     title="Delete task"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -306,7 +306,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
 
                 {/* Due date */}
                 {dueDate && (
-                  <span className="flex items-center gap-1 text-xs text-white/50">
+                  <span className="flex items-center gap-1 text-xs text-foreground/50">
                     <Calendar className="w-3 h-3" />
                     <span>{dueDate}</span>
                   </span>
@@ -330,7 +330,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
                       </span>
                     ))}
                     {task.tags.length > 2 && (
-                      <span className="text-xs text-white/40">
+                      <span className="text-xs text-foreground/40">
                         +{task.tags.length - 2}
                       </span>
                     )}
@@ -348,7 +348,7 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
           className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl"
           style={{ background: "rgba(0,0,0,0.2)" }}
         >
-          <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       )}
     </motion.div>
@@ -387,22 +387,22 @@ export function InlineTaskCard({ task, onAction }: InlineTaskCardProps) {
       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border"
       style={{
         background: "rgba(20, 20, 26, 0.8)",
-        borderColor: "rgba(255, 255, 255, 0.15)",
+        borderColor: "color-mix(in oklch, var(--custom-foreground) 15%, transparent)",
       }}
     >
       {/* Status icon */}
       <div
         className={`w-4 h-4 rounded flex items-center justify-center ${
-          task.completed ? "bg-cyan-500" : "border-2 border-white/30"
+          task.completed ? "bg-primary" : "border-2 border-foreground/30"
         }`}
       >
-        {task.completed && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+        {task.completed && <Check className="w-2.5 h-2.5 text-foreground" strokeWidth={3} />}
       </div>
 
       {/* Title */}
       <span
         className={`text-sm ${task.completed ? "line-through opacity-50" : ""}`}
-        style={{ color: "rgba(255,255,255,0.9)" }}
+        style={{ color: "color-mix(in oklch, var(--custom-foreground) 90%, transparent)" }}
       >
         {task.title}
       </span>
@@ -417,14 +417,14 @@ export function InlineTaskCard({ task, onAction }: InlineTaskCardProps) {
 
       {/* Due date */}
       {dueDate && (
-        <span className="text-xs text-white/50">{dueDate}</span>
+        <span className="text-xs text-foreground/50">{dueDate}</span>
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-1 ml-1 pl-2 border-l border-white/10">
+      <div className="flex items-center gap-1 ml-1 pl-2 border-l border-foreground/10">
         <button
           onClick={() => onAction?.("complete", task)}
-          className="p-1 rounded hover:bg-cyan-500/20 text-cyan-400 transition-colors"
+          className="p-1 rounded hover:bg-primary/20 text-primary transition-colors"
           title={task.completed ? "Mark incomplete" : "Mark complete"}
         >
           <Check className="w-3 h-3" />

@@ -21,7 +21,7 @@ export const tagSchema = z.object({
     .trim(),
   color: z
     .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color (e.g., #00f5ff)"),
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex color (e.g., #f2b84b)"),
 })
 
 // =============================================================================

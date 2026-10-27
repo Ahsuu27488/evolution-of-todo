@@ -230,9 +230,9 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
         <div
           className="px-3 py-1.5 rounded-full text-xs text-center"
           style={{
-            background: "rgba(168, 85, 247, 0.2)",
-            border: "1px solid rgba(168, 85, 247, 0.3)",
-            color: "rgba(255,255,255,0.8)",
+            background: "var(--custom-border)",
+            border: "1px solid color-mix(in oklch, var(--custom-secondary) 30%, transparent)",
+            color: "color-mix(in oklch, var(--custom-foreground) 80%, transparent)",
           }}
         >
           {message.content}
@@ -254,20 +254,14 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       {/* Avatar */}
       <div
         className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? "bg-gradient-to-br from-cyan-400 to-blue-500" : ""
+          isUser ? "bg-primary text-primary-foreground" : ""
         }`}
-        style={
-          !isUser
-            ? {
-                background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-              }
-            : undefined
-        }
+        style={!isUser ? { background: "var(--custom-muted)" } : undefined}
       >
         {isUser ? (
-          <User className="w-4 h-4 text-white" />
+          <User className="w-4 h-4" />
         ) : (
-          <Bot className="w-4 h-4 text-white" />
+          <Bot className="w-4 h-4 text-primary" />
         )}
       </div>
 
@@ -280,11 +274,8 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
             whileTap={{ scale: 0.98 }}
             className="px-4 py-3 rounded-2xl rounded-tr-sm flex items-center gap-2"
             style={{
-              background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
-              border: "1px solid rgba(0, 245, 255, 0.3)",
-              color: "#00f5ff",
-              backdropFilter: "blur(12px)",
-              boxShadow: "0 0 20px rgba(0, 245, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+              background: "var(--custom-primary)",
+              color: "var(--custom-primary-foreground)",
             }}
           >
             <Mic className="w-4 h-4" />
@@ -301,20 +292,14 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
             style={
               isUser
                 ? {
-                    // T050: User message - Cyan gradient matching dashboard
-                    background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
-                    border: "1px solid rgba(0, 245, 255, 0.3)",
-                    color: "#00f5ff",
-                    backdropFilter: "blur(12px)",
-                    boxShadow: "0 0 15px rgba(0, 245, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+                    // User message: solid primary
+                    background: "var(--custom-primary)",
+                    color: "var(--custom-primary-foreground)",
                   }
                 : {
-                    // T046: Assistant message - Glassmorphism with white/gray tint
-                    background: "rgba(255, 255, 255, 0.05)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    color: "rgba(255, 255, 255, 0.9)",
-                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+                    // Assistant message: solid muted surface (no blur inside the glass panel)
+                    background: "var(--custom-muted)",
+                    color: "var(--custom-foreground)",
                   }
             }
           >
@@ -333,7 +318,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     </li>
                   ),
                   strong: ({ children }) => (
-                    <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "#00f5ff" }}>
+                    <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "var(--custom-primary)" }}>
                       {renderMixedLanguageText(children)}
                     </strong>
                   ),
@@ -342,7 +327,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     <a
                       {...props}
                       style={{
-                        color: isUser ? "#0ea5e9" : "#00f5ff",
+                        color: isUser ? "inherit" : "var(--custom-primary)",
                         textDecoration: "underline",
                       }}
                       target="_blank"
@@ -385,7 +370,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     <code
                       {...props}
                       style={{
-                        background: isUser ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)",
+                        background: isUser ? "rgba(0,0,0,0.1)" : "color-mix(in oklch, var(--custom-foreground) 15%, transparent)",
                         padding: inline ? "2px 6px" : "0.5rem",
                         borderRadius: inline ? "4px" : "8px",
                         fontSize: "0.9em",
@@ -405,7 +390,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                   transition={{ repeat: Infinity, duration: 1 }}
                   className="inline-block w-2 h-4 ml-1 align-middle"
                   style={{
-                    background: "rgba(255,255,255,0.7)",
+                    background: "color-mix(in oklch, var(--custom-foreground) 70%, transparent)",
                   }}
                 />
               )}
@@ -434,7 +419,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
 
         {/* Tool Calls Indicator */}
         {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="flex items-center gap-2 mt-1 px-2 py-1 rounded-lg text-xs text-white/50">
+          <div className="flex items-center gap-2 mt-1 px-2 py-1 rounded-lg text-xs text-foreground/50">
             <Wrench className="w-3 h-3" />
             <span>
               Used {message.toolCalls.length} tool{message.toolCalls.length > 1 ? "s" : ""}
@@ -443,7 +428,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
         )}
 
         {/* Timestamp */}
-        <span className="text-xs text-white/40 mt-1 px-1">
+        <span className="text-xs text-foreground/40 mt-1 px-1">
           {safeFormatDistanceToNow(message.createdAt)}
         </span>
       </div>

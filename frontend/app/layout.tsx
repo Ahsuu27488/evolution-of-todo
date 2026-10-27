@@ -1,22 +1,30 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono, Noto_Nastaliq_Urdu } from "next/font/google"
+import { Funnel_Display, Geist_Mono, Hanken_Grotesk, Noto_Nastaliq_Urdu } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
 import { ViewTransitions } from "next-view-transitions"
 import { ServiceWorkerRegistrar } from "./service-worker-registrar"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// UI text
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
-  display: "optional", // Only load if needed, reduces preload warnings
-  adjustFontFallback: true,
+  display: "swap",
+})
+
+// Headlines
+const funnel = Funnel_Display({
+  variable: "--font-funnel",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 })
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-  display: "optional", // Only load if needed, reduces preload warnings
-  adjustFontFallback: true,
+  display: "optional",
+  preload: false,
 })
 
 // Urdu font for Phase III: AI Chatbot bilingual support (T076)
@@ -26,6 +34,7 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
   subsets: ["arabic"],
   display: "swap",
   weight: ["400", "700"],
+  preload: false, // only needed once Urdu text appears
 })
 
 export const metadata: Metadata = {
@@ -34,7 +43,7 @@ export const metadata: Metadata = {
     default: "Chronos | Evolution of Task Management",
     template: "%s | Chronos"
   },
-  description: "A modern full-stack todo application demonstrating spec-driven development. Features include task management, recurring tasks, real-time search/filter, dark mode, and seamless authentication.",
+  description: "A to-do list you can talk to. Add, plan and find tasks by typing or speaking, in English or Urdu.",
   keywords: ["todo", "task management", "productivity", "chronos", "next.js", "fastapi"],
   authors: [{ name: "Chronos" }],
   creator: "Chronos",
@@ -96,7 +105,7 @@ export default function RootLayout({
           />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} ${notoNastaliqUrdu.variable} antialiased min-h-screen`}
+          className={`${hanken.variable} ${funnel.variable} ${geistMono.variable} ${notoNastaliqUrdu.variable} antialiased min-h-screen`}
         >
           <Providers>{children}</Providers>
           {/* Register service worker for push notifications */}

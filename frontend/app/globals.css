@@ -4,166 +4,157 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =============================================================================
-   CSS Custom Properties for Theme Switching
-   Per Tailwind CSS v4 docs: Define variables in :root/.dark/.light selectors,
-   then reference them in @theme inline using var()
+   Chronos design tokens: "night observatory"
+   Ink-blue surfaces, starlight text, one warm accent (sun gold) for the "now"
+   core and primary actions, a cool orbit blue as the supporting hue.
+   Components read these through the @theme inline mapping below.
    =========================================================================== */
 
-:root {
-  /* Deep Space Theme (Dark Mode - Default) */
-  --custom-background: oklch(0.08 0.01 270);
-  --custom-foreground: oklch(0.98 0.005 270);
-  --custom-card: oklch(0.12 0.01 270 / 0.7);
-  --custom-card-foreground: oklch(0.98 0.005 270);
-  --custom-popover: oklch(0.12 0.01 270 / 0.8);
-  --custom-popover-foreground: oklch(0.98 0.005 270);
-  --custom-primary: oklch(0.91 0.17 195);
-  --custom-primary-foreground: oklch(0.08 0.01 270);
-  --custom-secondary: oklch(0.65 0.26 293);
-  --custom-secondary-foreground: oklch(0.98 0.005 270);
-  --custom-muted: oklch(0.16 0.01 270 / 0.5);
-  --custom-muted-foreground: oklch(0.65 0.01 270);
-  --custom-accent: oklch(0.65 0.26 293);
-  --custom-accent-foreground: oklch(0.98 0.005 270);
-  --custom-destructive: oklch(0.60 0.25 25);
-  --custom-destructive-foreground: oklch(0.98 0.005 270);
-  --custom-border: oklch(1 0 270 / 0.1);
-  --custom-input: oklch(1 0 270 / 0.08);
-  --custom-ring: oklch(0.91 0.17 195);
-  --custom-chart-1: oklch(0.91 0.17 195);
-  --custom-chart-2: oklch(0.65 0.26 293);
-  --custom-chart-3: oklch(0.75 0.20 145);
-  --custom-chart-4: oklch(0.60 0.25 25);
-  --custom-chart-5: oklch(0.85 0.15 85);
-  --custom-sidebar: oklch(0.10 0.01 270);
-  --custom-sidebar-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-primary: oklch(0.91 0.17 195);
-  --custom-sidebar-primary-foreground: oklch(0.08 0.01 270);
-  --custom-sidebar-accent: oklch(0.65 0.26 293);
-  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-border: oklch(1 0 270 / 0.1);
-  --custom-sidebar-ring: oklch(0.91 0.17 195);
-}
-
+:root,
 .dark {
-  /* Same as :root since Deep Space is inherently dark */
-  --custom-background: oklch(0.08 0.01 270);
-  --custom-foreground: oklch(0.98 0.005 270);
-  --custom-card: oklch(0.12 0.01 270 / 0.7);
-  --custom-card-foreground: oklch(0.98 0.005 270);
-  --custom-popover: oklch(0.12 0.01 270 / 0.8);
-  --custom-popover-foreground: oklch(0.98 0.005 270);
-  --custom-primary: oklch(0.91 0.17 195);
-  --custom-primary-foreground: oklch(0.08 0.01 270);
-  --custom-secondary: oklch(0.65 0.26 293);
-  --custom-secondary-foreground: oklch(0.98 0.005 270);
-  --custom-muted: oklch(0.16 0.01 270 / 0.5);
-  --custom-muted-foreground: oklch(0.65 0.01 270);
-  --custom-accent: oklch(0.65 0.26 293);
-  --custom-accent-foreground: oklch(0.98 0.005 270);
-  --custom-destructive: oklch(0.60 0.25 25);
-  --custom-destructive-foreground: oklch(0.98 0.005 270);
-  --custom-border: oklch(1 0 270 / 0.1);
-  --custom-input: oklch(1 0 270 / 0.08);
-  --custom-ring: oklch(0.91 0.17 195);
-  --custom-chart-1: oklch(0.91 0.17 195);
-  --custom-chart-2: oklch(0.65 0.26 293);
-  --custom-chart-3: oklch(0.75 0.20 145);
-  --custom-chart-4: oklch(0.60 0.25 25);
-  --custom-chart-5: oklch(0.85 0.15 85);
-  --custom-sidebar: oklch(0.10 0.01 270);
-  --custom-sidebar-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-primary: oklch(0.91 0.17 195);
-  --custom-sidebar-primary-foreground: oklch(0.08 0.01 270);
-  --custom-sidebar-accent: oklch(0.65 0.26 293);
-  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-border: oklch(1 0 270 / 0.1);
-  --custom-sidebar-ring: oklch(0.91 0.17 195);
+  --custom-background: oklch(0.18 0.035 265);        /* ink */
+  --custom-foreground: oklch(0.94 0.012 265);        /* starlight */
+  --custom-card: oklch(0.215 0.04 265);              /* surface 1 */
+  --custom-card-foreground: oklch(0.94 0.012 265);
+  --custom-popover: oklch(0.245 0.042 265);          /* surface 2 */
+  --custom-popover-foreground: oklch(0.94 0.012 265);
+  --custom-primary: oklch(0.82 0.14 78);             /* sun gold */
+  --custom-primary-foreground: oklch(0.2 0.04 265);
+  --custom-secondary: oklch(0.76 0.09 245);          /* orbit blue */
+  --custom-secondary-foreground: oklch(0.2 0.04 265);
+  --custom-muted: oklch(0.245 0.042 265);
+  --custom-muted-foreground: oklch(0.73 0.025 265);
+  --custom-accent: oklch(0.28 0.045 265);            /* hover surface */
+  --custom-accent-foreground: oklch(0.94 0.012 265);
+  --custom-destructive: oklch(0.67 0.19 25);
+  --custom-destructive-foreground: oklch(0.98 0.005 265);
+  --custom-border: oklch(1 0 0 / 0.09);
+  --custom-input: oklch(1 0 0 / 0.12);
+  --custom-ring: oklch(0.82 0.14 78);
+  --custom-chart-1: oklch(0.82 0.14 78);
+  --custom-chart-2: oklch(0.76 0.09 245);
+  --custom-chart-3: oklch(0.76 0.14 155);
+  --custom-chart-4: oklch(0.67 0.19 25);
+  --custom-chart-5: oklch(0.72 0.12 300);
+  --custom-sidebar: oklch(0.2 0.038 265);
+  --custom-sidebar-foreground: oklch(0.94 0.012 265);
+  --custom-sidebar-primary: oklch(0.82 0.14 78);
+  --custom-sidebar-primary-foreground: oklch(0.2 0.04 265);
+  --custom-sidebar-accent: oklch(0.28 0.045 265);
+  --custom-sidebar-accent-foreground: oklch(0.94 0.012 265);
+  --custom-sidebar-border: oklch(1 0 0 / 0.09);
+  --custom-sidebar-ring: oklch(0.82 0.14 78);
+
+  /* Glass (floating layer only: nav, dock, composer, modals) */
+  --glass-tint: oklch(0.26 0.045 265 / 0.62);
+  --glass-rim: oklch(1 0 0 / 0.14);
+  --glass-shine: oklch(1 0 0 / 0.22);
+  --glass-shadow: 0 10px 40px oklch(0.08 0.03 265 / 0.55);
+
+  /* Ambient light behind pages: the warm "now" glow and a cool horizon */
+  --sky-glow: oklch(0.82 0.14 78 / 0.07);
+  --sky-horizon: oklch(0.45 0.09 255 / 0.18);
 }
 
 .light {
-  /* Light Mode - Inverted brightness, same brand colors */
-  --custom-background: oklch(0.98 0.005 270);
-  --custom-foreground: oklch(0.15 0.01 270);
-  --custom-card: oklch(1 0 270 / 0.8);
-  --custom-card-foreground: oklch(0.15 0.01 270);
-  --custom-popover: oklch(1 0 270 / 0.9);
-  --custom-popover-foreground: oklch(0.15 0.01 270);
-  --custom-primary: oklch(0.91 0.17 195); /* UNCHANGED - brand cyan */
-  --custom-primary-foreground: oklch(0.98 0.005 270);
-  --custom-secondary: oklch(0.65 0.26 293); /* UNCHANGED - brand purple */
-  --custom-secondary-foreground: oklch(0.98 0.005 270);
-  --custom-muted: oklch(0.94 0.005 270 / 0.6);
-  --custom-muted-foreground: oklch(0.50 0.01 270);
-  --custom-accent: oklch(0.65 0.26 293); /* UNCHANGED */
-  --custom-accent-foreground: oklch(0.98 0.005 270);
-  --custom-destructive: oklch(0.60 0.25 25); /* UNCHANGED */
-  --custom-destructive-foreground: oklch(0.98 0.005 270);
-  --custom-border: oklch(0 0 270 / 0.1);
-  --custom-input: oklch(0 0 270 / 0.08);
-  --custom-ring: oklch(0.91 0.17 195); /* UNCHANGED */
-  --custom-chart-1: oklch(0.91 0.17 195); /* UNCHANGED */
-  --custom-chart-2: oklch(0.65 0.26 293); /* UNCHANGED */
-  --custom-chart-3: oklch(0.75 0.20 145); /* UNCHANGED */
-  --custom-chart-4: oklch(0.60 0.25 25); /* UNCHANGED */
-  --custom-chart-5: oklch(0.85 0.15 85); /* UNCHANGED */
-  --custom-sidebar: oklch(0.96 0.005 270);
-  --custom-sidebar-foreground: oklch(0.15 0.01 270);
-  --custom-sidebar-primary: oklch(0.91 0.17 195); /* UNCHANGED */
-  --custom-sidebar-primary-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-accent: oklch(0.65 0.26 293); /* UNCHANGED */
-  --custom-sidebar-accent-foreground: oklch(0.98 0.005 270);
-  --custom-sidebar-border: oklch(0 0 270 / 0.1);
-  --custom-sidebar-ring: oklch(0.91 0.17 195); /* UNCHANGED */
+  /* "Day sky": paper-blue base, ink text, deeper gold so it reads on white */
+  --custom-background: oklch(0.975 0.008 255);
+  --custom-foreground: oklch(0.22 0.04 265);
+  --custom-card: oklch(1 0 0);
+  --custom-card-foreground: oklch(0.22 0.04 265);
+  --custom-popover: oklch(1 0 0);
+  --custom-popover-foreground: oklch(0.22 0.04 265);
+  --custom-primary: oklch(0.64 0.145 66);
+  --custom-primary-foreground: oklch(0.18 0.035 265);
+  --custom-secondary: oklch(0.5 0.11 250);
+  --custom-secondary-foreground: oklch(0.98 0.005 255);
+  --custom-muted: oklch(0.945 0.012 260);
+  --custom-muted-foreground: oklch(0.47 0.03 265);
+  --custom-accent: oklch(0.93 0.015 260);
+  --custom-accent-foreground: oklch(0.22 0.04 265);
+  --custom-destructive: oklch(0.56 0.2 25);
+  --custom-destructive-foreground: oklch(0.98 0.005 255);
+  --custom-border: oklch(0.22 0.04 265 / 0.12);
+  --custom-input: oklch(0.22 0.04 265 / 0.16);
+  --custom-ring: oklch(0.64 0.145 66);
+  --custom-chart-1: oklch(0.64 0.145 66);
+  --custom-chart-2: oklch(0.5 0.11 250);
+  --custom-chart-3: oklch(0.55 0.14 155);
+  --custom-chart-4: oklch(0.56 0.2 25);
+  --custom-chart-5: oklch(0.5 0.14 300);
+  --custom-sidebar: oklch(0.96 0.01 258);
+  --custom-sidebar-foreground: oklch(0.22 0.04 265);
+  --custom-sidebar-primary: oklch(0.64 0.145 66);
+  --custom-sidebar-primary-foreground: oklch(0.18 0.035 265);
+  --custom-sidebar-accent: oklch(0.93 0.015 260);
+  --custom-sidebar-accent-foreground: oklch(0.22 0.04 265);
+  --custom-sidebar-border: oklch(0.22 0.04 265 / 0.12);
+  --custom-sidebar-ring: oklch(0.64 0.145 66);
+
+  --glass-tint: oklch(1 0 0 / 0.66);
+  --glass-rim: oklch(0.22 0.04 265 / 0.1);
+  --glass-shine: oklch(1 0 0 / 0.9);
+  --glass-shadow: 0 10px 36px oklch(0.3 0.05 265 / 0.14);
+
+  --sky-glow: oklch(0.8 0.14 75 / 0.16);
+  --sky-horizon: oklch(0.75 0.08 245 / 0.22);
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 150ms;
+  --dur-ui: 240ms;
+  --dur-enter: 700ms;
+  --stagger: 60ms;
+
+  /* Fluid type scale (display sizes) */
+  --step-display: clamp(2.75rem, 1.6rem + 5.2vw, 6rem);
+  --step-h1: clamp(2rem, 1.4rem + 2.6vw, 3.25rem);
+  --step-h2: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-enter: 1ms;
+    --stagger: 0ms;
+  }
 }
 
 @theme inline {
   /* Fonts */
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-funnel), var(--font-hanken), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-noto-nastaliq-urdu: var(--font-noto-nastaliq-urdu);
 
-  /* Colors - Reference CSS custom properties that respond to class changes */
   --color-background: var(--custom-background);
   --color-foreground: var(--custom-foreground);
   --color-card: var(--custom-card);
   --color-card-foreground: var(--custom-card-foreground);
   --color-popover: var(--custom-popover);
   --color-popover-foreground: var(--custom-popover-foreground);
-
-  /* Primary - Neon Cyan #00f5ff */
   --color-primary: var(--custom-primary);
   --color-primary-foreground: var(--custom-primary-foreground);
-
-  /* Secondary - Neon Purple #a855f7 */
   --color-secondary: var(--custom-secondary);
   --color-secondary-foreground: var(--custom-secondary-foreground);
-
-  /* Muted */
   --color-muted: var(--custom-muted);
   --color-muted-foreground: var(--custom-muted-foreground);
-
-  /* Accent - Purple */
   --color-accent: var(--custom-accent);
   --color-accent-foreground: var(--custom-accent-foreground);
-
-  /* Destructive - Red #ef4444 */
   --color-destructive: var(--custom-destructive);
   --color-destructive-foreground: var(--custom-destructive-foreground);
-
-  /* Border & Input */
   --color-border: var(--custom-border);
   --color-input: var(--custom-input);
   --color-ring: var(--custom-ring);
-
-  /* Chart Colors */
   --color-chart-1: var(--custom-chart-1);
   --color-chart-2: var(--custom-chart-2);
   --color-chart-3: var(--custom-chart-3);
   --color-chart-4: var(--custom-chart-4);
   --color-chart-5: var(--custom-chart-5);
-
-  /* Sidebar */
   --color-sidebar: var(--custom-sidebar);
   --color-sidebar-foreground: var(--custom-sidebar-foreground);
   --color-sidebar-primary: var(--custom-sidebar-primary);
@@ -173,173 +164,18 @@
   --color-sidebar-border: var(--custom-sidebar-border);
   --color-sidebar-ring: var(--custom-sidebar-ring);
 
-  /* Border Radius */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  /* Radius: one system; nested radii stay concentric (inner = outer - padding) */
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --radius-3xl: calc(var(--radius) + 14px);
+  --radius-4xl: calc(var(--radius) + 20px);
 }
 
 /* =============================================================================
-   Deep Space Color Theme
-   Per spec.md FR-038: "Deep Space" color scheme with cyan/purple neon accents
-   =========================================================================== */
-
-:root {
-  --radius: 0.75rem;
-
-  /* Deep Space Theme - Primary Background: Deep space black */
-  --background: 10 10 15; /* #0a0a0f */
-  --foreground: 245 245 250; /* #f5f5fa */
-
-  /* Glassmorphism backgrounds */
-  --card: 20 20 30 / 0.7; /* rgba(20, 20, 30, 0.7) - semi-transparent glass */
-  --card-foreground: 245 245 250; /* #f5f5fa */
-  --popover: 20 20 30 / 0.8; /* rgba(20, 20, 30, 0.8) */
-  --popover-foreground: 245 245 250; /* #f5f5fa */
-
-  /* Accent Cyan: Neon cyan (#00f5ff) for primary actions, high priority */
-  --primary: 0 245 255; /* #00f5ff */
-  --primary-foreground: 10 10 15; /* #0a0a0f */
-
-  /* Accent Purple: Neon purple (#a855f7) for secondary actions, medium priority */
-  --secondary: 168 85 247; /* #a855f7 */
-  --secondary-foreground: 245 245 250; /* #f5f5fa */
-
-  /* Muted states */
-  --muted: 30 30 45 / 0.5; /* rgba(30, 30, 45, 0.5) */
-  --muted-foreground: 150 150 170; /* #9696aa */
-
-  /* Accent - uses purple */
-  --accent: 168 85 247; /* #a855f7 */
-  --accent-foreground: 245 245 250; /* #f5f5fa */
-
-  /* Accent Red: High priority, errors, overdue (#ef4444) */
-  --destructive: 239 68 68; /* #ef4444 */
-  --destructive-foreground: 245 245 250; /* #f5f5fa */
-
-  /* Borders and inputs - semi-transparent for glass effect */
-  --border: 255 255 255 / 0.1; /* rgba(255, 255, 255, 0.1) */
-  --input: 255 255 255 / 0.08; /* rgba(255, 255, 255, 0.08) */
-  --ring: 0 245 255; /* #00f5ff - cyan glow */
-
-  /* Chart colors */
-  --chart-1: 0 245 255; /* cyan */
-  --chart-2: 168 85 247; /* purple */
-  --chart-3: 34 197 94; /* green - Accent Green: Success states (#22c55e) */
-  --chart-4: 239 68 68; /* red */
-  --chart-5: 251 191 36; /* amber */
-
-  /* Sidebar */
-  --sidebar: 15 15 25;
-  --sidebar-foreground: 245 245 250;
-  --sidebar-primary: 0 245 255;
-  --sidebar-primary-foreground: 10 10 15;
-  --sidebar-accent: 168 85 247;
-  --sidebar-accent-foreground: 245 245 250;
-  --sidebar-border: 255 255 255 / 0.1;
-  --sidebar-ring: 0 245 255;
-}
-
-.dark {
-  /* Same as :root since Deep Space is inherently dark */
-  --background: 10 10 15;
-  --foreground: 245 245 250;
-  --card: 20 20 30 / 0.7;
-  --card-foreground: 245 245 250;
-  --popover: 20 20 30 / 0.8;
-  --popover-foreground: 245 245 250;
-  --primary: 0 245 255;
-  --primary-foreground: 10 10 15;
-  --secondary: 168 85 247;
-  --secondary-foreground: 245 245 250;
-  --muted: 30 30 45 / 0.5;
-  --muted-foreground: 150 150 170;
-  --accent: 168 85 247;
-  --accent-foreground: 245 245 250;
-  --destructive: 239 68 68;
-  --destructive-foreground: 245 245 250;
-  --border: 255 255 255 / 0.1;
-  --input: 255 255 255 / 0.08;
-  --ring: 0 245 255;
-  --chart-1: 0 245 255;
-  --chart-2: 168 85 247;
-  --chart-3: 34 197 94;
-  --chart-4: 239 68 68;
-  --chart-5: 251 191 36;
-  --sidebar: 15 15 25;
-  --sidebar-foreground: 245 245 250;
-  --sidebar-primary: 0 245 255;
-  --sidebar-primary-foreground: 10 10 15;
-  --sidebar-accent: 168 85 247;
-  --sidebar-accent-foreground: 245 245 250;
-  --sidebar-border: 255 255 255 / 0.1;
-  --sidebar-ring: 0 245 255;
-}
-
-/* =============================================================================
-   Light Mode Theme
-   Per spec 009-light-mode-theme: Light mode with inverted brightness,
-   same brand colors (cyan/purple), WCAG AA contrast ratios
-   =========================================================================== */
-
-.light {
-  /* Light Mode - Inverted brightness, same brand colors */
-  --background: 248 248 250; /* #f8f8fa near-white */
-  --foreground: 30 30 35; /* #1e1e23 dark text */
-
-  /* Glass surfaces - white with opacity */
-  --card: 255 255 255 / 0.8;
-  --card-foreground: 30 30 35;
-  --popover: 255 255 255 / 0.9;
-  --popover-foreground: 30 30 35;
-
-  /* Brand accents - UNCHANGED */
-  --primary: 0 245 255; /* #00f5ff cyan */
-  --primary-foreground: 248 248 250;
-  --secondary: 168 85 247; /* #a855f7 purple */
-  --secondary-foreground: 248 248 250;
-
-  /* Muted - light gray */
-  --muted: 240 240 245 / 0.6;
-  --muted-foreground: 120 120 140;
-
-  /* Accent - UNCHANGED */
-  --accent: 168 85 247;
-  --accent-foreground: 248 248 250;
-
-  /* Destructive - UNCHANGED */
-  --destructive: 239 68 68;
-  --destructive-foreground: 248 248 250;
-
-  /* Borders - dark for visibility */
-  --border: 0 0 0 / 0.1;
-  --input: 0 0 0 / 0.08;
-  --ring: 0 245 255; /* UNCHANGED */
-
-  /* Charts - UNCHANGED */
-  --chart-1: 0 245 255;
-  --chart-2: 168 85 247;
-  --chart-3: 34 197 94;
-  --chart-4: 239 68 68;
-  --chart-5: 251 191 36;
-
-  /* Sidebar */
-  --sidebar: 245 245 250;
-  --sidebar-foreground: 30 30 35;
-  --sidebar-primary: 0 245 255;
-  --sidebar-primary-foreground: 248 248 250;
-  --sidebar-accent: 168 85 247;
-  --sidebar-accent-foreground: 248 248 250;
-  --sidebar-border: 0 0 0 / 0.1;
-  --sidebar-ring: 0 245 255;
-}
-
-/* =============================================================================
-   Base Styles
+   Base
    =========================================================================== */
 
 @layer base {
@@ -347,233 +183,155 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    scroll-padding-top: 5rem; /* keep focused/anchored content clear of the fixed nav */
+  }
+
   body {
-    @apply bg-background text-foreground;
-    /* Deep space background with subtle gradient */
+    @apply bg-background text-foreground font-sans;
     background:
-      radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.03) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
-      rgb(var(--background));
+      radial-gradient(60rem 40rem at 85% -10%, var(--sky-glow), transparent 60%),
+      radial-gradient(80rem 30rem at 10% 110%, var(--sky-horizon), transparent 65%),
+      var(--custom-background);
     background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
 
     /* Safe area inset support for iPhone home indicator */
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
-  /* Light mode body background with subtle gradient */
-  .light body {
-    background:
-      radial-gradient(ellipse at 20% 20%, rgba(0, 245, 255, 0.015) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.015) 0%, transparent 50%),
-      rgb(var(--background));
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
   }
-}
 
-/* =============================================================================
-   Custom Scrollbar Styling
-   Deep Space themed scrollbars with cyan/purple accents
-   Applies globally to all scrollable elements
-   =========================================================================== */
+  p {
+    text-wrap: pretty;
+  }
 
-/* Webkit browsers (Chrome, Safari, Edge) */
-@layer base {
-  /* Scrollbar track - the background */
+  ::selection {
+    background: color-mix(in oklch, var(--custom-primary) 35%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--custom-ring);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--custom-muted-foreground) 30%, transparent) transparent;
+  }
+
   *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
-  *::-webkit-scrollbar-track {
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
     background: transparent;
   }
 
-  /* Scrollbar thumb - the draggable part */
   *::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, rgb(var(--muted-foreground)) 25%, transparent);
+    background: color-mix(in oklch, var(--custom-muted-foreground) 30%, transparent);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: padding-box;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, rgb(var(--primary)) 60%, transparent);
-    border-color: transparent;
-  }
-
-  *::-webkit-scrollbar-thumb:active {
-    background: rgb(var(--primary));
-  }
-
-  /* Corner where horizontal and vertical scrollbars meet */
-  *::-webkit-scrollbar-corner {
-    background: transparent;
-  }
-}
-
-/* Firefox scrollbar - uses scrollbar-color and scrollbar-width properties (Firefox 64+) */
-@layer base {
-  * {
-    scrollbar-width: thin;
-    /* scrollbar-color: <thumb> <track> - requires TWO separate colors per MDN spec */
-    scrollbar-color: color-mix(in srgb, rgb(var(--muted-foreground)) 25%, transparent) transparent;
-  }
-
-  *:hover {
-    scrollbar-color: color-mix(in srgb, rgb(var(--primary)) 60%, transparent) transparent;
-  }
-}
-
-/* Light mode scrollbars */
-@layer base {
-  .light *::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, rgb(120 120 140) 30%, transparent);
-  }
-
-  .light *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, rgb(var(--primary)) 50%, transparent);
-  }
-
-  .light * {
-    scrollbar-width: thin;
-    /* scrollbar-color: <thumb> <track> - requires TWO separate colors per MDN spec */
-    scrollbar-color: color-mix(in srgb, rgb(120 120 140) 30%, transparent) transparent;
-  }
-
-  .light *:hover {
-    scrollbar-color: color-mix(in srgb, rgb(var(--primary)) 50%, transparent) transparent;
+    background: color-mix(in oklch, var(--custom-primary) 55%, transparent);
+    background-clip: padding-box;
   }
 }
 
 /* =============================================================================
-   Glassmorphism Utilities
-   Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
+   Utilities
    =========================================================================== */
 
 @layer utilities {
-  /* Glass card effect */
-  .glass {
-    /* Use color-mix for proper alpha blending with CSS variables */
-    background: color-mix(in srgb, rgb(var(--card)) 60%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid color-mix(in srgb, rgb(var(--border)) 30%, transparent);
-  }
-
-  /* Glass card with stronger effect */
-  .glass-strong {
-    background: color-mix(in srgb, rgb(var(--card)) 80%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid color-mix(in srgb, rgb(var(--border)) 40%, transparent);
-  }
-
-  /* Glass modal effect */
+  /* Liquid Glass, base tier: tint + blur + bright rim + soft inner shine.
+     Only for the floating layer; content cards stay solid (.surface). */
+  .glass,
+  .glass-strong,
   .glass-modal {
-    background: rgba(20, 20, 30, 0.85);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgb(var(--border) / 0.5);
-    box-shadow:
-      0 25px 50px -12px rgba(0, 0, 0, 0.5),
-      0 0 100px -20px rgba(0, 245, 255, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: var(--glass-tint);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--glass-rim);
+    box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
   }
 
-  /* Neon glow effects */
+  .glass-strong {
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+  }
+
+  .glass-modal {
+    background: color-mix(in oklch, var(--custom-popover) 90%, transparent);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+  }
+
+  /* Solid content surface with a hairline highlight on top (depth without glass) */
+  .surface {
+    background: var(--custom-card);
+    border: 1px solid var(--custom-border);
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04), 0 1px 2px oklch(0.08 0.03 265 / 0.3);
+  }
+
+  .light .surface {
+    box-shadow: inset 0 1px 0 oklch(1 0 0), 0 1px 3px oklch(0.3 0.05 265 / 0.08);
+  }
+
+  /* Legacy helpers kept for existing components, now on the new palette */
   .glow-cyan {
-    box-shadow:
-      0 0 20px rgba(0, 245, 255, 0.3),
-      0 0 40px rgba(0, 245, 255, 0.1);
+    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-primary) 28%, transparent);
   }
 
   .glow-purple {
-    box-shadow:
-      0 0 20px rgba(168, 85, 247, 0.3),
-      0 0 40px rgba(168, 85, 247, 0.1);
+    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-secondary) 28%, transparent);
   }
 
   .glow-green {
-    box-shadow:
-      0 0 20px rgba(34, 197, 94, 0.3),
-      0 0 40px rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-chart-3) 28%, transparent);
   }
 
-  /* =============================================================================
-     Light Mode Glassmorphism & Glow Utilities
-     Per spec 009-light-mode-theme: Adapted for light mode visibility
-     =========================================================================== */
-
-  /* Light mode glassmorphism - white semi-transparent backgrounds */
-  .light .glass {
-    background: color-mix(in srgb, rgb(255 255 255) 70%, transparent);
-    border-color: color-mix(in srgb, rgb(0 0 0 / 0.1) 50%, transparent);
-  }
-
-  .light .glass-strong {
-    background: color-mix(in srgb, rgb(255 255 255) 90%, transparent);
-    border-color: color-mix(in srgb, rgb(0 0 0 / 0.15) 60%, transparent);
-  }
-
-  .light .glass-modal {
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow:
-      0 25px 50px -12px rgba(0, 0, 0, 0.15),
-      0 0 100px -20px rgba(0, 245, 255, 0.05),
-      inset 0 1px 0 rgba(0, 0, 0, 0.05);
-  }
-
-  /* Light mode glow effects - darker shadows with lower opacity */
-  .light .glow-cyan {
-    box-shadow:
-      0 0 20px rgba(0, 245, 255, 0.15),
-      0 0 40px rgba(0, 245, 255, 0.05);
-  }
-
-  .light .glow-purple {
-    box-shadow:
-      0 0 20px rgba(168, 85, 247, 0.15),
-      0 0 40px rgba(168, 85, 247, 0.05);
-  }
-
-  .light .glow-green {
-    box-shadow:
-      0 0 20px rgba(34, 197, 94, 0.15),
-      0 0 40px rgba(34, 197, 94, 0.05);
-  }
-
-  /* Priority border colors */
   .border-priority-high {
-    border-color: rgb(var(--destructive));
+    border-color: var(--custom-destructive);
   }
 
   .border-priority-medium {
-    border-color: rgb(var(--secondary));
+    border-color: var(--custom-primary);
   }
 
   .border-priority-low {
-    border-color: rgb(var(--muted-foreground));
+    border-color: var(--custom-muted-foreground);
   }
 
-  /* Text glow for emphasis */
-  .text-glow {
-    text-shadow:
-      0 0 10px currentColor,
-      0 0 20px currentColor;
-  }
-
+  .text-glow,
   .text-glow-cyan {
-    text-shadow:
-      0 0 10px rgba(0, 245, 255, 0.5),
-      0 0 20px rgba(0, 245, 255, 0.3);
+    text-shadow: none;
   }
 
-  /* Smooth transitions for all states */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .text-display {
+    font-family: var(--font-display);
+    font-size: var(--step-display);
+    line-height: 0.98;
+    letter-spacing: -0.04em;
+    font-weight: 600;
+  }
+
   .transition-smooth {
-    transition:
-      all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all var(--dur-ui) var(--ease-out);
   }
 
-  /* Will-change optimization for animations */
   .will-animate {
     will-change: transform, opacity;
   }
@@ -589,27 +347,43 @@
   .will-change-background {
     will-change: background-position;
   }
+
+  /* Press feedback for tappable controls */
+  .pressable {
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .pressable:active {
+    transform: scale(0.97);
+  }
 }
 
-/* =============================================================================
-   Fallback for browsers without backdrop-filter support
-   Per spec.md edge case: "browser doesn't support backdrop-filter"
-   =========================================================================== */
+/* Reduced transparency / more contrast / no backdrop-filter: opaque floating layer */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass,
+  .glass-strong,
+  .glass-modal {
+    background: var(--custom-popover);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
 
 @supports not (backdrop-filter: blur(1px)) {
   .glass,
   .glass-strong,
   .glass-modal {
-    background: rgba(var(--card) / 0.95);
+    background: var(--custom-popover);
   }
 }
+
 /* =============================================================================
    Dual-Ring Spinner Loading Animation
    [T018] Pure CSS dual-ring spinner for loading states
 
    Per research.md §Research Area 1: Loading Animation Implementation
-   - Outer ring: Neon cyan (clockwise rotation, 1.5s)
-   - Inner ring: Neon purple (counter-clockwise rotation, 1s)
+   - Outer ring: primary (sun gold), clockwise, 1.5s
+   - Inner ring: secondary (orbit blue), counter-clockwise, 1s
    - Performance: Runs on compositor thread, no JS overhead
    =========================================================================== */
 
@@ -619,8 +393,8 @@
   --ring-width: 3px;
 
   /* Theme colors from CSS custom properties */
-  --outer-color: var(--custom-primary); /* Neon cyan #00f5ff */
-  --inner-color: var(--custom-secondary); /* Neon purple #a855f7 */
+  --outer-color: var(--custom-primary);
+  --inner-color: var(--custom-secondary);
 
   /* Layout */
   position: relative;
@@ -650,7 +424,7 @@
   border-top-color: transparent; /* Creates gap effect */
   border-left-color: transparent;
   animation: rotate-cw 1.5s linear infinite;
-  filter: drop-shadow(0 0 3px var(--outer-color)); /* Neon glow */
+  filter: drop-shadow(0 0 3px var(--outer-color)); /* soft glow */
 }
 
 /* Inner ring - counter-clockwise rotation */
@@ -662,7 +436,7 @@
   border-bottom-color: transparent; /* Creates gap effect */
   border-right-color: transparent;
   animation: rotate-ccw 1s linear infinite;
-  filter: drop-shadow(0 0 3px var(--inner-color)); /* Neon glow */
+  filter: drop-shadow(0 0 3px var(--inner-color)); /* soft glow */
 }
 
 /* Clockwise rotation keyframe */
@@ -783,7 +557,7 @@
 
   /* Light mode RTL adjustments */
   .light .urdu-text {
-    color: rgb(var(--foreground));
+    color: var(--custom-foreground);
   }
 }
 

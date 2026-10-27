@@ -93,7 +93,7 @@ export function NotificationDropdown() {
       case NotificationType.TASK_DUE:
         return <Clock className="h-4 w-4 text-amber-500" />
       case NotificationType.TASK_ASSIGNED:
-        return <Sparkles className="h-4 w-4 text-cyan-500" />
+        return <Sparkles className="h-4 w-4 text-primary" />
       case NotificationType.TASK_COMPLETED:
         return <Check className="h-4 w-4 text-emerald-500" />
       case NotificationType.TASK_REMINDER:

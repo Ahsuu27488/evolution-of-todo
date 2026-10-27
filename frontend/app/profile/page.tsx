@@ -27,7 +27,7 @@ export default async function ProfilePage() {
         <div className="max-w-2xl mx-auto">
           {/* Page Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <h1 className="text-[length:var(--step-h1)] font-semibold leading-tight mb-2">
               Your Profile
             </h1>
             <p className="text-muted-foreground">

@@ -144,10 +144,10 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       className={`flex items-end ${responsive.containerGap} ${responsive.containerPx} ${responsive.containerPy} rounded-xl relative`}
       style={{
         // T048: Glassmorphism styling matching dashboard input fields
-        background: "rgba(255, 255, 255, 0.05)",
+        background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
         backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+        border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
       }}
     >
       {/* Voice Input Button with Whisper API (T086-T091) */}
@@ -168,7 +168,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         placeholder={placeholderText}
         disabled={disabled || isStreaming}
         dir={textDirection}
-        className={`flex-1 ${responsive.textareaMinH} bg-transparent text-white placeholder-white/40 resize-none outline-none`}
+        className={`flex-1 ${responsive.textareaMinH} bg-transparent text-foreground placeholder-white/40 resize-none outline-none`}
         style={{
           fieldSizing: "content",
           // Urdu-friendly font settings (T078)
@@ -182,13 +182,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         }}
         onFocus={(e) => {
           // Add focus ring effect
-          e.currentTarget.parentElement!.style.borderColor = "rgba(0, 245, 255, 0.3)";
-          e.currentTarget.parentElement!.style.boxShadow = "0 0 0 2px rgba(0, 245, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.15)";
+          e.currentTarget.parentElement!.style.borderColor = "color-mix(in oklch, var(--custom-primary) 30%, transparent)";
+          e.currentTarget.parentElement!.style.boxShadow = "0 0 0 2px color-mix(in oklch, var(--custom-primary) 10%, transparent), 0 4px 20px rgba(0, 0, 0, 0.15)";
         }}
         onBlur={(e) => {
           // Reset focus state
-          e.currentTarget.parentElement!.style.borderColor = "rgba(255, 255, 255, 0.1)";
-          e.currentTarget.parentElement!.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05)";
+          e.currentTarget.parentElement!.style.borderColor = "color-mix(in oklch, var(--custom-foreground) 10%, transparent)";
+          e.currentTarget.parentElement!.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 5%, transparent)";
         }}
       />
 
@@ -204,40 +204,40 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           // Button is active (cyan) when: has text OR is recording
           background:
             (inputValue.trim() || isRecording) && !disabled && !isStreaming
-              ? "linear-gradient(135deg, rgba(0, 245, 255, 0.8) 0%, rgba(0, 180, 216, 0.8) 100%)"
-              : "rgba(255,255,255,0.1)",
+              ? "color-mix(in oklch, var(--custom-primary) 80%, transparent)"
+              : "color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
           border: (inputValue.trim() || isRecording) && !disabled && !isStreaming
-            ? "1px solid rgba(0, 245, 255, 0.3)"
-            : "1px solid rgba(255, 255, 255, 0.1)",
+            ? "1px solid color-mix(in oklch, var(--custom-primary) 30%, transparent)"
+            : "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
           boxShadow: (inputValue.trim() || isRecording) && !disabled && !isStreaming
-            ? "0 0 15px rgba(0, 245, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+            ? "0 0 15px color-mix(in oklch, var(--custom-primary) 20%, transparent), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 10%, transparent)"
             : "none",
         }}
         title={isRecording ? "Stop recording" : inputValue.trim() ? "Send message" : "Start voice recording"}
       >
         {isStreaming ? (
-          <Loader2 className={responsive.iconSize + " text-white/70 animate-spin"} />
+          <Loader2 className={responsive.iconSize + " text-foreground/70 animate-spin"} />
         ) : isRecording ? (
           // Square/Stop icon during recording (white square)
           <div className="w-3.5 h-3.5 rounded-sm bg-white" />
         ) : inputValue.trim() ? (
           // Send icon when there's text to send
-          <Send className={responsive.iconSize + " text-white/70"} />
+          <Send className={responsive.iconSize + " text-foreground/70"} />
         ) : (
           // Mic icon when idle (no text, not recording) - indicates this button can start voice
-          <Mic className={responsive.iconSize + " text-white/70"} />
+          <Mic className={responsive.iconSize + " text-foreground/70"} />
         )}
       </motion.button>
 
       {/* Character Counter - Responsive positioning */}
       {inputValue.length > 0 && breakpoint !== "mobile" && (
-        <span className="text-xs text-white/30 absolute bottom-2 right-2 pointer-events-none">
+        <span className="text-xs text-foreground/30 absolute bottom-2 right-2 pointer-events-none">
           {inputValue.length}/5000
         </span>
       )}
       {/* Mobile: Show character count above input when text is present */}
       {inputValue.length > 0 && breakpoint === "mobile" && inputValue.length > 100 && (
-        <span className="text-[10px] text-white/30 absolute -top-4 left-0 pointer-events-none">
+        <span className="text-[10px] text-foreground/30 absolute -top-4 left-0 pointer-events-none">
           {inputValue.length}/5000
         </span>
       )}

@@ -18,7 +18,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { Check, Calendar, Tag, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
+import { Check, Calendar, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
+import { format, isToday, isTomorrow, isYesterday, differenceInCalendarDays } from "date-fns"
 import { useQueryClient } from "@tanstack/react-query"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,9 +40,22 @@ interface TaskCardProps {
 }
 
 const priorityColors = {
-  HIGH: "border-destructive/60 shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.35),0_0_20px_rgba(239,68,68,0.25)]",
-  MEDIUM: "border-secondary/60 shadow-[inset_3px_0_8px_-2px_rgba(168,85,247,0.35),0_0_20px_rgba(168,85,247,0.25)]",
-  LOW: "border-muted-foreground/40",
+  HIGH: "border-l-destructive",
+  MEDIUM: "border-l-primary",
+  LOW: "border-l-muted-foreground/40",
+}
+
+/** "Today 10:00", "Tomorrow", "Fri 30 Oct", "Overdue: Mon 26 Oct" */
+function formatDue(date: Date, overdue: boolean): string {
+  const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0
+  const time = hasTime ? ` ${format(date, "HH:mm")}` : ""
+  let day: string
+  if (isToday(date)) day = "Today"
+  else if (isTomorrow(date)) day = "Tomorrow"
+  else if (isYesterday(date)) day = "Yesterday"
+  else if (Math.abs(differenceInCalendarDays(date, new Date())) < 7) day = format(date, "EEEE")
+  else day = format(date, "EEE d MMM")
+  return `${overdue ? "Overdue: " : ""}${day}${time}`
 }
 
 const priorityLabels = {
@@ -51,9 +65,9 @@ const priorityLabels = {
 }
 
 const priorityBadgeColors = {
-  HIGH: "bg-destructive/20 text-destructive border-destructive/50",
-  MEDIUM: "bg-secondary/20 text-secondary border-secondary/50",
-  LOW: "bg-muted/50 text-muted-foreground border-muted-foreground/30",
+  HIGH: "bg-destructive/15 text-destructive border-transparent",
+  MEDIUM: "bg-primary/15 text-primary border-transparent",
+  LOW: "bg-muted text-muted-foreground border-transparent",
 }
 
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
@@ -163,17 +177,15 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
       >
         <Card
           className={cn(
-            // Glassmorphism effect
-            "glass transition-all duration-300 hover:scale-[1.01]",
-            // Priority border - thinner on mobile
-            "border-l-2 sm:border-l-4",
+            // Solid content surface; priority shows as a slim left edge
+            "surface gap-0 py-0 rounded-[var(--radius-xl)] border-l-[3px]",
+            "transition-[transform,border-color,opacity] duration-200 ease-[var(--ease-out)] hover:-translate-y-px hover:border-foreground/15",
             priorityColors[task.priority],
-            // Overdue indicator - enhanced glow with inset
-            isOverdue && "border-destructive shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.4),0_0_25px_rgba(239,68,68,0.3)]",
-            optimisticCompleted && "opacity-75"
+            isOverdue && "border-l-destructive",
+            optimisticCompleted && "opacity-60"
           )}
         >
-          <CardContent className="flex items-start gap-3 p-3 sm:gap-4 sm:p-4">
+          <CardContent className="flex items-start gap-3 px-4 py-3.5 sm:gap-4">
             {/* Checkbox with glow effect */}
             <motion.div
               className="pt-0.5 sm:pt-1"
@@ -186,7 +198,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 disabled={isUpdating}
                 className={cn(
                   "h-5 w-5 transition-all duration-300",
-                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(0,245,255,0.4),0_0_12px_rgba(0,245,255,0.5)]"
+                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(242, 184, 75,0.4),0_0_12px_rgba(242, 184, 75,0.5)]"
                 )}
                 aria-label={optimisticCompleted ? "Mark as incomplete" : "Mark as complete"}
               />
@@ -238,8 +250,8 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                     <div className="relative group">
                       {/* Summary label */}
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-                        <span className="text-xs font-medium text-cyan-400/90">AI Summary</span>
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-medium text-primary">AI summary</span>
                         {/* T098: Regenerate button */}
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -250,9 +262,9 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                           title="Regenerate summary"
                         >
                           {isRegeneratingSummary ? (
-                            <Loader2 className="h-3 w-3.5 text-cyan-400 animate-spin" />
+                            <Loader2 className="h-3 w-3.5 text-primary animate-spin" />
                           ) : (
-                            <RefreshCw className="h-3 w-3.5 text-cyan-400/70 hover:text-cyan-400" />
+                            <RefreshCw className="h-3 w-3.5 text-primary/70 hover:text-primary" />
                           )}
                         </motion.button>
                       </div>
@@ -261,7 +273,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                       <p
                         className={cn(
                           "text-xs text-muted-foreground leading-relaxed p-2.5 rounded-lg border",
-                          "bg-cyan-500/5 border-cyan-500/20",
+                          "bg-primary/5 border-primary/20",
                           optimisticCompleted && "line-through opacity-60"
                         )}
                       >
@@ -274,21 +286,16 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
 
               {/* Tags */}
               {task.tags && task.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {task.tags.map((tag, idx) => (
                     <motion.span
                       key={idx}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.1 + idx * 0.05 }}
-                      className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${tag.color}20`,
-                        color: tag.color,
-                        border: `1px solid ${tag.color}40`,
-                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                     >
-                      <Tag className="h-3 w-3" />
+                      <span className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} aria-hidden />
                       {tag.name}
                     </motion.span>
                   ))}
@@ -299,7 +306,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {dueDate && (
                 <div
                   className={cn(
-                    "flex items-center gap-2 text-xs mt-3 transition-colors",
+                    "flex items-center gap-1.5 text-xs mt-2 tabular-nums transition-colors",
                     isOverdue
                       ? "text-destructive"
                       : optimisticCompleted
@@ -308,10 +315,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                   )}
                 >
                   <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {isOverdue && "Overdue: "}
-                    {dueDate.toLocaleDateString()}
-                  </span>
+                  <time dateTime={task.due_date ?? undefined}>{formatDue(dueDate, Boolean(isOverdue))}</time>
                 </div>
               )}
 
@@ -319,7 +323,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {task.recurrence_pattern && (
                 <div
                   className={cn(
-                    "flex items-center gap-2 text-xs mt-2",
+                    "flex items-center gap-1.5 text-xs mt-1.5",
                     "text-secondary"
                   )}
                   title={`Repeats: ${task.recurrence_pattern.toLowerCase()}`}

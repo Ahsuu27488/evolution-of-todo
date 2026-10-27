@@ -119,15 +119,14 @@ export const taskCard: Variants = {
 /** Task completion glow animation */
 export const taskComplete: Variants = {
   normal: {
-    boxShadow: '0 0 0 rgba(0, 245, 255, 0)',
+    boxShadow: '0 0 0 rgba(242, 184, 75, 0)',
     scale: 1,
   },
   glow: {
     boxShadow: [
-      '0 0 0 rgba(0, 245, 255, 0)',
-      '0 0 20px rgba(0, 245, 255, 0.3)',
-      '0 0 40px rgba(0, 245, 255, 0.1)',
-      '0 0 0 rgba(0, 245, 255, 0)',
+      '0 0 0 rgba(242, 184, 75, 0)',
+      '0 0 20px rgba(242, 184, 75, 0.25)',
+      '0 0 0 rgba(242, 184, 75, 0)',
     ],
     scale: [1, 1.02, 1],
     transition: { duration: 0.6 },
@@ -196,11 +195,11 @@ export const disintegrate: Variants = {
 export const fabPulse: Variants = {
   idle: {
     scale: 1,
-    boxShadow: '0 4px 20px rgba(0, 245, 255, 0.3)',
+    boxShadow: '0 4px 20px rgba(242, 184, 75, 0.3)',
   },
   hover: {
     scale: 1.1,
-    boxShadow: '0 6px 30px rgba(0, 245, 255, 0.5)',
+    boxShadow: '0 6px 30px rgba(242, 184, 75, 0.5)',
     transition: { type: 'spring', stiffness: 400, damping: 15 },
   },
   tap: {
@@ -235,7 +234,7 @@ export const priorityGlow = {
     borderColor: 'rgb(239 68 68)',
   },
   medium: {
-    boxShadow: '0 0 15px rgba(168, 85, 247, 0.3)',
+    boxShadow: '0 0 15px rgba(127, 168, 232, 0.3)',
     borderColor: 'rgb(168 85 247)',
   },
   low: {

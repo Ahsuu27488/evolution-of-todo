@@ -32,6 +32,9 @@ Phase I lives separately in `phase1/` (in-memory Python CLI). Kubernetes: `helm/
 | `frontend/middleware.ts`, `frontend/lib/routes.ts` | Route protection rules (`isPublicPath`, `isAuthPage`) |
 | `frontend/lib/api-client.ts`, `lib/auth/token.ts`, `lib/config/api.ts` | Typed backend client, token fetch, `API_URL` |
 | `frontend/components/` | UI: `landing/`, `auth/`, `dashboard/`, `tasks/`, `chat/`, `notifications/`, `layout/`, shadcn `ui/` |
+| `frontend/components/three/` | `orrery.tsx` (poster, lazy load, capability + reduced-motion checks, theme palette) and `orrery-scene.tsx` (R3F scene: core shader, orbits, instanced moons, stars) |
+| `frontend/lib/orbits.ts` | `orbitCounts()`: open tasks bucketed into today / this week / later, plus done (feeds `dashboard/orbit-panel.tsx`) |
+| `frontend/app/globals.css` | Design tokens (OKLCH palette for dark and light, type scale, motion, radius) and the glass / surface utilities; see `docs/design/README.md` |
 | `frontend/hooks/` | TanStack Query + chat/notification/push hooks |
 | `frontend/lib/stores/` | Chat UI context (`chat-store.ts`), task event bus, Zustand UI store |
 | `backend/app/main.py` | App factory, CORS, middleware, lifespan (DB tables, Qdrant, scheduler), `/api/health` |

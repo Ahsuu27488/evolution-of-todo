@@ -36,7 +36,7 @@ export default async function NotificationSettingsPage({
         <div className="max-w-3xl mx-auto">
           {/* Page Header */}
           <div className="mb-6 sm:mb-8 text-center">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+            <h1 className="text-[length:var(--step-h1)] font-semibold leading-tight mb-2">
               Notification Settings
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground px-2">

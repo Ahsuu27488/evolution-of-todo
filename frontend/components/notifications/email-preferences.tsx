@@ -78,7 +78,7 @@ const emailPreferenceItems: EmailPreferenceItem[] = [
     type: NotificationType.TASK_ASSIGNED,
     label: "Task Assigned",
     description: "Get notified when a task is assigned to you",
-    icon: <Zap className="h-4 w-4 text-cyan-500" />,
+    icon: <Zap className="h-4 w-4 text-primary" />,
   },
   {
     type: NotificationType.TASK_COMPLETED,
