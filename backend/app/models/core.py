@@ -260,7 +260,7 @@ class User(SQLModel, table=True):
     )
 
     created_at: datetime = SQLField(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Account creation timestamp",
     )
 

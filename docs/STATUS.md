@@ -14,7 +14,8 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
   (3 tests), `npm run build` all pass with no env vars set (2026-10-27).
 - Backend installs from `requirements.txt` on Python 3.14 and the app imports with all 30 API paths
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
-- Backend tests: 43 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
+- Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser).
+- Backend tests: 44 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
   tests pass and the 34 MCP tool tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`
   cookie (`frontend/lib/routes.test.ts`; the old middleware treated every path as public).
@@ -37,7 +38,8 @@ again after a repair pass; the frontend is being redesigned as an immersive 3D e
 1. CI runs backend tests without Postgres, so the MCP tool tests skip there (add a Postgres service to ci.yml).
 2. Vercel's package manager may change: `pnpm-lock.yaml` was removed (npm + `package-lock.json` only, D-004).
 3. Many specs/docs still describe Better Auth; the live auth is the backend JWT in the `auth_token` cookie (D-003).
-4. `datetime.utcnow()` and Pydantic class-based `Config` deprecation warnings in the backend.
+4. ~40 `datetime.utcnow()` call sites write naive datetimes; they block upgrading past `sqlmodel<0.0.45` (D-005).
+   Pydantic class-based `Config` deprecation warnings too.
 5. Root `CLAUDE.md` and `backend/CLAUDE.md` contain long phase-era notes that partly predate the code.
 
 ## Next

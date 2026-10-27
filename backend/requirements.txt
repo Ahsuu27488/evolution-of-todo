@@ -4,7 +4,8 @@
 
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-sqlmodel>=0.0.14
+# sqlmodel 0.0.45+ rejects naive datetimes; ~40 utcnow() call sites still write them
+sqlmodel>=0.0.22,<0.0.45
 # Async engine needs greenlet, which SQLAlchemy no longer installs by default
 sqlalchemy[asyncio]>=2.0
 psycopg2-binary>=2.9.9

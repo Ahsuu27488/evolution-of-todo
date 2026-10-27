@@ -33,7 +33,8 @@ disabled live notifications. The env var keeps its historical name. *Where:* fil
 
 **D-005 `requirements.txt` is the backend's install source; AI SDK majors are pinned.** (2026-10-27)
 Docker and the Hugging Face Space install from `backend/requirements.txt`; `pyproject.toml` mirrors it for uv
-and must be kept in sync (`uv lock` after changes). `mcp<2`, `openai<3`, `openai-agents<0.9`.
+and must be kept in sync (`uv lock` after changes). `mcp<2`, `openai<3`, `openai-agents<0.9`, `sqlmodel<0.0.45`
+(0.0.45+ rejects naive datetimes, which the code still writes in ~40 places).
 *Why:* unpinned, a fresh install pulled mcp 2.x (removed `Server.list_tools()`, crashing app import) and newer
 openai/agents majors the code was not written for. Raise the pins deliberately, with the chat flow tested.
 *Where:* `backend/requirements.txt`, `backend/pyproject.toml`, `backend/uv.lock`.

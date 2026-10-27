@@ -3,6 +3,14 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · fix(backend): signup failed on current sqlmodel
+
+- Sign-up raised "Datetime values must have timezone information": sqlmodel 0.0.45+ makes datetime columns
+  timezone-aware and rejects naive values, and `User.created_at` defaulted to `datetime.utcnow()`. Default is
+  now `datetime.now(timezone.utc)`; `sqlmodel<0.0.45` pinned because ~40 other `utcnow()` call sites still
+  write naive datetimes. Regression test `tests/test_auth_routes.py` (signup, signin, /me) fails on the old
+  code with sqlmodel 0.0.48 and passes now.
+
 ## 2026-10-27 · fix(backend): MCP tool calls and local Postgres
 
 - `app/ai/mcp/server.py`: `_execute_tool_call` passed a removed `autocommit=` argument to `TaskTools`
