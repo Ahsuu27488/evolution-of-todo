@@ -3,7 +3,7 @@
  *
  * Features:
  * - Floating FAB to open/close
- * - Glassmorphism design
+ * - Glass panel (floating layer); solid content inside
  * - Animated transitions
  * - Message list with typing indicators
  * - Voice input button with Whisper API
@@ -888,7 +888,7 @@ export function ChatPanel() {
                         className="flex flex-col items-center gap-4 py-8"
                       >
                         <div className="text-center">
-                          <p className="text-red-400 mb-2 flex items-center gap-2">
+                          <p className="mb-2 flex items-center gap-2 text-destructive">
                             <X className="w-4 h-4" />
                             {conversationLoadError}
                           </p>

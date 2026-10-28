@@ -143,11 +143,11 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
     <div
       className={`flex items-end ${responsive.containerGap} ${responsive.containerPx} ${responsive.containerPy} rounded-xl relative`}
       style={{
-        // T048: Glassmorphism styling matching dashboard input fields
+        // T048: field on the solid floating surface
         background: "color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
         backdropFilter: "blur(12px)",
         border: "1px solid color-mix(in oklch, var(--custom-foreground) 10%, transparent)",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 5%, transparent)",
+        boxShadow: "var(--shadow-pop)",
       }}
     >
       {/* Voice Input Button with Whisper API (T086-T091) */}
@@ -183,12 +183,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         onFocus={(e) => {
           // Add focus ring effect
           e.currentTarget.parentElement!.style.borderColor = "color-mix(in oklch, var(--custom-primary) 30%, transparent)";
-          e.currentTarget.parentElement!.style.boxShadow = "0 0 0 2px color-mix(in oklch, var(--custom-primary) 10%, transparent), 0 4px 20px rgba(0, 0, 0, 0.15)";
+          e.currentTarget.parentElement!.style.boxShadow = "0 0 0 3px color-mix(in oklch, var(--custom-ring) 40%, transparent), var(--shadow-pop)";
         }}
         onBlur={(e) => {
           // Reset focus state
           e.currentTarget.parentElement!.style.borderColor = "color-mix(in oklch, var(--custom-foreground) 10%, transparent)";
-          e.currentTarget.parentElement!.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 color-mix(in oklch, var(--custom-foreground) 5%, transparent)";
+          e.currentTarget.parentElement!.style.boxShadow = "var(--shadow-pop)";
         }}
       />
 

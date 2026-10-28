@@ -59,7 +59,7 @@ export function SignupForm() {
         return
       }
 
-      toast.success("Account created successfully!")
+      toast.success("Account created. Welcome to Chronos")
       // Use window.location.href for a hard redirect
       window.location.href = "/dashboard"
     } catch (error) {
@@ -160,7 +160,7 @@ export function SignupForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>Confirm password</FormLabel>
               <FormControl>
                 <Input
                   type="password"

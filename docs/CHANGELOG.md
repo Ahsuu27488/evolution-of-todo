@@ -3,6 +3,30 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat(frontend): notifications, settings, profile, account menu, error screen, chat pieces
+
+- Notification menu: solid surface, rows instead of glass cards, type icons in status tints, gold unread
+  dot (was a cyan border and glow), skeleton loading, error with retry, "Show more" that keeps earlier rows
+  (it replaced them: the offset moved instead of the page growing), one "Notification settings" link (the
+  cyan "Push Settings" link is gone). Rows, "Mark all read" and "Show more" are menu items, so the keyboard
+  reaches them (Radix menus block Tab; the old buttons were unreachable). The bell is one shared
+  `NotificationBell` with a gold count badge (was `rose-500`, and an unused duplicate).
+- Push permission prompt rebuilt on the shared Dialog (was a cyan gradient icon and gradient button); shows
+  a hint when the browser blocks it.
+- Notification settings: "Notifications" page with a back link; tabs kept in `?tab=`; `SettingsSection` /
+  `SettingsRow` frame; push, email and in-app tabs use `Badge` and `Callout` (emerald / rose / amber
+  removed); email rows are a frequency select plus a switch, with a floating save bar for unsaved changes,
+  skeleton loading and retry on error; time zone options show region and offset in the list only.
+- Profile: left-aligned page with a back link, "Your name" section, first/last name side by side, read-only
+  email, Save enabled only after a change, stays on the page after saving.
+- Account menu: initials avatar, name and email header, real links (Profile, Notification settings),
+  sign-out spinner. Theme switch: radio group with a sliding active pill, 36-40 px targets.
+- Error screen: calm card with "Try again" and "Go to my tasks" and the error reference.
+- Chat: inline task chips and task cards on tokens (dot priority, no `rgba` / `red-300` / gradient bars, no
+  `confirm()`), skeleton shaped like the real messages (its shimmer keyframes never ran), voice button as a
+  44 px circle (destructive while recording, gold when ready to send), `text-red-400` errors replaced.
+- Copy: sentence case and plain verbs across these surfaces ("Confirm password", "Send a test", "Not now").
+
 ## 2026-10-28 · feat(frontend): task dialog, menus, tags and dashboard states; fix: error card never showed
 
 - **Task list never showed its error card**: the tasks query returned a failed `Result` instead of throwing,

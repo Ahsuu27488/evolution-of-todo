@@ -10,7 +10,7 @@
  * - Task card rendering for AI-created tasks (T116)
  *
  * Per spec.md FR-001 through FR-010, FR-048.
- * Phase 10 (T046-T050): Glassmorphism styling matching dashboard theme.
+ * Phase 10 (T046-T050): bubbles on solid surfaces inside the glass chat panel.
  */
 
 import { motion } from "framer-motion";
@@ -255,7 +255,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       {/* Message Content */}
       <div className={`flex min-w-0 flex-col ${isUser ? "items-end" : "items-start"} max-w-[85%]`}>
         {isVoice && isUser ? (
-          // T047: Voice Message Indicator - Glassmorphism styling
+          // T047: Voice Message Indicator
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -269,7 +269,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
             <span className="font-medium">Voice message</span>
           </motion.div>
         ) : (
-          // T046: Regular Text Message - Glassmorphism styling
+          // T046: Regular Text Message
           <motion.div
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
@@ -357,7 +357,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     <code
                       {...props}
                       style={{
-                        background: isUser ? "rgba(0,0,0,0.1)" : "color-mix(in oklch, var(--custom-foreground) 15%, transparent)",
+                        background: isUser ? "color-mix(in oklch, var(--custom-primary-foreground) 12%, transparent)" : "color-mix(in oklch, var(--custom-foreground) 15%, transparent)",
                         padding: inline ? "2px 6px" : "0.5rem",
                         borderRadius: inline ? "4px" : "8px",
                         fontSize: "0.9em",

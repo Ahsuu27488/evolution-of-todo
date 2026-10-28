@@ -35,12 +35,12 @@ export function AdBlockWarning() {
       const hasAdBlocker = detectAdBlocker()
 
       if (hasAdBlocker) {
-        toast.warning("Ad Blocker Detected", {
+        toast.warning("An ad blocker may break some menus", {
           description:
-            "Dropdown menus may not work with ad blockers enabled. Please whitelist this site or disable the ad blocker.",
+            "If a menu doesn't open, allow this site in your ad blocker.",
           duration: 8000, // Show for 8 seconds
           action: {
-            label: "Dismiss",
+            label: "Got it",
             onClick: () => {},
           },
           onDismiss: () => {
