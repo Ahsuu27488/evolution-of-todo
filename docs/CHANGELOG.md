@@ -3,6 +3,14 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · docs(design): component pass screenshots, rules and capture scripts
+
+- `docs/design/README.md`: surface layers (D-009), component rules (sentence case, 40-44 px targets, states,
+  status tints), before/after table for every dialog, menu, popover, state and email.
+- `frontend/scripts/capture-ui.py`: signs in with the local test account and screenshots each surface and
+  state (dialogs, menus, popovers, loading via held requests, error via a forced 500) per width and theme.
+- Screenshots: `docs/design/before|after/components/` (1440 and 375 px, both themes) and `.../emails/`.
+
 ## 2026-10-28 · feat: emails, push and in-app notifications on the new design
 
 - **Email templates** (`EmailTemplates` in `services/email_service.py`): all six (due soon, overdue, new

@@ -4,18 +4,25 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-27 · **Code at:** branch `chore/repair-shipshape-3d-redesign`
+**Last updated:** 2026-10-28 · **Code at:** branch `chore/repair-shipshape-3d-redesign`
 **In one line:** Chronos (Next.js 15 + FastAPI + Neon + OpenAI Agents) builds, installs and passes its checks
-again after a repair pass, and the frontend has a new "night observatory" design with a 3D orrery (D-007).
+again after a repair pass, and every screen, dialog, menu, email and notification now follows the "night
+observatory" design with a 3D orrery (D-007, D-009).
 
 ## What works (verified)
 
 - Frontend type check, lint, unit tests and production build: `npm run typecheck`, `npm run lint`, `npm test`
-  (5 tests), `npm run build` all pass with no env vars set (2026-10-27).
+  (5 tests), `npm run build` all pass (2026-10-28).
 - Redesign checked in the browser against the local backend (2026-10-27): landing (orrery hero, scroll-to-dial,
   bento), login/signup, dashboard (orbit panel updates live when a task is completed), chat panel, light mode,
   320 and 375 px with no horizontal scroll (theme toggle reachable on phones). Before/after screenshots in
   `docs/design/`.
+- Component pass checked in the browser (2026-10-28) at 1440, 768, 375 and 320 px, dark and light, against
+  the local backend: dashboard (loading, error, filtered-empty), task dialog with its selects and date
+  popover, task menu, delete confirmation, sort select, account menu, notification menu, settings (push,
+  email with unsaved-changes bar, in-app), toasts, profile, push prompt, error page, chat task cards and
+  skeleton. No horizontal scroll at 320 px. Screenshots: `docs/design/` (README table).
+- Emails rendered and checked in Chromium, light and dark, 640 and 375 px (`backend/scripts/render_emails.py`).
 - Fresh-eyes review (shipshape-reviewer) run on the whole branch; its 5 findings are fixed (CHANGELOG).
 - Kairos chat (2026-10-28): opens (button, Ctrl/Cmd+K), sends, and shows failures inline; with no
   `OPENAI_API_KEY` locally the agent stops at "Missing credentials", so real replies are NOT verified here.
@@ -24,7 +31,7 @@ again after a repair pass, and the frontend has a new "night observatory" design
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
 - Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser), thanks to
   the `sqlmodel<0.0.45` pin (the test fails on 0.0.48).
-- Backend tests: 44 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-27); without one, 9 DB-free
+- Backend tests: 64 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-28); without one, 9 DB-free
   tests pass and the 35 DB tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`
   cookie (`frontend/lib/routes.test.ts`; the old middleware treated every path as public).
@@ -69,7 +76,7 @@ again after a repair pass, and the frontend has a new "night observatory" design
 - Frontend checks: `npm run typecheck && npm run lint && npm test && npm run build`
 - Backend: `cd backend && python -m venv .venv && .venv/Scripts/pip install -r requirements.txt pytest pytest-asyncio`
   then `uvicorn app.main:app --reload` (needs `DATABASE_URL`, `BETTER_AUTH_SECRET`)
-- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (44 passing with `TEST_DATABASE_URL`, e.g.
+- Backend tests: `cd backend && .venv/Scripts/python -m pytest -q` (64 passing with `TEST_DATABASE_URL`, e.g.
   `postgresql+asyncpg://postgres@127.0.0.1:<port>/test_todo`; 9 passing + 35 skipped without)
 - No local Postgres? `py -3.12 -m pip install pgserver` gives an embedded one; append `?sslmode=disable` to a
   local `DATABASE_URL` (Neon URLs keep SSL required).

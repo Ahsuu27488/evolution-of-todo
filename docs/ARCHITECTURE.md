@@ -31,7 +31,8 @@ Phase I lives separately in `phase1/` (in-memory Python CLI). Kubernetes: `helm/
 | `frontend/app/actions/` | Server actions: `auth.ts` (sign in/up/out, `getSession`, `requireAuth`), `tasks.ts` |
 | `frontend/middleware.ts`, `frontend/lib/routes.ts` | Route protection rules (`isPublicPath`, `isAuthPage`) |
 | `frontend/lib/api-client.ts`, `lib/auth/token.ts`, `lib/config/api.ts` | Typed backend client, token fetch, `API_URL` |
-| `frontend/components/` | UI: `landing/`, `auth/`, `dashboard/`, `tasks/`, `chat/`, `notifications/`, `layout/`, shadcn `ui/` |
+| `frontend/components/` | UI: `landing/`, `auth/`, `dashboard/`, `tasks/`, `chat/`, `notifications/`, `layout/`, shadcn `ui/` (restyled on the tokens, plus `callout.tsx`); settings cards in `notifications/settings-section.tsx` |
+| `frontend/scripts/capture-ui.py`, `backend/scripts/render_emails.py` | Design review: screenshot every page, dialog, menu and state (Playwright), and render every email template |
 | `frontend/components/three/` | `orrery.tsx` (poster, lazy load, capability + reduced-motion checks, theme palette) and `orrery-scene.tsx` (R3F scene: core shader, orbits, instanced moons, stars) |
 | `frontend/lib/orbits.ts` | `orbitCounts()`: open tasks bucketed into today / this week / later, plus done (feeds `dashboard/orbit-panel.tsx`) |
 | `frontend/app/globals.css` | Design tokens (OKLCH palette for dark and light, type scale, motion, radius) and the glass / surface utilities; see `docs/design/README.md` |
