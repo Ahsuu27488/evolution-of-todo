@@ -31,7 +31,7 @@ observatory" design with a 3D orrery (D-007, D-009).
   (`tests/test_core.py::test_app_registers_all_routers`, 2026-10-27).
 - Sign-up, sign-in and `/api/auth/me` work end to end (`tests/test_auth_routes.py`, and in the browser), thanks to
   the `sqlmodel<0.0.45` pin (the test fails on 0.0.48).
-- Backend tests: 64 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-28); without one, 9 DB-free
+- Backend tests: 64 pass against a real Postgres 16 (`TEST_DATABASE_URL`, 2026-10-28); without one, 29 DB-free
   tests pass and the 35 DB tests skip.
 - Route protection: `/dashboard`, `/profile`, `/settings/*` redirect to `/login` without the `auth_token`
   cookie (`frontend/lib/routes.test.ts`; the old middleware treated every path as public).
@@ -69,6 +69,8 @@ observatory" design with a 3D orrery (D-007, D-009).
 1. Review the branch and open the PR (human merges; merging deploys the backend, see Live state).
 2. Add a Postgres service to CI so the MCP tool tests run on every PR.
 3. Confirm the frontend host builds with npm after the lockfile change.
+4. Then the agreed backlog in `docs/plans/backlog.md`, starting with Kairos on the free Gemini API and
+   fixing Qdrant.
 
 ## How to run and check
 

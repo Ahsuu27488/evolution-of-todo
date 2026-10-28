@@ -3,6 +3,11 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · docs: agreed backlog
+
+- `docs/plans/backlog.md`: the owner's agreed next work (Kairos on the free Gemini API, Qdrant, product
+  ideas, engineering gaps). STATUS: DB-free backend test count corrected (29, not 9).
+
 ## 2026-10-28 · docs(design): component pass screenshots, rules and capture scripts
 
 - `docs/design/README.md`: surface layers (D-009), component rules (sentence case, 40-44 px targets, states,
