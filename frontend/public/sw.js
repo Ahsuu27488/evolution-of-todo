@@ -20,7 +20,7 @@
 
 const NOTIFICATION_ICON = "/icon-192.png"
 const NOTIFICATION_BADGE = "/badge-96.png"  // monochrome, as Android requires for badges
-const DEFAULT_TITLE = "Chronos Todo"
+const DEFAULT_TITLE = "Chronos"
 
 // =============================================================================
 // Push Event Handler
@@ -40,7 +40,7 @@ self.addEventListener("push", (event) => {
     const data = event.data.json()
     const { title, body, icon, badge, data: notificationData } = data
 
-    // Show notification with Deep Space theme colors
+    // App icon + monochrome badge; the OS draws the notification itself
     const options = {
       body: body || "",
       icon: icon || NOTIFICATION_ICON,

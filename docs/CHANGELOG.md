@@ -3,6 +3,28 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat: emails, push and in-app notifications on the new design
+
+- **Email templates** (`EmailTemplates` in `services/email_service.py`): all six (due soon, overdue, new
+  task, daily digest, weekly summary, welcome) plus a generic `message()` rebuilt on the night-observatory
+  palette in email-safe hex (D-009): table layout, day-sky light by default and ink for dark-mode clients,
+  app icon header, status as a small label, one gold button, no emoji, gradients or Title Case. The old
+  dark mode left the welcome email's feature headings dark-on-dark (invisible). Subjects lose their emoji
+  ("Due soon: …", "Overdue: …", "Your tasks for Wednesday 28 October", "Welcome to Chronos, Ayla").
+- **Task titles were inserted into email HTML unescaped**; every user-provided string is now escaped.
+  **Due dates printed as raw ISO** (`2026-10-29T17:00:00`); `friendly_due()` formats them ("Thu 29 Oct, 17:00").
+  The welcome email's invented `support@chronostodo.com` address is gone.
+- **Push icons were missing**: payloads defaulted to `/favicon.png`, which does not exist; they now use
+  `/icon-192.png` and the monochrome `/badge-96.png`. Service worker default title "Chronos".
+- Notification copy: "Due soon: …" / "Added: …" / "Done: …" with the due time as the body (was "Task Due
+  Soon: X" plus "Your task 'X' is due soon"); test email and test push reworded, no emoji.
+- Unsubscribe result pages (success and expired link) share one themed page (light and dark) instead of two
+  gradient pages.
+- Kairos's MCP tool schemas told it to colour tags `#00f5ff` / `#a855f7`, contradicting its prompt palette;
+  they now list the same palette as `prompts.py`.
+- Tests: `tests/test_email_templates.py` (palette, no emoji, escaping, unsubscribe link, date format, status
+  page). Previews: `backend/scripts/render_emails.py` writes every email to HTML and screenshots it.
+
 ## 2026-10-28 · feat(frontend): notifications, settings, profile, account menu, error screen, chat pieces
 
 - Notification menu: solid surface, rows instead of glass cards, type icons in status tints, gold unread

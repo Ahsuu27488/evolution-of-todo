@@ -329,7 +329,7 @@ class TaskCreate(TaskBase):
                     "title": "Buy groceries",
                     "description": "Milk, eggs, bread",
                     "priority": "MEDIUM",
-                    "tags": [{"name": "shopping", "color": "#00f5ff"}],
+                    "tags": [{"name": "shopping", "color": "#6FC48F"}],
                     "due_date": "2026-01-10T12:00:00Z",
                 }
             ]

@@ -326,8 +326,8 @@ async def create_task(
             session=session,
             user_id=current_user_id,
             type=NotificationType.TASK_DUE,
-            title=f"New Task: {task.title}",
-            message=f"You've created a new task due on {task.due_date.strftime('%Y-%m-%d')}",
+            title=f"Added: {task.title}",
+            message=f"Due {task.due_date.strftime('%a %d %b, %H:%M')}",
             data={
                 "task_id": task.id,
                 "task_title": task.title,
@@ -777,8 +777,8 @@ async def toggle_task_complete(
             session=session,
             user_id=current_user_id,
             type=NotificationType.TASK_COMPLETED,
-            title=f"Task Completed: {task.title}",
-            message=f"Great job! You completed: {task.title}",
+            title=f"Done: {task.title}",
+            message="One less thing in orbit.",
             data={
                 "task_id": task.id,
                 "task_title": task.title,
