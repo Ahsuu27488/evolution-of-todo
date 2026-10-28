@@ -51,6 +51,8 @@ observatory" design with a 3D orrery (D-007, D-009).
 
 ## Known gaps
 
+0. Local Python is 3.14 but CI and the HF Docker image use 3.13: 3.14 does not evaluate annotations at
+   import, so a missing import can pass locally. Run the tests under 3.12/3.13 before merging backend changes.
 1. CI runs backend tests without Postgres, so the MCP tool tests skip there (add a Postgres service to ci.yml).
 2. Vercel's package manager may change: `pnpm-lock.yaml` was removed (npm + `package-lock.json` only, D-004).
 3. Many specs/docs still describe Better Auth; the live auth is the backend JWT in the `auth_token` cookie (D-003).

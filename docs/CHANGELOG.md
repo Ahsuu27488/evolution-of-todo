@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · fix(tests): missing Task import broke CI on Python 3.13
+
+- `tests/test_mcp/test_tools.py` used `Task` in annotations without importing it. Python 3.14 (local) no
+  longer evaluates annotations at import, so it only failed in CI and the Docker image (3.13). Checked the
+  whole suite (64 pass) and an import of every `app` module under Python 3.12.
+
 ## 2026-10-28 · docs: agreed backlog
 
 - `docs/plans/backlog.md`: the owner's agreed next work (Kairos on the free Gemini API, Qdrant, product
