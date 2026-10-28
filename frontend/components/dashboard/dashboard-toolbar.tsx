@@ -1,4 +1,4 @@
-/** Dashboard Toolbar Component with Deep Space Glassmorphism.
+/** Dashboard toolbar: search, status filter, priority filter and sort, on solid surfaces.
  *
  * Per spec.md US2: Filter tasks by status and priority, search through tasks in real-time.
  * Per contracts/components.ts: DashboardToolbar integrates search, filter, and sort controls.
@@ -15,7 +15,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { ArrowDown, Search, CheckCircle2, Clock } from "lucide-react"
+import { ArrowDown, Search, CheckCircle2, Clock, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -57,13 +57,13 @@ const statusTabs = [
 
 const priorities = [
   { value: "all" as const, label: "All priorities" },
-  { value: "HIGH" as const, label: "High", color: "text-destructive" },
-  { value: "MEDIUM" as const, label: "Medium", color: "text-primary" },
-  { value: "LOW" as const, label: "Low", color: "text-muted-foreground" },
+  { value: "HIGH" as const, label: "High", dot: "bg-destructive" },
+  { value: "MEDIUM" as const, label: "Medium", dot: "bg-primary" },
+  { value: "LOW" as const, label: "Low", dot: "bg-muted-foreground/60" },
 ]
 
 const sortOptions = [
-  { value: "created_at" as const, label: "Created date" },
+  { value: "created_at" as const, label: "Date added" },
   { value: "due_date" as const, label: "Due date" },
   { value: "priority" as const, label: "Priority" },
   { value: "title" as const, label: "Title" },
@@ -99,14 +99,14 @@ export function DashboardToolbar({
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="text"
+              type="search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search tasks"
               aria-label="Search tasks"
               className={cn(
-                "h-10 w-full rounded-full pl-10 pr-10",
-                "border border-border bg-card",
+                "h-11 w-full rounded-full pl-10 pr-11 md:h-10 [&::-webkit-search-cancel-button]:hidden",
+                "border border-border bg-card hover:border-foreground/20",
                 "text-sm placeholder:text-muted-foreground",
                 "focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
                 "transition-[border-color,box-shadow] duration-200"
@@ -116,10 +116,10 @@ export function DashboardToolbar({
               <button
                 type="button"
                 onClick={() => onSearchChange("")}
-                className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/30"
+                className="absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 aria-label="Clear search"
               >
-                ×
+                <X className="size-4" aria-hidden />
               </button>
             )}
           </div>
@@ -146,8 +146,9 @@ export function DashboardToolbar({
                   key={tab.value}
                   type="button"
                   onClick={() => onStatusChange(tab.value)}
+                  aria-pressed={isActive}
                   className={cn(
-                    "inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-200 sm:flex-initial",
+                    "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-medium outline-none transition-colors duration-150 focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.97] sm:flex-initial",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -158,7 +159,7 @@ export function DashboardToolbar({
                   {count > 0 && (
                     <span
                       className={cn(
-                        "flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-xs font-semibold",
+                        "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
                         isActive
                           ? "bg-primary-foreground/15 text-primary-foreground"
                           : "bg-muted text-muted-foreground"
@@ -175,15 +176,18 @@ export function DashboardToolbar({
           {/* Priority dropdown */}
           <Select value={priorityFilter} onValueChange={onPriorityChange}>
             <SelectTrigger
-              className={cn(
-                "h-10 min-w-0 flex-1 rounded-full border border-border bg-card sm:w-[150px] sm:flex-none"
-              )}
+              aria-label="Filter by priority"
+              className="h-11 w-0 min-w-0 flex-1 rounded-full border-border bg-card dark:bg-card sm:w-[150px] sm:flex-none md:h-10"
             >
-              <SelectValue placeholder="Priority" />
+              {/* Short label for "all" so the trigger fits beside sort at 320 px */}
+              <SelectValue placeholder="Priority">
+                {priorityFilter === "all" ? "Priority" : priorities.find((p) => p.value === priorityFilter)?.label}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent className="glass-strong">
+            <SelectContent>
               {priorities.map((p) => (
-                <SelectItem key={p.value} value={p.value} className={p.color}>
+                <SelectItem key={p.value} value={p.value}>
+                  {"dot" in p && <span className={cn("size-2 rounded-full", p.dot)} aria-hidden />}
                   {p.label}
                 </SelectItem>
               ))}
@@ -192,17 +196,26 @@ export function DashboardToolbar({
         </div>
 
         {/* Right side: Sort controls */}
-        <div className="flex flex-1 items-center justify-end gap-2 sm:ml-auto sm:flex-initial">
+        {/* On phones the sort controls join the priority filter row as equal columns */}
+        <div className="contents sm:ml-auto sm:flex sm:items-center sm:gap-2">
           {/* Sort by dropdown */}
           <Select value={sortBy} onValueChange={onSortChange}>
             <SelectTrigger
-              className={cn(
-                "h-10 min-w-0 flex-1 rounded-full border border-border bg-card sm:w-[150px] sm:flex-none"
-              )}
+              aria-label="Sort by"
+              className="h-11 w-0 min-w-0 flex-1 rounded-full border-border bg-card dark:bg-card sm:w-[150px] sm:flex-none md:h-10"
             >
-              <SelectValue placeholder="Sort by" />
+              <SelectValue placeholder="Sort by">
+                {sortBy === "created_at" ? (
+                  <>
+                    <span className="sm:hidden">Added</span>
+                    <span className="hidden sm:inline">Date added</span>
+                  </>
+                ) : (
+                  sortOptions.find((o) => o.value === sortBy)?.label
+                )}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent className="glass-strong">
+            <SelectContent align="end">
               {sortOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
@@ -216,13 +229,13 @@ export function DashboardToolbar({
             type="button"
             onClick={onSortOrderToggle}
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-              "border border-border bg-card",
-              "text-muted-foreground transition-colors duration-200",
-              "hover:bg-accent hover:text-foreground"
+              "grid size-11 shrink-0 place-items-center rounded-full md:size-10",
+              "border border-border bg-card outline-none",
+              "text-muted-foreground transition-colors duration-150",
+              "hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
             )}
-            title={`Sort ${sortOrder === "asc" ? "ascending" : "descending"}`}
-            aria-label={`Toggle sort order (currently ${sortOrder})`}
+            title={sortOrder === "asc" ? "Ascending" : "Descending"}
+            aria-label={`Sort ${sortOrder === "asc" ? "ascending" : "descending"}. Switch direction`}
           >
             <ArrowDown
               className={cn(

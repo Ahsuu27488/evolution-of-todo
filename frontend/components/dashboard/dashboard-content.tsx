@@ -2,7 +2,7 @@
  *
  * Per spec.md US2: Filter tasks by status and priority, search through tasks in real-time.
  * Per spec.md US3: Sort tasks by created date, due date, priority, or title with ascending/descending toggle.
- * Per spec.md US4: Glassmorphism visual design matching hero page aesthetic.
+ * Visual design: night observatory tokens (D-007).
  *
  * [T021-T026] Enhanced with dual-ring loading states and error handling.
  *
@@ -147,12 +147,23 @@ export function DashboardContent({
             </div>
           ) : error ? (
             <LoadingErrorCard
-              message="Unable to load tasks. Please check your connection and try again."
+              message="Your tasks didn't load. Check your connection, then try again."
               onRetry={() => refetch()}
               isRetrying={isLoading}
             />
           ) : (
-            <TaskList tasks={filteredTasks} />
+            <TaskList
+              tasks={filteredTasks}
+              isFiltered={
+                totalCount > 0 &&
+                (searchQuery.trim() !== "" || filters.status !== "all" || filters.priority !== "all")
+              }
+              onClearFilters={() => {
+                setSearchQuery("")
+                setStatusFilter("all")
+                setPriorityFilter("all")
+              }}
+            />
           )}
         </div>
       </section>

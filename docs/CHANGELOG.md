@@ -3,6 +3,29 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat(frontend): task dialog, menus, tags and dashboard states; fix: error card never showed
+
+- **Task list never showed its error card**: the tasks query returned a failed `Result` instead of throwing,
+  so React Query saw success and the list fell through to the empty state ("No tasks yet") when the API was
+  down. `useTaskFilters` and `useOrbitCounts` (same query key) now throw; the error card shows after the
+  client's retries.
+- **Clearing a due date failed validation** (`null` rejected by the create schema); `due_date` and
+  `recurrence_pattern` accept `null`, and "Doesn't repeat" is now a choice. The backend still ignores `null`
+  on update, so clearing a date on an existing task does not remove it yet (Known gaps).
+- **Delete confirmation closed before "Deleting" could show**; it now stays open until the request settles.
+- Task dialog: "New task" / "Edit task", no staggered field animations, priority as a one-tap segmented
+  control (arrow keys work), due date and repeat side by side, sentence-case labels.
+- Due date picker: field-styled trigger, quick picks (Today, Tomorrow, Next week), native time field, Done
+  button; overdue / due-soon in the destructive / warning tones (was `orange-500`).
+- Tag input: input-styled field, neutral chips with the tag colour as a dot, 24 px remove buttons with a
+  larger hit area, comma adds a tag, inline hint for duplicates and invalid names. Tag palette aligned with
+  Kairos's palette in `prompts.py` (was neon cyan / pink / green).
+- Empty states: "Nothing in orbit yet" (small drawn orbit, add button) and a separate "No tasks match" with
+  "Clear search and filters". Loading error card on `.surface` with retry spinner. Dashboard loading skeleton
+  mirrors the real layout. Toolbar: search clear button, 36-44 px controls, short trigger labels so priority
+  and sort fit side by side at 320 px. Task card: completion glow and `rgba` shadows removed.
+- Confetti colours follow the theme.
+
 ## 2026-10-28 · feat(frontend): every UI primitive on the night-observatory tokens
 
 - New tokens: `--custom-success`, `--custom-warning` (Tailwind `success`, `warning`), `--shadow-pop`,

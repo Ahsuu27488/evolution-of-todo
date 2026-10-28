@@ -50,10 +50,12 @@ again after a repair pass, and the frontend has a new "night observatory" design
 4. ~40 `datetime.utcnow()` call sites write naive datetimes; they block upgrading past `sqlmodel<0.0.45` (D-005).
    Pydantic class-based `Config` deprecation warnings too.
 5. Root `CLAUDE.md` and `backend/CLAUDE.md` contain long phase-era notes that partly predate the code.
-6. Component restyle in progress on this branch (D-009): UI primitives done; task, notification, settings,
-   profile, chat and email surfaces follow in the next commits. Lighthouse and a real-phone test of the
-   orrery have not been run.
+6. Component restyle in progress on this branch (D-009): UI primitives, tasks, tags and dashboard states
+   done; notification, settings, profile, chat and email surfaces follow in the next commits. Lighthouse
+   and a real-phone test of the orrery have not been run.
 7. Kairos replies untested end to end (needs an OpenAI key); the share card uses the default font.
+8. Clearing the due date of an existing task does not remove it: `PUT /api/tasks/{id}` ignores `null`
+   (`routes/tasks.py`). The form sends nothing for a cleared date.
 
 ## Next
 

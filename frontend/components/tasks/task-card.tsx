@@ -1,14 +1,13 @@
-/** Task Card Component with Deep Space Glassmorphism.
+/** Task card: solid surface, priority as a slim left edge, completion with confetti.
  *
  * Per spec.md:
- * - FR-037: glassmorphism visual design with backdrop-blur effects
- * - FR-039: micro-animations for state transitions (slide-in, glow, fade)
+ * - FR-039: micro-animations for state transitions (slide-in, settle, fade)
  * - FR-040: confetti particle effect on task completion
  * - T097-T099: AI task summarization with regenerate button
  *
  * Acceptance Scenarios (US4):
  * - Given a user with an incomplete task, When they click the completion checkbox,
- *   Then the task glows cyan, strikes through with animation, and confetti particles burst
+ *   Then the task strikes through with animation and confetti particles burst
  * - Given a user with a completed task, When they click the completion checkbox again,
  *   Then the task reverts to incomplete status with reverse animation
  */
@@ -172,7 +171,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
     >
       <motion.div
         variants={taskComplete}
-        animate={optimisticCompleted ? "glow" : "normal"}
+        animate={optimisticCompleted ? "settle" : "normal"}
         className="transition-all duration-300"
       >
         <Card
@@ -186,7 +185,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
           )}
         >
           <CardContent className="flex items-start gap-3 px-4 py-3.5 sm:gap-4">
-            {/* Checkbox with glow effect */}
+            {/* Completion checkbox */}
             <motion.div
               className="pt-0.5 sm:pt-1"
               animate={optimisticCompleted ? { scale: [1, 1.2, 1] } : { scale: 1 }}
@@ -196,10 +195,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 checked={optimisticCompleted}
                 onCheckedChange={handleToggleComplete}
                 disabled={isUpdating}
-                className={cn(
-                  "h-5 w-5 transition-all duration-300",
-                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(242,184,75,0.4),0_0_12px_rgba(242,184,75,0.5)]"
-                )}
+                className="size-5"
                 aria-label={optimisticCompleted ? "Mark as incomplete" : "Mark as complete"}
               />
             </motion.div>
@@ -253,27 +249,27 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                         <Sparkles className="h-3.5 w-3.5 text-primary" />
                         <span className="text-xs font-medium text-primary">AI summary</span>
                         {/* T098: Regenerate button */}
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                        <button
+                          type="button"
                           onClick={handleRegenerateSummary}
                           disabled={isRegeneratingSummary}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 disabled:opacity-50"
+                          className="relative grid size-7 place-items-center rounded-full text-primary/70 outline-none transition-[opacity,background-color,color] after:absolute after:-inset-1.5 hover:bg-accent hover:text-primary focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                          aria-label="Regenerate summary"
                           title="Regenerate summary"
                         >
                           {isRegeneratingSummary ? (
-                            <Loader2 className="h-3 w-3.5 text-primary animate-spin" />
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
                           ) : (
-                            <RefreshCw className="h-3 w-3.5 text-primary/70 hover:text-primary" />
+                            <RefreshCw className="size-3.5" aria-hidden />
                           )}
-                        </motion.button>
+                        </button>
                       </div>
 
                       {/* Summary text */}
                       <p
                         className={cn(
                           "text-xs text-muted-foreground leading-relaxed p-2.5 rounded-lg border",
-                          "bg-primary/5 border-primary/20",
+                          "bg-primary/6 border-primary/18",
                           optimisticCompleted && "line-through opacity-60"
                         )}
                       >
@@ -307,11 +303,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 <div
                   className={cn(
                     "flex items-center gap-1.5 text-xs mt-2 tabular-nums transition-colors",
-                    isOverdue
-                      ? "text-destructive"
-                      : optimisticCompleted
-                        ? "text-muted-foreground"
-                        : "text-muted-foreground"
+                    isOverdue ? "text-destructive" : "text-muted-foreground"
                   )}
                 >
                   <Calendar className="h-3.5 w-3.5" />

@@ -1,80 +1,73 @@
-/** Empty State Component with Deep Space Glassmorphism.
+/** Empty states for the task list.
  *
- * Per spec.md US4 edge case: "when a user has no tasks, the dashboard displays
- * an empty state with a call-to-action to create the first task, using the
- * glassmorphism style."
- *
- * Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
+ * - "first": no tasks at all. A small drawn orbit (the orrery's motif, no 3D) and the add button.
+ * - "filtered": tasks exist but none match the search or filters; offers to clear them.
  */
 
 "use client"
 
 import { motion } from "framer-motion"
-import { ClipboardList, Sparkles } from "lucide-react"
+import { SearchX } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { TaskForm } from "./task-form"
 import { fadeInUp } from "@/lib/animations"
 
-export function EmptyState() {
+interface EmptyStateProps {
+  variant?: "first" | "filtered"
+  onClearFilters?: () => void
+}
+
+function OrbitMark() {
+  return (
+    <div aria-hidden className="relative mb-6 size-24">
+      <div className="absolute inset-0 rounded-full border border-dashed border-foreground/15" />
+      <div className="absolute inset-4 rounded-full border border-foreground/12" />
+      <div className="absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+      <div className="absolute top-[18%] right-[10%] size-2.5 rounded-full bg-secondary" />
+      <div className="absolute bottom-[20%] left-[18%] size-2 rounded-full bg-muted-foreground/50" />
+    </div>
+  )
+}
+
+export function EmptyState({ variant = "first", onClearFilters }: EmptyStateProps) {
+  if (variant === "filtered") {
+    return (
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="surface flex flex-col items-center rounded-[var(--radius-2xl)] px-6 py-12 text-center"
+      >
+        <div className="mb-4 grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">
+          <SearchX className="size-5" aria-hidden />
+        </div>
+        <h2 className="font-display text-lg font-semibold">No tasks match</h2>
+        <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+          Try another word, or clear the search and filters to see everything.
+        </p>
+        {onClearFilters && (
+          <Button variant="outline" className="mt-5 rounded-full" onClick={onClearFilters}>
+            Clear search and filters
+          </Button>
+        )}
+      </motion.div>
+    )
+  }
+
   return (
     <motion.div
       variants={fadeInUp}
       initial="hidden"
       animate="visible"
-      className="flex flex-col items-center justify-center py-10 sm:py-16 text-center"
+      className="surface flex flex-col items-center rounded-[var(--radius-2xl)] px-6 py-14 text-center"
     >
-      {/* Icon with glow effect */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        className="relative mb-4 sm:mb-6"
-      >
-        <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-        <div className="glass relative rounded-full p-4 sm:p-6">
-          <ClipboardList className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
-        </div>
-      </motion.div>
-
-      {/* Title */}
-      <motion.h3
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="text-lg font-semibold mb-2 sm:text-xl"
-      >
-        No tasks yet
-      </motion.h3>
-
-      {/* Description */}
-      <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="text-muted-foreground mb-4 sm:mb-6 max-w-sm px-4"
-      >
-        Get started by creating your first task. Stay organized and track your
-        progress.
-      </motion.p>
-
-      {/* CTA Button */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <TaskForm />
-      </motion.div>
-
-      {/* Decorative elements */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.5 }}
-        transition={{ delay: 0.6, duration: 1 }}
-        className="mt-12 flex items-center gap-2 text-xs text-muted-foreground"
-      >
-        <Sparkles className="h-3 w-3" />
-        <span>Tip: You can add due dates, tags, and recurrence patterns</span>
-      </motion.div>
+      <OrbitMark />
+      <h2 className="font-display text-xl font-semibold">Nothing in orbit yet</h2>
+      <p className="mt-1.5 mb-6 max-w-sm text-sm text-muted-foreground">
+        Add your first task, or ask Kairos to plan your day. Tasks with a due date take their place on
+        your orbits.
+      </p>
+      <TaskForm />
     </motion.div>
   )
 }

@@ -19,7 +19,14 @@ export function useOrbitCounts() {
   // Unfiltered list, shared with the task list's cache prefix so it refreshes with it.
   const { data } = useQuery({
     queryKey: ["tasks", "all", "all"],
-    queryFn: () => api.getTasks({ status: "all" }),
+    // Same key as useTaskFilters' unfiltered query, so it must behave the same: throw on failure
+    // (a failed Result cached as data made the task list show "Nothing in orbit yet")
+    queryFn: async () => {
+      const result = await api.getTasks({ status: "all" })
+      if (!result.success) throw new Error(result.error.message)
+      return result
+    },
+    retry: 1,
   })
   return useMemo(
     () => orbitCounts(data?.success ? data.data.tasks ?? [] : []),

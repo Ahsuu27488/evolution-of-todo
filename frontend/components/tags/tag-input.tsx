@@ -1,21 +1,15 @@
 /**
  * Tag Input Component
  *
- * Allows users to add and remove colored tags for tasks.
- *
- * Per contracts/components.ts:
- * - Type tag name and press Enter to add
- * - Click × on tag chip to remove
- * - Prevents duplicate tag names
- * - Colors assigned from Deep Space palette
- * - Maximum 10 tags allowed
- *
- * "use client"
+ * Type a tag and press Enter (or comma) to add it; Backspace on an empty field removes the last.
+ * Chips match the task card: neutral fill, the tag's colour as a dot. Up to 10 tags, no duplicates.
  */
 
-import { useState, KeyboardEvent } from "react"
+"use client"
+
+import { useId, useState, KeyboardEvent } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Tag as TagIcon } from "lucide-react"
+import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isValidTagName, tagExists, getTagColor } from "@/lib/utils/tag-utils"
 import type { Tag } from "@/types/task"
@@ -35,111 +29,108 @@ const DEFAULT_MAX_TAGS = 10
 export function TagInput({
   value = [],
   onChange,
-  placeholder = "Add tag... (press Enter)",
+  placeholder = "Type a tag, then Enter",
   maxTags = DEFAULT_MAX_TAGS,
   disabled = false,
   id,
   className,
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState("")
+  const [hint, setHint] = useState<string | null>(null)
+  const hintId = useId()
 
   const canAddMore = value.length < maxTags
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault()
       addTag()
     } else if (e.key === "Backspace" && !inputValue && value.length > 0) {
-      // Remove last tag when backspacing with empty input
       removeTag(value.length - 1)
     }
   }
 
   function addTag() {
     const trimmed = inputValue.trim()
-
-    if (!trimmed) return
-    if (!canAddMore) return
-    if (!isValidTagName(trimmed)) return
-    if (tagExists(trimmed, value)) return
-
-    // Use getTagColor for persistent colors across sessions (T030)
-    const color = getTagColor(trimmed)
-    const newTag: Tag = { name: trimmed, color }
-    onChange([...value, newTag])
+    if (!trimmed || !canAddMore) return
+    if (!isValidTagName(trimmed)) {
+      setHint("Keep tags under 30 characters, without < > { } [ ] | ^ or quotes")
+      return
+    }
+    if (tagExists(trimmed, value)) {
+      setHint(`"${trimmed}" is already added`)
+      return
+    }
+    onChange([...value, { name: trimmed, color: getTagColor(trimmed) }])
     setInputValue("")
+    setHint(null)
   }
 
   function removeTag(index: number) {
-    const newTags = value.filter((_, i) => i !== index)
-    onChange(newTags)
+    onChange(value.filter((_, i) => i !== index))
   }
 
   return (
-    <div
-      className={cn(
-        "flex flex-wrap gap-1.5 sm:gap-2 p-2 sm:p-2.5 rounded-md border",
-        "bg-background/50 border-border/50",
-        "focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20",
-        "transition-all duration-200",
-        disabled && "opacity-50 cursor-not-allowed",
-        className
-      )}
-    >
-      {/* Existing tags */}
-      <AnimatePresence mode="popLayout">
-        {value.map((tag, index) => (
-          <motion.span
-            key={tag.name}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.15 }}
-            className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-            style={{
-              backgroundColor: `${tag.color}20`,
-              color: tag.color,
-              border: `1px solid ${tag.color}40`,
+    <div className="grid gap-1.5">
+      <div
+        className={cn(
+          "flex min-h-11 flex-wrap items-center gap-1.5 rounded-[var(--radius-md)] border border-input bg-transparent px-2 py-1.5 md:min-h-10 dark:bg-input/30",
+          "transition-[border-color,box-shadow] hover:border-foreground/25 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50",
+          disabled && "pointer-events-none opacity-50",
+          className
+        )}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          {value.map((tag, index) => (
+            <motion.span
+              key={tag.name}
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.15 }}
+              className="inline-flex h-7 items-center gap-1.5 rounded-full bg-muted pr-0.5 pl-2.5 text-xs font-medium"
+            >
+              <span className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} aria-hidden />
+              {tag.name}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeTag(index)}
+                  aria-label={`Remove tag ${tag.name}`}
+                  className="relative grid size-6 place-items-center rounded-full text-muted-foreground outline-none transition-colors after:absolute after:-inset-2 hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              )}
+            </motion.span>
+          ))}
+        </AnimatePresence>
+
+        {canAddMore ? (
+          <input
+            id={id}
+            type="text"
+            value={inputValue}
+            onChange={(e) => {
+              setInputValue(e.target.value)
+              setHint(null)
             }}
-          >
-            <TagIcon className="h-3 w-3" />
-            <span>{tag.name}</span>
-            {!disabled && (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => removeTag(index)}
-                className="ml-0.5 h-4 w-4 hover:bg-white/10 rounded-full p-0.5 flex items-center justify-center transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </motion.button>
-            )}
-          </motion.span>
-        ))}
-      </AnimatePresence>
-
-      {/* Input field */}
-      {canAddMore && (
-        <input
-          id={id}
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={addTag}
-          placeholder={value.length === 0 ? placeholder : ""}
-          disabled={disabled}
-          className="flex-1 min-w-[100px] sm:min-w-[120px] bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground py-1"
-        />
-      )}
-
-      {/* Max tags indicator */}
-      {!canAddMore && (
-        <span className="text-xs text-muted-foreground">
-          Max {maxTags} tags
-        </span>
-      )}
+            onKeyDown={handleKeyDown}
+            onBlur={addTag}
+            placeholder={value.length === 0 ? placeholder : "Add another"}
+            disabled={disabled}
+            aria-describedby={hintId}
+            enterKeyHint="done"
+            className="h-7 min-w-28 flex-1 bg-transparent px-1.5 text-sm outline-none placeholder:text-muted-foreground"
+          />
+        ) : (
+          <span className="px-1.5 text-xs text-muted-foreground">That&apos;s the limit of {maxTags} tags</span>
+        )}
+      </div>
+      <p id={hintId} aria-live="polite" className={cn("text-[13px]", hint ? "text-warning" : "sr-only")}>
+        {hint ?? `${value.length} of ${maxTags} tags`}
+      </p>
     </div>
   )
 }

@@ -46,8 +46,10 @@ export const taskCreateSchema = z.object({
   due_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/, "Due date must be a valid ISO 8601 datetime")
+    .nullable()
     .optional(),
-  recurrence_pattern: recurrencePatternEnum.optional(),
+  // null = cleared in the form ("no due date", "doesn't repeat")
+  recurrence_pattern: recurrencePatternEnum.nullable().optional(),
 })
 
 // =============================================================================

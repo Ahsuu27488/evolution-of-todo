@@ -194,12 +194,18 @@ export function useTaskFilters(): UseTaskFiltersResult {
     refetch,  // [T021] Extract refetch for retry functionality
   } = useQuery({
     queryKey: ["tasks", filters.status, filters.priority],
-    queryFn: () =>
-      api.getTasks({
+    queryFn: async () => {
+      const result = await api.getTasks({
         status: filters.status,
         priority: filters.priority === "all" ? undefined : filters.priority,
-      }),
-    })
+      })
+      // Throw so the query enters its error state (the dashboard shows the retry card);
+      // returning the failed Result looked like an empty list ("Nothing in orbit yet")
+      if (!result.success) throw new Error(result.error.message)
+      return result
+    },
+    retry: 1,
+  })
 
   // Extract tasks from Result<TaskList> type
   const allTasks = useMemo(() => {
