@@ -20,7 +20,7 @@ from mcp.types import Tool, TextContent
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.utils.logging import get_logger
-from app.ai.mcp.tools import TaskTools
+from app.ai.mcp.tools import TaskTools, ToolResponse
 
 
 # =============================================================================
@@ -68,11 +68,11 @@ TOOLS: list[Tool] = [
                         "type": "object",
                         "properties": {
                             "name": {"type": "string", "description": "Tag name (e.g., 'karachi', 'work', 'shopping')"},
-                            "color": {"type": "string", "description": "Hex color code (e.g., '#00f5ff' for cyan, '#a855f7' for purple)"},
+                            "color": {"type": "string", "description": "Hex color code from the tag palette (e.g., '#7FA8E8' for work, '#6FC48F' for shopping)"},
                         },
                         "required": ["name", "color"],
                     },
-                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #00f5ff (cyan), #a855f7 (purple), #f59e0b (amber), #10b981 (green), #ef4444 (red).",
+                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #7FA8E8 (work), #9C8FE0 (meeting, study), #C49BE0 (personal), #6FC48F (shopping), #E07A7A (health), #E8B04B (finance), #6FC4BF (home), #E0A26F (travel), #9AA3BA (other).",
                 },
             },
             "required": ["user_id", "title"],
@@ -178,11 +178,11 @@ TOOLS: list[Tool] = [
                         "type": "object",
                         "properties": {
                             "name": {"type": "string", "description": "Tag name (e.g., 'karachi', 'work', 'shopping', 'urgent')"},
-                            "color": {"type": "string", "description": "Hex color code (e.g., '#00f5ff' for cyan, '#a855f7' for purple)"},
+                            "color": {"type": "string", "description": "Hex color code from the tag palette (e.g., '#7FA8E8' for work, '#6FC48F' for shopping)"},
                         },
                         "required": ["name", "color"],
                     },
-                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #00f5ff (cyan), #a855f7 (purple), #f59e0b (amber), #10b981 (green), #ef4444 (red), #ec4899 (pink), #8b5cf6 (violet).",
+                    "description": "Extracted tags from user input. Include locations, categories, and activities. Use these colors: #7FA8E8 (work), #9C8FE0 (meeting, study), #C49BE0 (personal), #6FC48F (shopping), #E07A7A (health), #E8B04B (finance), #6FC4BF (home), #E0A26F (travel), #9AA3BA (other).",
                 },
             },
             "required": ["user_id", "task_id"],
@@ -278,9 +278,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     if not session:
         # Create a temporary session for this tool call with autocommit=True
         # because this session is not managed by an outer transaction
-        from app.db import get_session
+        from app.db import async_session_maker
 
-        async with get_session() as temp_session:
+        async with async_session_maker() as temp_session:
             return await _execute_tool_call(name, arguments, temp_session, logger, autocommit=True)
 
     return await _execute_tool_call(name, arguments, session, logger, autocommit=False)
@@ -303,11 +303,12 @@ async def _execute_tool_call(
         arguments: Tool parameters
         session: Database session
         logger: Logger instance
-        autocommit: If True, TaskTools will commit after operations.
-                    Use True for standalone tool calls, False for integrated sessions.
+        autocommit: If True, commit the session after a successful tool call.
+                    Use True for standalone tool calls, False for integrated sessions
+                    (TaskTools never commits; its caller owns the transaction).
     """
 
-    tools = TaskTools(session, autocommit=autocommit)
+    tools = TaskTools(session)
     TOOL_TIMEOUT = 30.0  # seconds per spec.md T103
 
     # Route to appropriate tool method with timeout
@@ -381,6 +382,9 @@ async def _execute_tool_call(
             error=type(e).__name__,
             message=f"Tool execution failed: {str(e)}",
         )
+
+    if autocommit and response.status == "success":
+        await session.commit()
 
     # Format response for MCP
     if response.status == "success":

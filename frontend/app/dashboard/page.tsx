@@ -1,14 +1,16 @@
 /** Dashboard Page - Task Management Interface.
  *
  * Per spec.md:
- * - FR-037: glassmorphism visual design with backdrop-blur effects
- * - FR-038: "Deep Space" color scheme with cyan/purple neon accents
+ * - Orbit panel (live mini orrery of today / this week / later) beside the list
  * - US2: Command Center integration for voice input (Phase III foundation)
  */
 
 import { Header } from "@/components/layout/header"
 import { DashboardContent } from "@/components/dashboard/dashboard-content"
 import { getSession } from "@/app/actions/auth"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "My tasks" }
 
 export default async function DashboardPage() {
   // Get session (user data) from server-side cookie
@@ -18,27 +20,17 @@ export default async function DashboardPage() {
   const isAuthenticated = session !== null
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Header
         isAuthenticated={isAuthenticated}
         user={session?.user}
       />
 
-      <main className="container px-4 sm:px-6 pt-20 pb-4 sm:pt-24 sm:pb-6">
+      <main className="px-4 pb-28 pt-24 sm:px-6 sm:pt-28">
         <DashboardContent
           isAuthenticated={isAuthenticated}
         />
       </main>
-
-      <style>{`
-        @keyframes gradient {
-          0%, 100% { background-position: 0% center; }
-          50% { background-position: 100% center; }
-        }
-        .animate-gradient {
-          animation: gradient 4s ease infinite;
-        }
-      `}</style>
     </div>
   )
 }

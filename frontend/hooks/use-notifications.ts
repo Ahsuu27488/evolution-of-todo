@@ -17,10 +17,8 @@ import {
 
 import { api } from "@/lib/api-client"
 import type {
-  Notification,
   NotificationList,
   NotificationSettings,
-  NotificationType,
 } from "@/types/notification"
 
 // =============================================================================

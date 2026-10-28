@@ -1,14 +1,13 @@
-/** Task Card Component with Deep Space Glassmorphism.
+/** Task card: solid surface, priority as a slim left edge, completion with confetti.
  *
  * Per spec.md:
- * - FR-037: glassmorphism visual design with backdrop-blur effects
- * - FR-039: micro-animations for state transitions (slide-in, glow, fade)
+ * - FR-039: micro-animations for state transitions (slide-in, settle, fade)
  * - FR-040: confetti particle effect on task completion
  * - T097-T099: AI task summarization with regenerate button
  *
  * Acceptance Scenarios (US4):
  * - Given a user with an incomplete task, When they click the completion checkbox,
- *   Then the task glows cyan, strikes through with animation, and confetti particles burst
+ *   Then the task strikes through with animation and confetti particles burst
  * - Given a user with a completed task, When they click the completion checkbox again,
  *   Then the task reverts to incomplete status with reverse animation
  */
@@ -18,7 +17,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { Check, Calendar, Tag, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
+import { Check, Calendar, Repeat2, Sparkles, Loader2, RefreshCw } from "lucide-react"
+import { format, isToday, isTomorrow, isYesterday, differenceInCalendarDays } from "date-fns"
 import { useQueryClient } from "@tanstack/react-query"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,9 +39,22 @@ interface TaskCardProps {
 }
 
 const priorityColors = {
-  HIGH: "border-destructive/60 shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.35),0_0_20px_rgba(239,68,68,0.25)]",
-  MEDIUM: "border-secondary/60 shadow-[inset_3px_0_8px_-2px_rgba(168,85,247,0.35),0_0_20px_rgba(168,85,247,0.25)]",
-  LOW: "border-muted-foreground/40",
+  HIGH: "border-l-destructive",
+  MEDIUM: "border-l-primary",
+  LOW: "border-l-muted-foreground/40",
+}
+
+/** "Today 10:00", "Tomorrow", "Fri 30 Oct", "Overdue: Mon 26 Oct" */
+function formatDue(date: Date, overdue: boolean): string {
+  const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0
+  const time = hasTime ? ` ${format(date, "HH:mm")}` : ""
+  let day: string
+  if (isToday(date)) day = "Today"
+  else if (isTomorrow(date)) day = "Tomorrow"
+  else if (isYesterday(date)) day = "Yesterday"
+  else if (Math.abs(differenceInCalendarDays(date, new Date())) < 7) day = format(date, "EEEE")
+  else day = format(date, "EEE d MMM")
+  return `${overdue ? "Overdue: " : ""}${day}${time}`
 }
 
 const priorityLabels = {
@@ -51,9 +64,9 @@ const priorityLabels = {
 }
 
 const priorityBadgeColors = {
-  HIGH: "bg-destructive/20 text-destructive border-destructive/50",
-  MEDIUM: "bg-secondary/20 text-secondary border-secondary/50",
-  LOW: "bg-muted/50 text-muted-foreground border-muted-foreground/30",
+  HIGH: "bg-destructive/15 text-destructive border-transparent",
+  MEDIUM: "bg-primary/15 text-primary border-transparent",
+  LOW: "bg-muted text-muted-foreground border-transparent",
 }
 
 export function TaskCard({ task, index = 0 }: TaskCardProps) {
@@ -158,23 +171,21 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
     >
       <motion.div
         variants={taskComplete}
-        animate={optimisticCompleted ? "glow" : "normal"}
+        animate={optimisticCompleted ? "settle" : "normal"}
         className="transition-all duration-300"
       >
         <Card
           className={cn(
-            // Glassmorphism effect
-            "glass transition-all duration-300 hover:scale-[1.01]",
-            // Priority border - thinner on mobile
-            "border-l-2 sm:border-l-4",
+            // Solid content surface; priority shows as a slim left edge
+            "surface gap-0 py-0 rounded-[var(--radius-xl)] border-l-[3px]",
+            "transition-[transform,border-color,opacity] duration-200 ease-[var(--ease-out)] hover:-translate-y-px hover:border-foreground/15",
             priorityColors[task.priority],
-            // Overdue indicator - enhanced glow with inset
-            isOverdue && "border-destructive shadow-[inset_3px_0_8px_-2px_rgba(239,68,68,0.4),0_0_25px_rgba(239,68,68,0.3)]",
-            optimisticCompleted && "opacity-75"
+            isOverdue && "border-l-destructive",
+            optimisticCompleted && "opacity-60"
           )}
         >
-          <CardContent className="flex items-start gap-3 p-3 sm:gap-4 sm:p-4">
-            {/* Checkbox with glow effect */}
+          <CardContent className="flex items-start gap-3 px-4 py-3.5 sm:gap-4">
+            {/* Completion checkbox */}
             <motion.div
               className="pt-0.5 sm:pt-1"
               animate={optimisticCompleted ? { scale: [1, 1.2, 1] } : { scale: 1 }}
@@ -184,10 +195,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                 checked={optimisticCompleted}
                 onCheckedChange={handleToggleComplete}
                 disabled={isUpdating}
-                className={cn(
-                  "h-5 w-5 transition-all duration-300",
-                  optimisticCompleted && "border-primary shadow-[inset_0_0_6px_rgba(0,245,255,0.4),0_0_12px_rgba(0,245,255,0.5)]"
-                )}
+                className="size-5"
                 aria-label={optimisticCompleted ? "Mark as incomplete" : "Mark as complete"}
               />
             </motion.div>
@@ -238,30 +246,30 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
                     <div className="relative group">
                       {/* Summary label */}
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-                        <span className="text-xs font-medium text-cyan-400/90">AI Summary</span>
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-medium text-primary">AI summary</span>
                         {/* T098: Regenerate button */}
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
+                        <button
+                          type="button"
                           onClick={handleRegenerateSummary}
                           disabled={isRegeneratingSummary}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-white/10 disabled:opacity-50"
+                          className="relative grid size-7 place-items-center rounded-full text-primary/70 outline-none transition-[opacity,background-color,color] after:absolute after:-inset-1.5 hover:bg-accent hover:text-primary focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+                          aria-label="Regenerate summary"
                           title="Regenerate summary"
                         >
                           {isRegeneratingSummary ? (
-                            <Loader2 className="h-3 w-3.5 text-cyan-400 animate-spin" />
+                            <Loader2 className="size-3.5 animate-spin" aria-hidden />
                           ) : (
-                            <RefreshCw className="h-3 w-3.5 text-cyan-400/70 hover:text-cyan-400" />
+                            <RefreshCw className="size-3.5" aria-hidden />
                           )}
-                        </motion.button>
+                        </button>
                       </div>
 
                       {/* Summary text */}
                       <p
                         className={cn(
                           "text-xs text-muted-foreground leading-relaxed p-2.5 rounded-lg border",
-                          "bg-cyan-500/5 border-cyan-500/20",
+                          "bg-primary/6 border-primary/18",
                           optimisticCompleted && "line-through opacity-60"
                         )}
                       >
@@ -274,21 +282,16 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
 
               {/* Tags */}
               {task.tags && task.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
+                <div className="flex flex-wrap gap-1.5 mt-2">
                   {task.tags.map((tag, idx) => (
                     <motion.span
                       key={idx}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.1 + idx * 0.05 }}
-                      className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${tag.color}20`,
-                        color: tag.color,
-                        border: `1px solid ${tag.color}40`,
-                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
                     >
-                      <Tag className="h-3 w-3" />
+                      <span className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} aria-hidden />
                       {tag.name}
                     </motion.span>
                   ))}
@@ -299,19 +302,12 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {dueDate && (
                 <div
                   className={cn(
-                    "flex items-center gap-2 text-xs mt-3 transition-colors",
-                    isOverdue
-                      ? "text-destructive"
-                      : optimisticCompleted
-                        ? "text-muted-foreground"
-                        : "text-muted-foreground"
+                    "flex items-center gap-1.5 text-xs mt-2 tabular-nums transition-colors",
+                    isOverdue ? "text-destructive" : "text-muted-foreground"
                   )}
                 >
                   <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {isOverdue && "Overdue: "}
-                    {dueDate.toLocaleDateString()}
-                  </span>
+                  <time dateTime={task.due_date ?? undefined}>{formatDue(dueDate, Boolean(isOverdue))}</time>
                 </div>
               )}
 
@@ -319,7 +315,7 @@ export function TaskCard({ task, index = 0 }: TaskCardProps) {
               {task.recurrence_pattern && (
                 <div
                   className={cn(
-                    "flex items-center gap-2 text-xs mt-2",
+                    "flex items-center gap-1.5 text-xs mt-1.5",
                     "text-secondary"
                   )}
                   title={`Repeats: ${task.recurrence_pattern.toLowerCase()}`}

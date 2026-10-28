@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, Pencil, Trash2, AlertTriangle } from "lucide-react"
+import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 
@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -20,6 +21,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogIcon,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { TaskForm } from "./task-form"
@@ -36,22 +38,24 @@ export function TaskActions({ task }: TaskActionsProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const queryClient = useQueryClient()
 
-  async function handleDelete() {
+  async function handleDelete(e: React.MouseEvent) {
+    // Keep the dialog open (with its spinner) until the request settles
+    e.preventDefault()
     setIsDeleting(true)
     try {
       const result = await deleteTask(task.id)
       if (!result.success) {
-        toast.error(result.error?.message || "Failed to delete task")
+        toast.error(result.error?.message || "Couldn't delete the task")
         return
       }
       // Invalidate TanStack Query cache to refetch tasks
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
       toast.success("Task deleted")
+      setShowDeleteDialog(false)
     } catch {
-      toast.error("Failed to delete task")
+      toast.error("Couldn't delete the task")
     } finally {
       setIsDeleting(false)
-      setShowDeleteDialog(false)
     }
   }
 
@@ -59,21 +63,23 @@ export function TaskActions({ task }: TaskActionsProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <MoreHorizontal className="h-4 w-4" />
-            <span className="sr-only">Open menu</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-muted-foreground hover:text-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground"
+            aria-label="Task actions"
+          >
+            <MoreHorizontal />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+        <DropdownMenuContent align="end" className="min-w-40">
+          <DropdownMenuItem onSelect={() => setShowEditDialog(true)}>
+            <Pencil />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setShowDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive" onSelect={() => setShowDeleteDialog(true)}>
+            <Trash2 />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -87,27 +93,34 @@ export function TaskActions({ task }: TaskActionsProps) {
         onSuccess={() => setShowEditDialog(false)}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialog open={showDeleteDialog} onOpenChange={(open) => !isDeleting && setShowDeleteDialog(open)}>
         <AlertDialogContent variant="destructive">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Delete Task?
-            </AlertDialogTitle>
+            <AlertDialogIcon>
+              <Trash2 />
+            </AlertDialogIcon>
+            <AlertDialogTitle>Delete this task?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &quot;{task.title}&quot;. This action
-              cannot be undone.
+              &ldquo;{task.title}&rdquo; will be removed for good. This can&apos;t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Keep it</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-[0_0_15px_rgba(239,68,68,0.4)]"
+              aria-busy={isDeleting}
+              className="min-w-28"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Deleting
+                </>
+              ) : (
+                "Delete task"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

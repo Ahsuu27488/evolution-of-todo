@@ -4,7 +4,10 @@
 
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
-sqlmodel>=0.0.14
+# sqlmodel 0.0.45+ rejects naive datetimes; ~40 utcnow() call sites still write them
+sqlmodel>=0.0.22,<0.0.45
+# Async engine needs greenlet, which SQLAlchemy no longer installs by default
+sqlalchemy[asyncio]>=2.0
 psycopg2-binary>=2.9.9
 python-dotenv>=1.0.0
 python-jose[cryptography]>=3.3.0
@@ -36,12 +39,14 @@ pydantic-settings>=2.0.0
 # =============================================================================
 # Phase III: AI Chatbot Dependencies (012)
 # =============================================================================
-# OpenAI Agents SDK
-openai-agents>=0.1.0
+# OpenAI Agents SDK (pinned to the majors the code was written against, Feb 2026;
+# mcp 2.x removed Server.list_tools(), agents 0.9+ changed APIs, openai 2.45+ breaks
+# agents 0.8 Usage() (InputTokensDetails.cache_write_tokens became required))
+openai-agents>=0.8,<0.9
 # OpenAI API client
-openai>=1.60.0
+openai>=2.19,<2.45
 # MCP Python SDK for in-process server
-mcp>=0.9.0
+mcp>=1.25,<2
 # Qdrant vector database client
 qdrant-client>=1.12.0
 # Structured logging for observability
@@ -54,5 +59,3 @@ aiohttp>=3.9.0
 aiofiles>=24.1.0
 # Rate limiting
 slowapi>=0.1.9
-# Context variables for async correlation ID propagation
-contextvars>=2.4

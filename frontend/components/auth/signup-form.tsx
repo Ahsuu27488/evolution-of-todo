@@ -59,7 +59,7 @@ export function SignupForm() {
         return
       }
 
-      toast.success("Account created successfully!")
+      toast.success("Account created. Welcome to Chronos")
       // Use window.location.href for a hard redirect
       window.location.href = "/dashboard"
     } catch (error) {
@@ -84,7 +84,7 @@ export function SignupForm() {
                   placeholder="name@example.com"
                   autoComplete="email"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -98,14 +98,14 @@ export function SignupForm() {
           name="firstName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>First Name <span className="text-destructive">*</span></FormLabel>
+              <FormLabel>First name <span className="text-destructive">*</span></FormLabel>
               <FormControl>
                 <Input
                   type="text"
                   placeholder="John"
                   autoComplete="given-name"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -119,14 +119,14 @@ export function SignupForm() {
           name="lastName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Last Name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+              <FormLabel>Last name <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
               <FormControl>
                 <Input
                   type="text"
                   placeholder="Doe"
                   autoComplete="family-name"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                   value={field.value || ""}
                 />
@@ -147,7 +147,7 @@ export function SignupForm() {
                   placeholder="Create a password"
                   autoComplete="new-password"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -160,14 +160,14 @@ export function SignupForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>Confirm password</FormLabel>
               <FormControl>
                 <Input
                   type="password"
                   placeholder="Confirm your password"
                   autoComplete="new-password"
                   disabled={isLoading}
-                  className="bg-background/50 border-border/50"
+                  className="bg-background/60"
                   {...field}
                 />
               </FormControl>
@@ -177,7 +177,7 @@ export function SignupForm() {
         />
         <Button
           type="submit"
-          className="w-full shadow-lg shadow-primary/20"
+          className="w-full h-11"
           disabled={isLoading}
         >
           {isLoading ? (

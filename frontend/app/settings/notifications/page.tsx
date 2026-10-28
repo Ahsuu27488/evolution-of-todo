@@ -3,18 +3,18 @@
  *
  * [Task]: T016, T047-T050
  * [From]: spec.md FR-033
- * [From]: contracts/api.yaml §4.1, §4.2
  *
- * Features:
- * - Tabbed interface for different notification settings
- * - Push notification settings
- * - Email notification preferences
- * - In-app notification settings (always enabled)
+ * Push, email and in-app channels in tabs (?tab=push|email|in-app).
  */
 
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { requireAuth } from "@/app/actions/auth"
 import { NotificationTabs } from "@/components/notifications/notification-tabs"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Notification settings" }
 
 export default async function NotificationSettingsPage({
   searchParams,
@@ -26,25 +26,24 @@ export default async function NotificationSettingsPage({
   const initialTab = params.tab || "push"
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        isAuthenticated={true}
-        user={session.user}
-      />
+    <div className="min-h-screen">
+      <Header isAuthenticated user={session.user} />
 
-      <main className="container px-4 sm:px-6 pt-20 pb-6 sm:pt-24 sm:pb-10">
-        <div className="max-w-3xl mx-auto">
-          {/* Page Header */}
-          <div className="mb-6 sm:mb-8 text-center">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-              Notification Settings
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground px-2">
-              Manage how and when you receive notifications
-            </p>
+      <main className="px-4 pt-24 pb-16 sm:px-6 sm:pt-28">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/dashboard"
+            className="mb-4 inline-flex h-10 items-center gap-1.5 rounded-full pr-3 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            My tasks
+          </Link>
+
+          <div className="mb-6">
+            <h1 className="text-[length:var(--step-h1)] leading-tight font-semibold">Notifications</h1>
+            <p className="mt-1 text-muted-foreground">Choose how Chronos reaches you about your tasks.</p>
           </div>
 
-          {/* Settings Tabs */}
           <NotificationTabs defaultTab={initialTab} />
         </div>
       </main>

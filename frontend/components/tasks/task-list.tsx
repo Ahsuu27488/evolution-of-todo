@@ -1,7 +1,5 @@
 /** Task List Component with Staggered Animations.
  *
- * Per spec.md FR-039: micro-animations for state transitions (slide-in, glow, fade)
- *
  * Displays tasks with staggered entrance animations and supports
  * smooth reordering when items are added or removed.
  */
@@ -16,11 +14,14 @@ import type { Task } from "@/types/task"
 
 interface TaskListProps {
   tasks: Task[]
+  /** True when the user has tasks but the search or filters hide them all */
+  isFiltered?: boolean
+  onClearFilters?: () => void
 }
 
-export function TaskList({ tasks }: TaskListProps) {
+export function TaskList({ tasks, isFiltered = false, onClearFilters }: TaskListProps) {
   if (tasks.length === 0) {
-    return <EmptyState />
+    return <EmptyState variant={isFiltered ? "filtered" : "first"} onClearFilters={onClearFilters} />
   }
 
   return (
@@ -30,6 +31,7 @@ export function TaskList({ tasks }: TaskListProps) {
       animate="visible"
       className="space-y-3"
     >
+      {/* Cards are direct children so AnimatePresence can play their exit */}
       <AnimatePresence mode="popLayout">
         {tasks.map((task, index) => (
           <TaskCard key={task.id} task={task} index={index} />

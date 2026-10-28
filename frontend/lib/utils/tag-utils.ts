@@ -4,13 +4,9 @@
  * Helper functions for tag management including color generation,
  * validation, and persistence.
  *
- * Per contracts/components.ts: Predefined Deep Space color palette:
- * - Cyan: #00f5ff
- * - Purple: #a855f7
- * - Green: #22c55e
- * - Yellow: #eab308
- * - Pink: #ec4899
- * - Orange: #f97316
+ * Tag colours are stored with each tag (hex, validated by lib/validations/task.ts), so they are
+ * data rather than theme tokens. The palette is the same muted set Kairos uses
+ * (backend/app/ai/agents/prompts.py TAG_COLORS): readable as dots on both themes.
  */
 
 import type { Tag } from "@/types/task"
@@ -19,14 +15,16 @@ import type { Tag } from "@/types/task"
 // Color Palette
 // =============================================================================
 
-/** Deep Space theme colors for tags */
+/** Tag dot colours (hex: stored on the task) */
 export const TAG_COLORS = [
-  "#00f5ff", // Cyan
-  "#a855f7", // Purple
-  "#22c55e", // Green
-  "#eab308", // Yellow
-  "#ec4899", // Pink
-  "#f97316", // Orange
+  "#7FA8E8", // orbit blue
+  "#9C8FE0", // dusk violet
+  "#C49BE0", // lilac
+  "#6FC48F", // sage
+  "#E07A7A", // clay red
+  "#E8B04B", // sun gold
+  "#6FC4BF", // teal
+  "#E0A26F", // amber
 ] as const
 
 /** Type for valid tag colors */
@@ -37,7 +35,7 @@ export type TagColor = (typeof TAG_COLORS)[number]
 // =============================================================================
 
 /**
- * Get a random color from the Deep Space color palette.
+ * Get a random colour from the tag palette.
  *
  * @returns A random hex color from the predefined palette
  */

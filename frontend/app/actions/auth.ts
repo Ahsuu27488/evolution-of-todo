@@ -11,7 +11,7 @@
 
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const JWT_COOKIE_NAME = "auth_token"

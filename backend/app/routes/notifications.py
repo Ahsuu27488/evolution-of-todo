@@ -585,8 +585,8 @@ async def test_push_notification(
         result = await PushService.send_push(
             session=session,
             user_id=user_id,
-            title="🔔 Test Notification",
-            body="Push notifications are working! If you see this, everything is configured correctly.",
+            title="Test notification from Chronos",
+            body="Push notifications are working on this device.",
             icon="/icon.png",
             data={"type": "test", "timestamp": str(datetime.utcnow())},
             notification_type=NotificationType.SYSTEM_UPDATE,
@@ -670,8 +670,8 @@ async def test_email_notification(
             notification = Notification(
                 user_id=user_id,
                 type=NotificationType.SYSTEM_UPDATE,
-                title="🔔 Test Email from Chronos Todo",
-                message="This is a test email to verify that email notifications are working correctly. If you received this, your email configuration is all set up!",
+                title="Test email from Chronos",
+                message="If this reached your inbox, Chronos can email you.",
             )
             session.add(notification)
             await session.commit()
@@ -687,22 +687,11 @@ async def test_email_notification(
                 session=session,
                 notification_id=notification.id,
                 to=to_email,
-                subject="🔔 Test Email from Chronos Todo",
-                html=EmailTemplates.base_template(
-                    f"""<div style="text-align: center; padding: 40px 0;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">🔔</div>
-                        <h2 style="color: #5eead4; margin-bottom: 16px;">Test Email Successful!</h2>
-                        <p style="color: #a1a1aa; margin-bottom: 24px;">
-                            This is a test email from Chronos Todo. If you received this,
-                            your email notification system is working correctly!
-                        </p>
-                        <p style="color: #71717a; font-size: 14px;">
-                            You can now enable email notifications for different events
-                            in your notification settings.
-                        </p>
-                    </div>""",
-                    preview_text="Test email from Chronos Todo",
-                    unsubscribe_token=unsubscribe_token,
+                subject="Test email from Chronos",
+                html=EmailTemplates.message(
+                    "Your test email arrived",
+                    "Email notifications are working. Choose which events Chronos emails you about in notification settings.",
+                    unsubscribe_token,
                 ),
             )
 
@@ -734,6 +723,66 @@ async def test_email_notification(
 # =============================================================================
 
 
+def _status_page(base_url: str, title: str, message: str, ok: bool) -> str:
+    """Small standalone page (unsubscribe result) on the Chronos palette, light and dark."""
+    from html import escape
+
+    mark = "&#10003;" if ok else "!"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>{escape(title)} · Chronos</title>
+    <link rel="icon" href="{base_url}/icon.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&family=Funnel+Display:wght@600&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg: #F3F5FA; --card: #FFFFFF; --ink: #1A2238; --muted: #5B6478; --border: #E3E7F0;
+            --mark-bg: {"#E3F4EA" if ok else "#FCE8E6"}; --mark: {"#25784A" if ok else "#B3261E"};
+        }}
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --bg: #0E1424; --card: #161D31; --ink: #E9ECF5; --muted: #9AA3BA; --border: #262E47;
+                --mark-bg: {"#1B2E2A" if ok else "#33232A"}; --mark: {"#7FD3A0" if ok else "#F08C82"};
+            }}
+        }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            min-height: 100vh; display: grid; place-items: center; padding: 24px;
+            background: var(--bg); color: var(--ink);
+            font-family: "Hanken Grotesk", -apple-system, "Segoe UI", Roboto, sans-serif;
+        }}
+        main {{
+            width: 100%; max-width: 420px; padding: 32px; border-radius: 22px;
+            background: var(--card); border: 1px solid var(--border); text-align: center;
+        }}
+        .brand {{ display: inline-flex; align-items: center; gap: 8px; margin-bottom: 28px; color: var(--ink);
+                  text-decoration: none; font-weight: 600; }}
+        .brand img {{ width: 24px; height: 24px; border-radius: 6px; }}
+        .mark {{ width: 48px; height: 48px; margin: 0 auto 16px; border-radius: 999px; display: grid; place-items: center;
+                 background: var(--mark-bg); color: var(--mark); font-size: 20px; font-weight: 700; }}
+        h1 {{ font-family: "Funnel Display", "Hanken Grotesk", sans-serif; font-size: 24px; letter-spacing: -0.02em;
+              margin-bottom: 8px; }}
+        p {{ color: var(--muted); line-height: 1.55; margin-bottom: 24px; }}
+        a.button {{ display: inline-block; min-height: 44px; padding: 12px 22px; border-radius: 999px; background: #F2B84B;
+                    color: #141A2E; font-weight: 600; text-decoration: none; }}
+        a.button:focus-visible {{ outline: 2px solid var(--ink); outline-offset: 3px; }}
+    </style>
+</head>
+<body>
+    <main>
+        <a class="brand" href="{base_url}"><img src="{base_url}/icon-192.png" alt="">Chronos</a>
+        <div class="mark" aria-hidden="true">{mark}</div>
+        <h1>{escape(title)}</h1>
+        <p>{escape(message)}</p>
+        <a class="button" href="{base_url}/settings/notifications">Notification settings</a>
+    </main>
+</body>
+</html>"""
+
+
 @router.get("/email/unsubscribe")
 async def unsubscribe_email(
     token: str,
@@ -762,61 +811,12 @@ async def unsubscribe_email(
 
     if not token_data:
         # Invalid token - return error HTML
-        error_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsubscribe Failed - Chronos Todo</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #e8e8ed;
-        }}
-        .container {{
-            max-width: 500px;
-            padding: 40px;
-            text-align: center;
-        }}
-        .icon {{
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 40px;
-        }}
-        h1 {{ margin-bottom: 16px; font-size: 24px; }}
-        p {{ color: #a1a1aa; line-height: 1.6; margin-bottom: 24px; }}
-        a {{
-            display: inline-block;
-            background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%);
-            color: #0a0a0f;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon">✕</div>
-        <h1>Unsubscribe Failed</h1>
-        <p>The unsubscribe link is invalid or has expired. Please try again or contact support for assistance.</p>
-        <a href="{base_url}/settings/notifications">Manage Notification Settings</a>
-    </div>
-</body>
-</html>"""
+        error_html = _status_page(
+            base_url,
+            "This link has expired",
+            "The unsubscribe link is invalid or too old. You can still turn emails off in your notification settings.",
+            ok=False,
+        )
         return HTMLResponse(content=error_html, status_code=400)
 
     # Process unsubscribe
@@ -829,65 +829,15 @@ async def unsubscribe_email(
     if not notification_type or notification_type == "all":
         notif_desc = "all notifications"
     else:
-        notif_desc = f"{notification_type.replace('_', ' ').title()} notifications"
+        notif_desc = f"{notification_type.replace('_', ' ').replace('task ', '')} tasks"
 
     # Success - return confirmation HTML
-    success_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsubscribed - Chronos Todo</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #e8e8ed;
-        }}
-        .container {{
-            max-width: 500px;
-            padding: 40px;
-            text-align: center;
-        }}
-        .icon {{
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #5eead4 0%, #6366f1 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 40px;
-        }}
-        h1 {{ margin-bottom: 16px; font-size: 24px; }}
-        p {{ color: #a1a1aa; line-height: 1.6; margin-bottom: 24px; }}
-        a {{
-            display: inline-block;
-            background: #1e1e2e;
-            color: #e8e8ed;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            border: 1px solid #27272a;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="icon">✓</div>
-        <h1>You're Unsubscribed</h1>
-        <p>You have been successfully unsubscribed from {notif_desc}.</p>
-        <a href="{base_url}/settings/notifications">Manage Notification Settings</a>
-    </div>
-</body>
-</html>"""
+    success_html = _status_page(
+        base_url,
+        "You're unsubscribed",
+        f"Chronos won't email you about {notif_desc} any more. You can turn emails back on any time.",
+        ok=True,
+    )
     return HTMLResponse(content=success_html)
 
 

@@ -982,8 +982,12 @@ class SchedulerService:
                             session=session,
                             user_id=task.user_id,
                             type=NotificationType.TASK_DUE,
-                            title=f"Task Due Soon: {task.title}",
-                            message=f"Your task '{task.title}' is due soon",
+                            title=f"Due soon: {task.title}",
+                            message=(
+                                f"Due {task.due_date.strftime('%a %d %b, %H:%M')}"
+                                if task.due_date
+                                else "Due soon"
+                            ),
                             data={
                                 "task_id": task.id,
                                 "task_title": task.title,

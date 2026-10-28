@@ -131,7 +131,7 @@ class Notification(SQLModel, table=True):
     )
 
     # Relationships
-    # Note: Task relationship defined in main models.py to avoid circular import
+    # Note: Task relationship defined in models/core.py to avoid circular import
     # related_task: Optional["Task"] = Relationship(back_populates="notifications")
 
 

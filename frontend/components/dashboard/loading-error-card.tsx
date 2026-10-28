@@ -1,23 +1,13 @@
 "use client"
 
 /**
- * LoadingErrorCard Component
- *
- * [T020] Inline error card for loading failures with retry functionality.
- * Displays contextual error message within task list area.
- *
- * Features:
- * - Inline error display (non-blocking)
- * - Clear retry button to re-initiate request
- * - Helpful error messages
- * - Accessible error handling
- *
- * [From]: research.md §Research Area 1: Decision: Inline Error Card for Loading Failures
- * [From]: spec.md FR-006: Display error state with retry option
+ * LoadingErrorCard: inline error for a failed fetch, shown in place of the content it replaces,
+ * with a retry button. Solid surface, destructive tone on the icon only.
  */
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw } from "lucide-react"
+import { CloudOff, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface LoadingErrorCardProps {
@@ -29,85 +19,57 @@ interface LoadingErrorCardProps {
   className?: string
   /** Whether retry action is in progress */
   isRetrying?: boolean
+  /** Heading above the message */
+  title?: string
 }
 
-/**
- * Loading error card component.
- *
- * Displays inline error message with retry button.
- * Designed to appear within the task list area when data fetch fails.
- *
- * @example
- * ```tsx
- * {isError && (
- *   <LoadingErrorCard
- *     message="Unable to load tasks. Please check your connection."
- *     onRetry={() => refetch()}
- *     isRetrying={isRefetching}
- *   />
- * )}
- * ```
- */
 export function LoadingErrorCard({
   message,
   onRetry,
   className,
   isRetrying = false,
+  title = "Couldn't load your tasks",
 }: LoadingErrorCardProps) {
+  // Busy while the parent says so, or while the retry promise is pending
+  const [pending, setPending] = useState(false)
+  const busy = isRetrying || pending
+
   const handleRetry = async () => {
-    await onRetry()
+    setPending(true)
+    try {
+      await onRetry()
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
     <div
       className={cn(
-        "loading-error-card",
-        "flex flex-col items-center justify-center gap-4",
-        "p-8 rounded-lg",
-        "glass border border-destructive/30",
-        "text-center",
+        "surface flex flex-col items-center gap-4 rounded-[var(--radius-2xl)] px-6 py-12 text-center",
         className
       )}
       role="alert"
-      aria-live="assertive"
     >
-      {/* Error icon with glow effect */}
-      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 glow-destructive">
-        <AlertCircle className="w-6 h-6 text-destructive" aria-hidden="true" />
+      <div className="grid size-12 place-items-center rounded-full bg-destructive/12 text-destructive">
+        <CloudOff className="size-5" aria-hidden />
       </div>
 
-      {/* Error message */}
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold text-foreground">
-          Unable to Load
-        </h3>
-        <p className="text-sm text-muted-foreground max-w-md">
-          {message}
-        </p>
+      <div className="space-y-1.5">
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
+        <p className="max-w-sm text-sm text-muted-foreground">{message}</p>
       </div>
 
-      {/* Retry button */}
       <Button
         onClick={handleRetry}
-        disabled={isRetrying}
-        variant="default"
-        className="gap-2"
-        aria-label="Retry loading tasks"
+        disabled={busy}
+        aria-busy={busy}
+        variant="outline"
+        className="rounded-full"
       >
-        <RefreshCw
-          className={cn(
-            "w-4 h-4",
-            isRetrying && "animate-spin"
-          )}
-          aria-hidden="true"
-        />
-        {isRetrying ? "Retrying..." : "Retry"}
+        <RefreshCw className={cn(busy && "animate-spin")} aria-hidden />
+        {busy ? "Trying again" : "Try again"}
       </Button>
-
-      {/* Additional help text */}
-      <p className="text-xs text-muted-foreground">
-        If the problem persists, check your network connection or try again later.
-      </p>
     </div>
   )
 }

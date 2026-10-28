@@ -1,12 +1,11 @@
-/** Landing Page - Hero Section with Deep Space Theme.
+/** Landing Page - orrery hero, product bento, closing call to action.
  *
  * Per spec.md US1: Discover and Sign Up
- * - "futuristic deep space glassmorphism design"
+ * - (original spec asked for a "deep space glassmorphism" look; superseded by D-007)
  * - "compelling call-to-action"
  * - "learn about upcoming voice features"
  *
- * Per spec.md FR-038: "Deep Space" color scheme with cyan/purple neon accents
- * Per spec.md FR-037: glassmorphism visual design with backdrop-blur effects
+ * Visual direction: "night observatory" (D-007, docs/design/README.md)
  *
  * This is a Server Component that fetches session server-side and passes it
  * to the Client Component (HeroSection) for personalized content.

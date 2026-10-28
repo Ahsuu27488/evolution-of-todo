@@ -5,7 +5,7 @@
  * [From]: spec.md FR-001, FR-005, SC-001, FR-013-FR-017
  *
  * Features:
- * - Wraps NotificationBell and NotificationDropdown
+ * - Bell trigger with unread count, and the notification menu
  * - Manages SSE stream connection
  * - Handles real-time updates
  * - Integrates push permission modal
@@ -15,11 +15,10 @@
 
 import { useState, useEffect } from "react"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
-import { Bell } from "lucide-react"
 import dynamic from "next/dynamic"
 
-import { useUnreadCount } from "@/hooks/use-notifications"
 import { usePushSubscription } from "@/hooks/use-push-subscription"
+import { NotificationBell } from "./notification-bell"
 import { NotificationDropdown } from "./notification-dropdown"
 import { PushPermissionModal } from "./push-permission-modal"
 
@@ -37,7 +36,6 @@ const SSEStreamProvider = dynamic(
 export function NotificationsClient() {
   const [open, setOpen] = useState(false)
   const [showPushModal, setShowPushModal] = useState(false)
-  const { data: unreadCount } = useUnreadCount()
   const { permissionStatus, isSupported } = usePushSubscription()
 
   // Check if we should show push permission modal
@@ -55,24 +53,13 @@ export function NotificationsClient() {
     }
   }, [isSupported, permissionStatus])
 
-  // Only show badge when there are actual unread notifications (> 0)
-  const showBadge = typeof unreadCount === "number" && unreadCount > 0
-
   return (
     <>
       <DropdownMenu.Root open={open} onOpenChange={setOpen}>
-        <DropdownMenu.Trigger
-          className="relative inline-flex items-center justify-center p-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5 text-foreground" />
-          {showBadge && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-0.5 flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 rounded-full">
-              {unreadCount && unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
+        <DropdownMenu.Trigger asChild>
+          <NotificationBell />
         </DropdownMenu.Trigger>
-        <NotificationDropdown />
+        <NotificationDropdown onNavigate={() => setOpen(false)} />
         {/* SSE streaming for real-time updates - client only */}
         <SSEStreamProvider />
       </DropdownMenu.Root>
@@ -90,4 +77,5 @@ export function NotificationsClient() {
 }
 
 // Re-export for convenience
-export { NotificationBell, NotificationDropdown } from "./notification-dropdown"
+export { NotificationBell } from "./notification-bell"
+export { NotificationDropdown } from "./notification-dropdown"

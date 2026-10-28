@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>Chronos</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <style>
+        /* Reset styles */
+        .email-body { margin: 0; padding: 0; width: 100% !important; }
+        .email-wrapper { width: 100%; table-layout: fixed; background-color: #f8f8fa; }
+        .email-container { max-width: 600px; margin: 0 auto; }
+        .email-card { background-color: #ffffff; border-radius: 16px; overflow: hidden; }
+        .email-header { text-align: center; padding: 32px 24px 24px; border-bottom: 1px solid #e5e7eb; }
+        .email-content { padding: 32px 24px; color: #1e1e23; }
+        .email-footer { padding: 24px; text-align: center; border-top: 1px solid #e5e7eb; font-size: 13px; }
+        .email-footer a { color: #6b7280; text-decoration: none; }
+        .email-footer a:hover { text-decoration: underline; }
+
+        /* Logo gradient animation effect (static fallback for email) */
+        .logo-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 28px; font-weight: 600; letter-spacing: -0.5px; }
+        .logo-dot { color: #00f5ff; }
+
+        /* Button styles */
+        .btn-primary { display: inline-block; background: linear-gradient(135deg, #00f5ff 0%, #0891b2 100%); color: #0a0a0f; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+        .btn-secondary { display: inline-block; background-color: #1e1e23; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+        .btn-outline { display: inline-block; background-color: transparent; border: 1px solid #e5e7eb; color: #1e1e23; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+
+        /* Card styles */
+        .info-card { background-color: #f3f4f6; border-left: 4px solid #00f5ff; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .warning-card { background-color: #fef3c7; border-left: 4px solid #fbbf24; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .error-card { background-color: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .success-card { background-color: #d1fae5; border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin: 24px 0; }
+
+        /* Typography */
+        h1 { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: 600; margin: 0 0 16px 0; color: #1e1e23; }
+        h2 { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 20px; font-weight: 600; margin: 0 0 12px 0; color: #1e1e23; }
+        h3 { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; font-weight: 600; margin: 0 0 8px 0; color: #1e1e23; }
+        p { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0; color: #374151; }
+
+        /* Stats cards */
+        .stats-container { display: flex; gap: 12px; margin: 24px 0; }
+        .stat-card { flex: 1; background-color: #f3f4f6; padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-number { font-size: 32px; font-weight: 700; }
+        .stat-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+        /* Table styles */
+        .email-table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+        .email-table th { padding: 12px 8px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+        .email-table td { padding: 12px 8px; border-bottom: 1px solid #f3f4f6; }
+        .email-table tr:last-child td { border-bottom: none; }
+
+        /* Dark mode support via media query */
+        @media (prefers-color-scheme: dark) {
+            .email-wrapper { background-color: #0a0a0f !important; }
+            .email-card { background-color: #14141e !important; }
+            .email-header { border-bottom-color: rgba(255,255,255,0.1) !important; }
+            .email-content { color: #f5f5fa !important; }
+            .email-footer { border-top-color: rgba(255,255,255,0.1) !important; color: #6b7280 !important; }
+            .email-footer a { color: #6b7280 !important; }
+
+            h1, h2, h3 { color: #f5f5fa !important; }
+            p { color: #d1d5db !important; }
+
+            .btn-secondary { background-color: #27272a !important; border-color: rgba(255,255,255,0.1) !important; }
+            .btn-outline { background-color: transparent !important; border-color: rgba(255,255,255,0.2) !important; color: #f5f5fa !important; }
+
+            .info-card { background-color: rgba(0, 245, 255, 0.1) !important; border-left-color: #00f5ff !important; }
+            .warning-card { background-color: rgba(251, 191, 36, 0.15) !important; border-left-color: #fbbf24 !important; }
+            .error-card { background-color: rgba(239, 68, 68, 0.15) !important; border-left-color: #ef4444 !important; }
+            .success-card { background-color: rgba(34, 197, 94, 0.15) !important; border-left-color: #22c55e !important; }
+
+            .stats-container { gap: 12px; }
+            .stat-card { background-color: #1e1e2e !important; }
+            .stat-label { color: #9696aa !important; }
+
+            .email-table th { color: #9696aa !important; border-bottom-color: rgba(255,255,255,0.1) !important; }
+            .email-table td { border-bottom-color: rgba(255,255,255,0.05) !important; color: #f5f5fa !important; }
+        }
+
+        /* Responsive styles */
+        @media screen and (max-width: 620px) {
+            .email-container { max-width: 100% !important; }
+            .email-header, .email-content, .email-footer { padding: 20px 16px !important; }
+            .stats-container { flex-direction: column; }
+            .stat-card { margin-bottom: 8px; }
+            .btn-primary, .btn-secondary, .btn-outline { display: block !important; width: 100% !important; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; width: 100%; background-color: #f8f8fa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <!-- Preview text for inbox preview -->
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        📋 Your daily digest - 4 tasks ‎
+    </div>
+
+    <div class="email-wrapper">
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+            <tr>
+                <td align="center" style="padding: 20px 0;">
+                    <table class="email-container" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                        <!-- Main Card -->
+                        <tr>
+                            <td class="email-card">
+                                <!-- Logo/Header -->
+                                <div class="email-header">
+                                    <a href="http://localhost:3000" style="text-decoration: none;">
+                                        <span class="logo-text">
+                                            Chronos<span class="logo-dot">.</span>
+                                        </span>
+                                    </a>
+                                </div>
+
+                                <!-- Content -->
+                                <div class="email-content">
+                                    
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <tr>
+                    <td style="padding-bottom: 24px;">
+                        <span style="font-size: 32px;">📋</span>
+                        <h2 style="margin: 12px 0 8px 0;">Your Daily Task Digest</h2>
+                        <p style="margin: 0; color: #374151;">You have <strong>4 tasks</strong> for today. Here's your overview:</p>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="email-table" cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation">
+                <thead>
+                    <tr>
+                        <th style="text-align: center; width: 40px;">Status</th>
+                        <th>Task</th>
+                        <th style="width: 100px;">Due Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td style="padding: 12px 8px; text-align: center;">○</td>
+                    <td style="padding: 12px 8px;">Send the Q4 report draft to Sara</td>
+                    <td style="padding: 12px 8px; color: #6b7280; font-size: 14px;">Today 17:00</td>
+                </tr>
+            
+                <tr>
+                    <td style="padding: 12px 8px; text-align: center;">○</td>
+                    <td style="padding: 12px 8px;">Buy milk, eggs and rice</td>
+                    <td style="padding: 12px 8px; color: #6b7280; font-size: 14px;">Today 19:30</td>
+                </tr>
+            
+                <tr>
+                    <td style="padding: 12px 8px; text-align: center;">✓</td>
+                    <td style="padding: 12px 8px;">Water the plants</td>
+                    <td style="padding: 12px 8px; color: #6b7280; font-size: 14px;">Today 13:00</td>
+                </tr>
+            
+                <tr>
+                    <td style="padding: 12px 8px; text-align: center;">○</td>
+                    <td style="padding: 12px 8px;">Read two chapters of Atomic Habits</td>
+                    <td style="padding: 12px 8px; color: #6b7280; font-size: 14px;">None</td>
+                </tr>
+            
+                </tbody>
+            </table>
+
+            <table cellpadding="0" cellspacing="0" border="0" width="100%" role="presentation" style="margin-top: 32px;">
+                <tr>
+                    <td align="center">
+                        <a href="http://localhost:3000/dashboard" class="btn-primary" style="color: #0a0a0f; text-decoration: none;">
+                            View All Tasks →
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        
+                                </div>
+
+                                <!-- Footer -->
+                                <div class="email-footer">
+                                    <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">
+                                        You received this email because you have notifications enabled in Chronos.
+                                    </p>
+                                    <p style="margin: 8px 0;">
+                                        <a href="http://localhost:3000/settings/notifications" style="color: #6b7280;">Manage Notification Settings</a>
+                                    </p>
+                                    
+                                    <p style="margin: 16px 0 0 0; color: #9ca3af; font-size: 11px;">
+                                        © 2026 Chronos. All rights reserved.
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

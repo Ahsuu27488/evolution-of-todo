@@ -1,32 +1,19 @@
 /**
- * Notification Dropdown component with glassmorphism styling.
+ * Notification menu: the list that opens from the header bell.
  *
  * [Task]: T022
  * [From]: spec.md FR-002, FR-003, FR-007, FR-011
- * [From]: Context7 /radix-ui/website for DropdownMenu patterns
  *
- * Features:
- * - Glassmorphism backdrop blur
- * - Cyan glow for unread notifications
- * - Relative timestamps
- * - "Mark all as read" button
- * - Scrollable with virtualization support
- * - Framer Motion slideInBottom animation
+ * Solid floating surface (it opens over the glass nav). Rows, not cards: unread rows carry a
+ * gold dot. States: loading (skeleton rows), error (retry), empty, and "Show more".
  */
 
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
+import Link from "next/link"
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
-import {
-  Check,
-  CheckCheck,
-  Clock,
-  Info,
-  AlertCircle,
-  Sparkles,
-  Bell,
-} from "lucide-react"
+import { AlertCircle, Bell, Check, CheckCheck, Clock, Info, Loader2, RefreshCw, Sparkles, Settings } from "lucide-react"
 import { AnimatePresence } from "framer-motion"
 
 import { useMarkAsRead, useMarkAllAsRead, useNotifications, useUnreadCount } from "@/hooks/use-notifications"
@@ -34,72 +21,50 @@ import type { Notification } from "@/types/notification"
 import { NotificationType } from "@/types/notification"
 import { NotificationItem } from "./notification-item"
 import { NotificationEmptyState } from "./notification-empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
-// =============================================================================
-// Notification Dropdown Component
-// =============================================================================
+const PAGE = 10
 
-export function NotificationDropdown() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [offset, setOffset] = useState(0)
-  const limit = 10
-  const scrollRef = useRef<HTMLDivElement>(null)
+/** Icon and tone per notification type (status tokens only) */
+function iconFor(type: string) {
+  switch (type) {
+    case NotificationType.TASK_OVERDUE:
+      return { icon: <AlertCircle />, tone: "bg-destructive/12 text-destructive" }
+    case NotificationType.TASK_DUE:
+      return { icon: <Clock />, tone: "bg-warning/14 text-warning" }
+    case NotificationType.TASK_ASSIGNED:
+      return { icon: <Sparkles />, tone: "bg-primary/14 text-primary" }
+    case NotificationType.TASK_COMPLETED:
+      return { icon: <Check />, tone: "bg-success/14 text-success" }
+    case NotificationType.TASK_REMINDER:
+      return { icon: <Bell />, tone: "bg-secondary/14 text-secondary" }
+    default:
+      return { icon: <Info />, tone: "bg-muted text-muted-foreground" }
+  }
+}
 
-  const { data } = useNotifications({ limit, offset })
+export function NotificationDropdown({ onNavigate }: { onNavigate?: () => void }) {
+  // "Show more" grows the page instead of moving an offset, so earlier rows stay in the list
+  const [limit, setLimit] = useState(PAGE)
+
+  const { data, isLoading, isError, refetch, isFetching } = useNotifications({ limit, offset: 0 })
   const { data: unreadData } = useUnreadCount()
   const markAsRead = useMarkAsRead()
   const markAllAsRead = useMarkAllAsRead()
 
   const unreadCount = unreadData ?? 0
-  const hasMore = data ? data.total > offset + limit : false
-  const allItems = data?.items ?? []
+  const items = data?.items ?? []
   const total = data?.total ?? 0
+  const remaining = Math.max(0, total - items.length)
 
-  // Update loading state when data changes
-  useEffect(() => {
-    if (data?.items) {
-      setIsLoading(false)
-    }
-  }, [data])
-
-  // Handle notification click - mark as read
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read_status) {
       await markAsRead.mutateAsync(notification.id)
     }
-
-    // Navigate to related task if available
     if (notification.related_task_id) {
+      onNavigate?.()
       window.location.href = `/dashboard?task=${notification.related_task_id}`
-    }
-  }
-
-  // Handle mark all as read
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead.mutateAsync(undefined)
-  }
-
-  // Handle load more
-  const handleLoadMore = () => {
-    setOffset((prev) => prev + limit)
-  }
-
-  // Get icon for notification type
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case NotificationType.TASK_OVERDUE:
-        return <AlertCircle className="h-4 w-4 text-rose-500" />
-      case NotificationType.TASK_DUE:
-        return <Clock className="h-4 w-4 text-amber-500" />
-      case NotificationType.TASK_ASSIGNED:
-        return <Sparkles className="h-4 w-4 text-cyan-500" />
-      case NotificationType.TASK_COMPLETED:
-        return <Check className="h-4 w-4 text-emerald-500" />
-      case NotificationType.TASK_REMINDER:
-        return <Bell className="h-4 w-4 text-blue-500" />
-      default:
-        return <Info className="h-4 w-4 text-muted-foreground" />
     }
   }
 
@@ -107,103 +72,119 @@ export function NotificationDropdown() {
     <DropdownMenu.Portal>
       <DropdownMenu.Content
         align="end"
+        sideOffset={10}
+        collisionPadding={12}
+        aria-label="Notifications"
         className={cn(
-          // Glassmorphism styling per Deep Space theme
-          "glass-modal z-[100] w-[calc(100vw-2rem)] sm:w-80 md:w-96 max-w-sm",
-          "backdrop-blur-md bg-background/80",
-          "border border-border/50 shadow-2xl",
-          "rounded-lg p-0",
-          // Animation
-          "data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-          "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+          "surface-pop z-[100] flex w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[var(--radius-2xl)] outline-none",
+          "max-h-[min(36rem,calc(100dvh-6rem))]",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 duration-150"
         )}
       >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-border/50">
-        <div className="flex items-center gap-2 min-w-0">
-          <Bell className="h-4 w-4 text-foreground shrink-0" />
-          <span className="font-semibold text-foreground text-sm sm:text-base truncate">Notifications</span>
-        </div>
-
-        {unreadCount > 0 && (
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleMarkAllAsRead()
-            }}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-muted/50 whitespace-nowrap"
-          >
-            <CheckCheck className="h-3 w-3" />
-            <span className="hidden sm:inline">Mark all read</span>
-            <span className="sm:hidden">All read</span>
-          </button>
-        )}
-      </div>
-
-      {/* Notification List */}
-      <div
-        ref={scrollRef}
-        className="max-h-[60vh] sm:max-h-96 overflow-y-auto custom-scrollbar"
-      >
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-foreground/20" />
-              <span className="text-sm">Loading notifications...</span>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 border-b border-border py-2 pr-2 pl-4">
+          <div className="flex items-baseline gap-2">
+            <h2 className="font-display text-base font-semibold">Notifications</h2>
+            {unreadCount > 0 && (
+              <span className="hidden text-xs text-muted-foreground tabular-nums min-[380px]:inline">{unreadCount} unread</span>
+            )}
           </div>
-        ) : allItems.length === 0 ? (
-          <NotificationEmptyState />
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {allItems.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onClick={handleNotificationClick}
-                icon={getNotificationIcon(notification.type)}
-              />
-            ))}
-          </AnimatePresence>
-        )}
-
-        {/* Load More */}
-        {hasMore && !isLoading && (
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleLoadMore()
-            }}
-            className="w-full py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border/50"
-          >
-            Load more ({total - offset - limit} remaining)
-          </button>
-        )}
-      </div>
-
-      {/* Footer */}
-      {total > 0 && (
-        <div className="px-3 sm:px-4 py-2 border-t border-border/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-          <a
-            href="/settings/notifications"
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors text-center sm:text-left"
-          >
-            Notification Settings
-          </a>
-          <a
-            href="/settings/notifications?tab=push"
-            className="text-xs text-[oklch(0.91_0.17_195)] hover:text-[oklch(0.8_0.2_195)] transition-colors text-center sm:text-left"
-          >
-            Push Settings
-          </a>
+          {unreadCount > 0 && (
+            <DropdownMenu.Item
+              onSelect={(e) => {
+                e.preventDefault()
+                markAllAsRead.mutate(undefined)
+              }}
+              disabled={markAllAsRead.isPending}
+              className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground data-[disabled]:opacity-50 data-[highlighted]:bg-accent data-[highlighted]:text-foreground"
+            >
+              {markAllAsRead.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              ) : (
+                <CheckCheck className="size-3.5" aria-hidden />
+              )}
+              Mark all read
+            </DropdownMenu.Item>
+          )}
         </div>
-      )}
-    </DropdownMenu.Content>
+
+        {/* List */}
+        <div className="chat-scroll min-h-0 flex-1 overflow-y-auto p-1.5">
+          {isLoading ? (
+            <div className="space-y-1" aria-label="Loading notifications" role="status">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-start gap-3 rounded-[var(--radius-lg)] px-2.5 py-3">
+                  <Skeleton className="size-8 rounded-full" />
+                  <div className="flex-1 space-y-2 pt-0.5">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
+              <p className="text-sm text-muted-foreground">Notifications didn&apos;t load.</p>
+              <DropdownMenu.Item
+                onSelect={(e) => {
+                  e.preventDefault()
+                  refetch()
+                }}
+                className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-full border border-border px-3.5 text-sm font-medium outline-none transition-colors hover:bg-accent data-[highlighted]:bg-accent"
+              >
+                <RefreshCw className={cn("size-3.5", isFetching && "animate-spin")} aria-hidden />
+                Try again
+              </DropdownMenu.Item>
+            </div>
+          ) : items.length === 0 ? (
+            <NotificationEmptyState />
+          ) : (
+            <AnimatePresence mode="popLayout" initial={false}>
+              {items.map((notification) => {
+                const { icon, tone } = iconFor(notification.type)
+                return (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onClick={handleNotificationClick}
+                    icon={icon}
+                    iconTone={tone}
+                  />
+                )
+              })}
+            </AnimatePresence>
+          )}
+
+          {remaining > 0 && !isLoading && (
+            <DropdownMenu.Item
+              onSelect={(e) => {
+                e.preventDefault()
+                setLimit((l) => l + PAGE)
+              }}
+              disabled={isFetching}
+              className="mt-1 flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-[var(--radius-lg)] text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground data-[highlighted]:bg-accent data-[highlighted]:text-foreground"
+            >
+              {isFetching && <Loader2 className="size-3.5 animate-spin" aria-hidden />}
+              Show {Math.min(PAGE, remaining)} more
+            </DropdownMenu.Item>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border p-1.5">
+          <DropdownMenu.Item asChild>
+            <Link
+              href="/settings/notifications"
+              onClick={onNavigate}
+              className="flex h-10 items-center gap-2.5 rounded-[var(--radius-lg)] px-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground data-[highlighted]:bg-accent data-[highlighted]:text-foreground"
+            >
+              <Settings className="size-4" aria-hidden />
+              Notification settings
+            </Link>
+          </DropdownMenu.Item>
+        </div>
+      </DropdownMenu.Content>
     </DropdownMenu.Portal>
   )
 }

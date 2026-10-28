@@ -1,10 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, User as UserIcon, UserCircle, Bell } from "lucide-react"
+import { useState } from "react"
+import { Bell, Loader2, LogOut, UserCircle } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,19 +15,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { signOutAction } from "@/app/actions/auth"
-import type { User } from "@/lib/auth-client"
+import type { User } from "@/types/user"
 
 interface UserNavProps {
   user: User
 }
 
+/** "Ada Lovelace" -> "AL", "ada@x.com" -> "A" */
+function initials(user: User): string {
+  const name = user.display_name?.trim() || [user.first_name, user.last_name].filter(Boolean).join(" ")
+  if (name) {
+    const parts = name.split(/\s+/)
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase()
+  }
+  return (user.email?.[0] ?? "?").toUpperCase()
+}
+
 export function UserNav({ user }: UserNavProps) {
   const router = useRouter()
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   async function handleSignOut() {
+    setIsSigningOut(true)
     const result = await signOutAction()
     if (result.success) {
-      toast.success("Signed out successfully")
+      toast.success("Signed out")
 
       // Dispatch logout event for cross-tab communication
       window.dispatchEvent(new CustomEvent("auth-logout"))
@@ -37,50 +50,58 @@ export function UserNav({ user }: UserNavProps) {
 
       router.push("/login")
     } else {
-      toast.error("Failed to sign out")
+      setIsSigningOut(false)
+      toast.error("Couldn't sign you out. Try again.")
     }
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-            <UserIcon className="h-4 w-4" />
-          </div>
-        </Button>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className="group grid size-10 place-items-center rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
+        >
+          <span className="grid size-8 place-items-center rounded-full bg-primary/16 font-display text-[13px] font-semibold text-primary ring-1 ring-primary/25 transition-colors group-hover:bg-primary/24 group-data-[state=open]:bg-primary group-data-[state=open]:text-primary-foreground">
+            {initials(user)}
+          </span>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
+      <DropdownMenuContent className="w-64" align="end" sideOffset={10}>
+        <DropdownMenuLabel className="flex items-center gap-3 px-2.5 py-2.5 text-foreground">
+          <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/16 font-display text-sm font-semibold text-primary">
+            {initials(user)}
+          </span>
+          <span className="min-w-0">
             {/* [T036] Display display_name with fallback for legacy data */}
-            <p className="text-sm font-medium leading-none">
-              {user.display_name || user.email}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
-          </div>
+            <span className="block truncate text-sm font-medium">{user.display_name || user.email}</span>
+            <span className="block truncate text-xs font-normal text-muted-foreground">{user.email}</span>
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => router.push("/profile")}
-          className="cursor-pointer"
-        >
-          <UserCircle className="mr-2 h-4 w-4" />
-          <span>Edit Profile</span>
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <UserCircle />
+            Profile
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => router.push("/settings/notifications")}
-          className="cursor-pointer"
-        >
-          <Bell className="mr-2 h-4 w-4" />
-          <span>Notification Settings</span>
+        <DropdownMenuItem asChild>
+          <Link href="/settings/notifications">
+            <Bell />
+            Notification settings
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Sign out</span>
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault()
+            handleSignOut()
+          }}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+          Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

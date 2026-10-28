@@ -54,6 +54,7 @@ from app.ai.utils.logging import get_logger, bind_correlation_id, sanitize_log_d
 from app.ai.utils.language import detect_language, should_respond_in_urdu
 from app.ai.utils.sanitize import sanitize_user_input, should_block_input, strip_system_instructions
 from app.ai.mcp.tools import TaskTools
+from app.ai.agents.prompts import build_time_context
 from app.db import get_session
 from app.simple_auth import get_current_user_id
 
@@ -401,18 +402,15 @@ async def chat(
             # IMPORTANT: OpenAI's API only supports these roles: 'user', 'assistant', 'system', 'developer'
             # It does NOT support 'tool' role - tool messages are for frontend display only
 
-            # First, add a system message with current date context
-            # This fixes the bug where "tomorrow" parses to the model's birth date (e.g., 6-7-24)
-            today = datetime.utcnow().date()
-            system_content = f"Today's date is {today.strftime('%A, %B %d, %Y')}. "
-            system_content += "Use this date as reference when parsing relative dates like 'tomorrow', 'next week', etc."
+            # First, a system message with the user's local date, time and UTC offset, so
+            # "tomorrow" or "at 5pm" resolve in their time zone (users.timezone), not UTC.
+            system_content = build_time_context(context.timezone)
 
             # Add user profile context for personalized responses
-            if context.user_display_name or context.user_first_name:
-                user_name = context.user_display_name or context.user_first_name
-                system_content += f"\n\nThe user's name is {user_name}. Use their name naturally in greetings and responses to make the conversation more personal and friendly."
-                system_content += f"\nLanguage preference: {context.language_preference}."
-                system_content += f"\nTimezone: {context.timezone}."
+            user_name = context.user_display_name or context.user_first_name
+            if user_name:
+                system_content += f"\nThe user's name is {user_name}."
+            system_content += f"\nLanguage preference: {context.language_preference}."
 
             system_message = {
                 "role": "system",

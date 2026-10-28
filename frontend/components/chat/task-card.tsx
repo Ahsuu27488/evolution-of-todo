@@ -1,27 +1,25 @@
 /**
- * TaskCard - Display task in chat with quick actions.
+ * Task cards inside the Kairos chat.
  *
- * Features:
- * - Compact task display for chat context
- * - Quick actions: complete, delete, edit
- * - Priority badge colors
- * - Deep Space theme styling
- * - Glassmorphism effect
+ * - TaskCard: a task with quick actions (complete, rename, delete), for panels that list tasks.
+ * - InlineTaskCard: a compact chip embedded in a message.
  *
- * Per spec.md T115, T116, T117.
+ * Both sit on the solid muted surface used by assistant messages (the chat panel is the glass
+ * layer; nothing inside it is glass). Priority is a coloured dot, matching the dashboard.
  */
 
 "use client"
 
 import { motion } from "framer-motion"
-import { Check, Trash2, Edit2, Calendar, Tag } from "lucide-react"
+import { Calendar, Check, Loader2, Pencil, Trash2, X } from "lucide-react"
 import { useState } from "react"
 import type { Task, Priority } from "@/types/task"
 import { api } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
 // =============================================================================
-// Types
+// Shared bits
 // =============================================================================
 
 interface TaskCardProps {
@@ -32,85 +30,61 @@ interface TaskCardProps {
   compact?: boolean
 }
 
-interface EditingState {
-  isEditing: boolean
-  title: string
+const priorityStyle: Record<Priority, { label: string; dot: string; edge: string }> = {
+  HIGH: { label: "High", dot: "bg-destructive", edge: "border-l-destructive" },
+  MEDIUM: { label: "Medium", dot: "bg-primary", edge: "border-l-primary" },
+  LOW: { label: "Low", dot: "bg-muted-foreground/60", edge: "border-l-muted-foreground/40" },
+}
+
+const iconButton =
+  "relative grid size-8 place-items-center rounded-full text-muted-foreground outline-none transition-colors after:absolute after:-inset-1 hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+
+function formatDue(dateStr: string | null, withTime: boolean) {
+  if (!dateStr) return null
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  }).format(new Date(dateStr))
 }
 
 // =============================================================================
-// Priority Styling
-// =============================================================================
-
-const priorityConfig: Record<
-  Priority,
-  { bg: string; border: string; text: string; glow: string }
-> = {
-  HIGH: {
-    bg: "rgba(239, 68, 68, 0.15)",
-    border: "rgba(239, 68, 68, 0.4)",
-    text: "text-red-300",
-    glow: "shadow-[0_0_15px_rgba(239,68,68,0.2)]",
-  },
-  MEDIUM: {
-    bg: "rgba(251, 191, 36, 0.15)",
-    border: "rgba(251, 191, 36, 0.4)",
-    text: "text-yellow-300",
-    glow: "shadow-[0_0_15px_rgba(251,191,36,0.2)]",
-  },
-  LOW: {
-    bg: "rgba(34, 197, 94, 0.15)",
-    border: "rgba(34, 197, 94, 0.4)",
-    text: "text-green-300",
-    glow: "shadow-[0_0_15px_rgba(34,197,94,0.2)]",
-  },
-}
-
-// =============================================================================
-// Component
+// Task card
 // =============================================================================
 
 export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }: TaskCardProps) {
-  const [editing, setEditing] = useState<EditingState>({
-    isEditing: false,
-    title: task.title,
-  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [title, setTitle] = useState(task.title)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const priority = priorityConfig[task.priority]
+  const priority = priorityStyle[task.priority]
+  const dueDate = formatDue(task.due_date, true)
 
-  // Handle complete toggle
   const handleComplete = async () => {
     if (isProcessing) return
     setIsProcessing(true)
-
     try {
       const result = await api.updateTask(task.id, { completed: !task.completed })
-
       if (result.success) {
         onComplete?.(task.id)
-        toast.success(task.completed ? "Task reinstated" : "Task completed!")
+        toast.success(task.completed ? "Moved back to open" : "Task done")
       } else {
         toast.error(result.error.message)
       }
     } catch {
-      toast.error("Failed to update task")
+      toast.error("Couldn't update the task")
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // Handle delete
   const handleDelete = async () => {
     if (isProcessing) return
-
-    // Confirm before delete
-    if (!confirm("Are you sure you want to delete this task?")) return
-
     setIsProcessing(true)
-
     try {
       const result = await api.deleteTask(task.id)
-
       if (result.success) {
         onDelete?.(task.id)
         toast.success("Task deleted")
@@ -118,239 +92,161 @@ export function TaskCard({ task, onComplete, onDelete, onEdit, compact = false }
         toast.error(result.error.message)
       }
     } catch {
-      toast.error("Failed to delete task")
+      toast.error("Couldn't delete the task")
     } finally {
       setIsProcessing(false)
+      setConfirmDelete(false)
     }
   }
 
-  // Handle edit save
   const handleSaveEdit = async () => {
-    if (!editing.title.trim() || isProcessing) return
-
+    if (!title.trim() || isProcessing) return
     setIsProcessing(true)
-
     try {
-      const result = await api.updateTask(task.id, { title: editing.title })
-
+      const result = await api.updateTask(task.id, { title })
       if (result.success) {
-        setEditing({ isEditing: false, title: result.data.title })
+        setIsEditing(false)
+        setTitle(result.data.title)
         onEdit?.(result.data)
-        toast.success("Task updated")
+        toast.success("Task renamed")
       } else {
         toast.error(result.error.message)
       }
     } catch {
-      toast.error("Failed to update task")
+      toast.error("Couldn't rename the task")
     } finally {
       setIsProcessing(false)
     }
   }
 
-  // Format due date
-  const formatDueDate = (dateStr: string | null) => {
-    if (!dateStr) return null
-    const date = new Date(dateStr)
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    }).format(date)
-  }
-
-  const dueDate = formatDueDate(task.due_date)
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-      className={`
-        relative overflow-hidden rounded-xl border backdrop-blur-md
-        transition-all duration-200 hover:scale-[1.01]
-        ${compact ? "p-3" : "p-4"}
-      `}
-      style={{
-        background: "rgba(20, 20, 26, 0.6)",
-        borderColor: "rgba(255, 255, 255, 0.1)",
-      }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      aria-busy={isProcessing}
+      className={cn(
+        "group relative rounded-[var(--radius-lg)] border border-border border-l-[3px] bg-muted",
+        priority.edge,
+        compact ? "p-3" : "p-3.5"
+      )}
     >
-      {/* Priority indicator bar */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1"
-        style={{
-          background:
-            task.priority === "HIGH"
-              ? "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)"
-              : task.priority === "MEDIUM"
-                ? "linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)"
-                : "linear-gradient(180deg, #22c55e 0%, #16a34a 100%)",
-        }}
-      />
-
       <div className="flex items-start gap-3">
-        {/* Complete checkbox */}
         <button
+          type="button"
+          role="checkbox"
+          aria-checked={task.completed}
+          aria-label={task.completed ? "Mark as not done" : "Mark as done"}
           onClick={handleComplete}
           disabled={isProcessing}
-          className={`
-            flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center
-            transition-all duration-200 mt-0.5
-            ${task.completed
-              ? "bg-gradient-to-br from-cyan-400 to-cyan-500 border-cyan-400"
-              : "border-white/30 hover:border-cyan-400 hover:bg-cyan-400/10"
-            }
-            ${isProcessing ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-          `}
-          title={task.completed ? "Mark as incomplete" : "Mark as complete"}
+          className={cn(
+            "relative mt-0.5 grid size-5 shrink-0 place-items-center rounded-[6px] border-[1.5px] outline-none transition-colors after:absolute after:-inset-2.5",
+            "focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50",
+            task.completed ? "border-primary bg-primary text-primary-foreground" : "border-foreground/30 hover:border-primary"
+          )}
         >
-          {task.completed && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-              <Check className="w-3 h-3 text-white" strokeWidth={3} />
-            </motion.div>
+          {isProcessing ? (
+            <Loader2 className="size-3 animate-spin" aria-hidden />
+          ) : (
+            task.completed && <Check className="size-3" strokeWidth={3} aria-hidden />
           )}
         </button>
 
-        {/* Task content */}
-        <div className="flex-1 min-w-0">
-          {editing.isEditing ? (
-            <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          {isEditing ? (
+            <div className="flex items-center gap-1">
               <input
                 type="text"
-                value={editing.title}
-                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+                value={title}
+                aria-label="Task title"
+                onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSaveEdit()
-                  if (e.key === "Escape") setEditing({ isEditing: false, title: task.title })
+                  if (e.key === "Escape") {
+                    setIsEditing(false)
+                    setTitle(task.title)
+                  }
                 }}
-                className={`
-                  flex-1 px-2 py-1 rounded bg-white/10 border border-white/20
-                  text-sm text-white outline-none focus:border-cyan-400
-                  ${task.completed ? "line-through opacity-60" : ""}
-                `}
+                className="h-9 min-w-0 flex-1 rounded-[var(--radius-md)] border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                 autoFocus
               />
-              <div className="flex gap-1">
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={isProcessing || !editing.title.trim()}
-                  className="p-1 rounded hover:bg-green-500/20 text-green-400"
-                  title="Save"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setEditing({ isEditing: false, title: task.title })}
-                  className="p-1 rounded hover:bg-red-500/20 text-red-400"
-                  title="Cancel"
-                >
-                  ✕
-                </button>
-              </div>
+              <button type="button" onClick={handleSaveEdit} disabled={isProcessing || !title.trim()} className={cn(iconButton, "text-success")} aria-label="Save title">
+                <Check className="size-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false)
+                  setTitle(task.title)
+                }}
+                className={iconButton}
+                aria-label="Cancel rename"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
             </div>
           ) : (
-            <>
-              <div className="flex items-start justify-between gap-2">
-                <p
-                  className={`text-sm break-words ${
-                    task.completed ? "line-through opacity-50" : ""
-                  }`}
-                  style={{
-                    color: task.completed ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.9)",
-                  }}
-                >
-                  {task.title}
-                </p>
-
-                {/* Quick actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setEditing({ isEditing: true, title: task.title })}
-                    className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                    title="Edit task"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={isProcessing}
-                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/50 hover:text-red-400 transition-colors"
-                    title="Delete task"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Metadata: priority, due date, tags */}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                {/* Priority badge */}
-                <span
-                  className={`
-                    px-2 py-0.5 rounded-md text-xs font-medium border
-                    ${priority.text}
-                  `}
-                  style={{
-                    background: priority.bg,
-                    borderColor: priority.border,
-                  }}
-                >
-                  {task.priority}
-                </span>
-
-                {/* Due date */}
-                {dueDate && (
-                  <span className="flex items-center gap-1 text-xs text-white/50">
-                    <Calendar className="w-3 h-3" />
-                    <span>{dueDate}</span>
-                  </span>
-                )}
-
-                {/* Tags */}
-                {task.tags && task.tags.length > 0 && (
-                  <div className="flex items-center gap-1">
-                    {task.tags.slice(0, 2).map((tag) => (
-                      <span
-                        key={tag.name}
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs"
-                        style={{
-                          background: `${tag.color}20`,
-                          border: `1px solid ${tag.color}40`,
-                          color: tag.color,
-                        }}
-                      >
-                        <Tag className="w-3 h-3" />
-                        {tag.name}
-                      </span>
-                    ))}
-                    {task.tags.length > 2 && (
-                      <span className="text-xs text-white/40">
-                        +{task.tags.length - 2}
-                      </span>
-                    )}
-                  </div>
+            <div className="flex items-start justify-between gap-2">
+              <p className={cn("text-sm leading-snug break-words", task.completed && "text-muted-foreground line-through")}>
+                {task.title}
+              </p>
+              <div className="-mt-1 -mr-1 flex items-center opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                {confirmDelete ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isProcessing}
+                      className="h-8 rounded-full bg-destructive px-3 text-xs font-medium text-destructive-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    >
+                      Delete
+                    </button>
+                    <button type="button" onClick={() => setConfirmDelete(false)} className={iconButton} aria-label="Keep task">
+                      <X className="size-4" aria-hidden />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setIsEditing(true)} className={iconButton} aria-label="Rename task">
+                      <Pencil className="size-3.5" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      disabled={isProcessing}
+                      className={cn(iconButton, "hover:bg-destructive/12 hover:text-destructive")}
+                      aria-label="Delete task"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </button>
+                  </>
                 )}
               </div>
-            </>
+            </div>
           )}
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className={cn("size-2 rounded-full", priority.dot)} aria-hidden />
+              {priority.label}
+            </span>
+            {dueDate && (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Calendar className="size-3" aria-hidden />
+                {dueDate}
+              </span>
+            )}
+            {task.tags?.slice(0, 3).map((tag) => (
+              <span key={tag.name} className="inline-flex items-center gap-1.5 rounded-full bg-card px-2 py-0.5">
+                <span className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} aria-hidden />
+                {tag.name}
+              </span>
+            ))}
+            {task.tags && task.tags.length > 3 && <span>+{task.tags.length - 3}</span>}
+          </div>
         </div>
       </div>
-
-      {/* Processing overlay */}
-      {isProcessing && (
-        <div
-          className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm rounded-xl"
-          style={{ background: "rgba(0,0,0,0.2)" }}
-        >
-          <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
     </motion.div>
   )
 }
@@ -364,79 +260,37 @@ interface InlineTaskCardProps {
   onAction?: (action: "complete" | "delete" | "edit", task: Task) => void
 }
 
-/**
- * Compact inline version for embedding within chat messages.
- * Displays task without full editing capabilities.
- */
+/** Compact chip for a task mentioned inside a chat message */
 export function InlineTaskCard({ task, onAction }: InlineTaskCardProps) {
-  const priority = priorityConfig[task.priority]
-
-  const formatDueDate = (dateStr: string | null) => {
-    if (!dateStr) return null
-    const date = new Date(dateStr)
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-    }).format(date)
-  }
-
-  const dueDate = formatDueDate(task.due_date)
+  const priority = priorityStyle[task.priority]
+  const dueDate = formatDue(task.due_date, false)
 
   return (
-    <div
-      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border"
-      style={{
-        background: "rgba(20, 20, 26, 0.8)",
-        borderColor: "rgba(255, 255, 255, 0.15)",
-      }}
-    >
-      {/* Status icon */}
-      <div
-        className={`w-4 h-4 rounded flex items-center justify-center ${
-          task.completed ? "bg-cyan-500" : "border-2 border-white/30"
-        }`}
-      >
-        {task.completed && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-      </div>
+    <div className="inline-flex max-w-full items-center gap-2.5 rounded-full border border-border bg-card py-1 pr-1 pl-3 align-middle text-sm">
+      <span className={cn("size-2 shrink-0 rounded-full", priority.dot)} aria-label={`${priority.label} priority`} />
+      <span className={cn("min-w-0 truncate", task.completed && "text-muted-foreground line-through")}>{task.title}</span>
+      {dueDate && <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{dueDate}</span>}
 
-      {/* Title */}
-      <span
-        className={`text-sm ${task.completed ? "line-through opacity-50" : ""}`}
-        style={{ color: "rgba(255,255,255,0.9)" }}
-      >
-        {task.title}
-      </span>
-
-      {/* Priority */}
-      <span
-        className={`px-1.5 py-0.5 rounded text-xs ${priority.text}`}
-        style={{ background: priority.bg }}
-      >
-        {task.priority}
-      </span>
-
-      {/* Due date */}
-      {dueDate && (
-        <span className="text-xs text-white/50">{dueDate}</span>
+      {onAction && (
+        <span className="flex shrink-0 items-center border-l border-border pl-1">
+          <button
+            type="button"
+            onClick={() => onAction("complete", task)}
+            className={cn(iconButton, "hover:text-success")}
+            aria-label={task.completed ? `Mark "${task.title}" as not done` : `Mark "${task.title}" as done`}
+          >
+            <Check className="size-3.5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => onAction("delete", task)}
+            className={cn(iconButton, "hover:bg-destructive/12 hover:text-destructive")}
+            aria-label={`Delete "${task.title}"`}
+          >
+            <Trash2 className="size-3.5" aria-hidden />
+          </button>
+        </span>
       )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-1 ml-1 pl-2 border-l border-white/10">
-        <button
-          onClick={() => onAction?.("complete", task)}
-          className="p-1 rounded hover:bg-cyan-500/20 text-cyan-400 transition-colors"
-          title={task.completed ? "Mark incomplete" : "Mark complete"}
-        >
-          <Check className="w-3 h-3" />
-        </button>
-        <button
-          onClick={() => onAction?.("delete", task)}
-          className="p-1 rounded hover:bg-red-500/20 text-red-400 transition-colors"
-          title="Delete"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      </div>
     </div>
   )
 }

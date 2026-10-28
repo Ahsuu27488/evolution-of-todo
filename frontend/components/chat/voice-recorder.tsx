@@ -21,6 +21,7 @@
 
 import { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { Mic, Loader2, Send } from "lucide-react";
 import { useChatLanguage } from "@/lib/stores/chat-store";
 import { API_URL } from "@/lib/config/api";
@@ -342,13 +343,14 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="flex items-center gap-2 text-xs text-red-400 whitespace-nowrap"
+            className="flex items-center gap-2 whitespace-nowrap text-xs text-destructive"
+            role="alert"
           >
             <span>{error}</span>
             <button
+              type="button"
               onClick={handleRetry}
-              className="underline hover:text-red-300 transition-colors"
-              title="Retry transcription"
+              className="rounded-full px-1.5 font-medium underline underline-offset-2 outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               Retry
             </button>
@@ -360,13 +362,11 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
       <AnimatePresence>
         {state.isRecording && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="text-xs font-mono text-white/70"
-            style={{
-              fontFamily: "monospace",
-            }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="font-mono text-xs text-muted-foreground tabular-nums"
+            aria-live="off"
           >
             {formatDuration(state.duration)} / {MAX_RECORDING_SECONDS}s
           </motion.div>
@@ -377,17 +377,12 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
       <AnimatePresence>
         {state.isRecording && (
           <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
+            type="button"
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             onClick={handleCancelRecording}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center px-3 rounded-lg transition-all text-xs font-medium"
-            style={{
-              background: "rgba(255, 255, 255, 0.1)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              color: "rgba(255, 255, 255, 0.7)",
-            }}
-            title="Cancel recording"
+            className="flex h-11 items-center justify-center rounded-full border border-border px-3.5 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
           >
             Cancel
           </motion.button>
@@ -396,85 +391,63 @@ export const VoiceRecorder = forwardRef<VoiceRecorderRef, VoiceRecorderProps>(
 
       {/* Record/Stop/Send button */}
       {/* Hide during recording if parent component takes over stop button */}
-      {!(hideMainButtonDuringRecording && state.isRecording) && (
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleRecordClick}
-          disabled={disabled || isTranscribing}
-          className="relative flex-shrink-0 p-2.5 rounded-lg transition-all disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
-          style={{
-            // Priority order for background:
-            // 1. Transcribing: cyan with spinner
-            // 2. Has audioBlob OR stopping (was just recording): cyan gradient (send action)
-            // 3. Currently recording: cyan gradient (active recording state)
-            // 4. Idle: gray
-            background: isTranscribing
-              ? "rgba(0, 245, 255, 0.2)"
-              : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-                ? "linear-gradient(135deg, rgba(0, 245, 255, 0.8) 0%, rgba(0, 180, 216, 0.8) 100%)"
-                : state.isRecording
-                  ? "linear-gradient(135deg, rgba(0, 245, 255, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%)"
-                  : "rgba(255, 255, 255, 0.1)",
-            border: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-              ? "1px solid rgba(0, 245, 255, 0.5)"
-              : state.isRecording
-                ? "1px solid rgba(0, 245, 255, 0.3)"
-                : "none",
-            boxShadow: (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-              ? "0 0 15px rgba(0, 245, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2)"
-              : "none",
-          }}
-          title={
-            isTranscribing
-              ? "Transcribing..."
-              : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
-                ? "Send voice message"
-                : state.isRecording
-                  ? "Stop recording"
-                  : "Start voice recording"
-          }
-        >
-          {/* Recording indicator with pulse animation (T026, T088) */}
-          {state.isRecording && !state.audioBlob && (
-            <motion.span
-              className="absolute inset-0 rounded-lg"
-              animate={{
-                scale: [1, 1.15, 1],
-                opacity: [0.4, 0.2, 0.4],
-              }}
-              transition={{
-                duration: PULSE_ANIMATION_DURATION,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              style={{
-                background: "rgba(0, 245, 255, 0.3)",
-              }}
-            />
-          )}
+      {!(hideMainButtonDuringRecording && state.isRecording) && (() => {
+        const readyToSend = Boolean(state.audioBlob || (state.isRecording && chunksRef.current.length > 0))
+        const label = isTranscribing
+          ? "Transcribing"
+          : readyToSend
+            ? "Send voice message"
+            : state.isRecording
+              ? "Stop recording"
+              : "Record a voice message"
+        return (
+          <button
+            type="button"
+            onClick={handleRecordClick}
+            disabled={disabled || isTranscribing}
+            aria-label={label}
+            title={label}
+            className={cn(
+              "relative grid size-11 shrink-0 place-items-center rounded-full outline-none transition-[background-color,color,transform] duration-150",
+              "focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95 disabled:opacity-50",
+              isTranscribing
+                ? "bg-primary/15 text-primary"
+                : readyToSend
+                  ? "bg-primary text-primary-foreground"
+                  : state.isRecording
+                    ? "bg-destructive/15 text-destructive"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+          >
+            {/* Recording indicator: a soft ring that breathes (T026, T088) */}
+            {state.isRecording && !state.audioBlob && (
+              <motion.span
+                aria-hidden
+                className="absolute inset-0 rounded-full border-2 border-destructive/50 motion-reduce:hidden"
+                animate={{ scale: [1, 1.18, 1], opacity: [0.7, 0, 0.7] }}
+                transition={{ duration: PULSE_ANIMATION_DURATION, repeat: Infinity, ease: "easeInOut" }}
+              />
+            )}
 
-          {isTranscribing ? (
-            <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
-          ) : (state.audioBlob || (state.isRecording && chunksRef.current.length > 0)) ? (
-            // Send icon when ready to send OR when stopping with recorded audio
-            <Send className="w-5 h-5 text-white" />
-          ) : state.isRecording ? (
-            // Square/Stop icon during recording (more appropriate than slashed mic)
-            <div className="w-3.5 h-3.5 rounded-sm bg-white" />
-          ) : (
-            <Mic className="w-5 h-5 text-white/70" />
-          )}
-        </motion.button>
-      )}
+            {isTranscribing ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : readyToSend ? (
+              <Send className="size-[18px]" aria-hidden />
+            ) : state.isRecording ? (
+              <span className="size-3.5 rounded-[3px] bg-current" aria-hidden />
+            ) : (
+              <Mic className="size-5" aria-hidden />
+            )}
+          </button>
+        )
+      })()}
 
       {/* Upload progress indicator (T089) */}
       {isTranscribing && (
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${uploadProgress}%` }}
-          className="h-1 bg-cyan-500 rounded-full"
-          style={{ maxWidth: "60px" }}
+          className="h-1 max-w-[60px] rounded-full bg-primary"
         />
       )}
     </div>

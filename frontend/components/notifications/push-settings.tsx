@@ -5,107 +5,34 @@
  * [From]: spec.md FR-013, FR-018, FR-019
  * [From]: contracts/api.yaml §2.1, §2.2, §2.3
  *
- * Features:
- * - Permission status display
- * - Subscribe/unsubscribe controls
- * - Device info display
- * - Browser compatibility warnings
+ * Permission status, the on/off switch for this device, a test send, and help when the browser
+ * blocks or doesn't support push.
  */
 
 "use client"
 
 import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { motion } from "framer-motion"
-import {
-  Bell,
-  BellOff,
-  Check,
-  AlertTriangle,
-  Loader2,
-  Monitor,
-  RefreshCw,
-  RotateCcw,
-  Send,
-} from "lucide-react"
+import { Loader2, RefreshCw, RotateCcw, Send, Smartphone } from "lucide-react"
 
 import { usePushSubscription, type PermissionStatus, pushKeys } from "@/hooks/use-push-subscription"
-import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Callout } from "@/components/ui/callout"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
 import { api } from "@/lib/api-client"
+import { SettingsRow, SettingsSection } from "./settings-section"
 
 // =============================================================================
 // Permission Status Display
 // =============================================================================
 
-interface PermissionStatusBadgeProps {
-  status: PermissionStatus
-}
-
-function PermissionStatusBadge({ status }: PermissionStatusBadgeProps) {
-  const config = {
-    granted: {
-      label: "Enabled",
-      className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/50",
-      icon: <Check className="h-3 w-3" />,
-    },
-    denied: {
-      label: "Blocked",
-      className: "bg-rose-500/10 text-rose-500 border-rose-500/50",
-      icon: <BellOff className="h-3 w-3" />,
-    },
-    default: {
-      label: "Not Requested",
-      className: "bg-muted/50 text-muted-foreground border-border/50",
-      icon: <Bell className="h-3 w-3" />,
-    },
-    unsupported: {
-      label: "Not Supported",
-      className: "bg-amber-500/10 text-amber-500 border-amber-500/50",
-      icon: <AlertTriangle className="h-3 w-3" />,
-    },
-  }
-
-  const { label, className, icon } = config[status] || config.default
-
-  return (
-    <div className={cn(
-      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border",
-      className
-    )}>
-      {icon}
-      <span>{label}</span>
-    </div>
-  )
-}
-
-// =============================================================================
-// Browser Support Warning
-// =============================================================================
-
-interface BrowserSupportWarningProps {
-  isSupported: boolean
-}
-
-function BrowserSupportWarning({ isSupported }: BrowserSupportWarningProps) {
-  if (isSupported) return null
-
-  return (
-    <Card className="p-4 border-amber-500/50 bg-amber-500/10 mb-4">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <p className="font-medium text-amber-400">Browser Not Supported</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Push notifications are not supported in your browser. Please try using a modern browser like Chrome, Firefox, Safari, or Edge.
-          </p>
-        </div>
-      </div>
-    </Card>
-  )
+const permissionBadge: Record<PermissionStatus, { label: string; variant: "success" | "danger" | "muted" | "warning" }> = {
+  granted: { label: "Allowed", variant: "success" },
+  denied: { label: "Blocked", variant: "danger" },
+  default: { label: "Not asked yet", variant: "muted" },
+  unsupported: { label: "Not supported", variant: "warning" },
 }
 
 // =============================================================================
@@ -127,63 +54,48 @@ export function PushSettings() {
   } = usePushSubscription()
 
   const [isTestLoading, setIsTestLoading] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
 
   const handleToggle = async (enabled: boolean) => {
     if (enabled) {
       if (permissionStatus === "denied") {
-        toast.error(
-          "Push notifications are blocked in your browser settings. Please enable them in your browser settings.",
-          { duration: 5000 }
-        )
+        toast.error("Notifications are blocked for this site", {
+          description: "Allow them in your browser's site settings, then try again.",
+        })
         return
       }
 
-      if (permissionStatus === "granted") {
-        toast.promise(
-          subscribe(),
-          {
-            loading: "Subscribing to push notifications...",
-            success: "Push notifications enabled!",
-            error: "Failed to enable push notifications",
-          }
-        )
-      } else {
-        toast.promise(
-          requestPermission(),
-          {
-            loading: "Requesting permission...",
-            success: "Permission granted! Enabling push notifications...",
-            error: "Permission denied. Push notifications will not work.",
-          }
-        )
-      }
+      const turnOn: Promise<unknown> = permissionStatus === "granted" ? subscribe() : requestPermission()
+      toast.promise(turnOn, {
+        loading: "Turning on push notifications",
+        success: "Push notifications are on for this device",
+        error: "Push notifications couldn't be turned on",
+      })
     } else {
-      toast.promise(
-        unsubscribe(),
-        {
-          loading: "Unsubscribing from push notifications...",
-          success: "Push notifications disabled",
-          error: "Failed to disable push notifications",
-        }
-      )
+      toast.promise(unsubscribe(), {
+        loading: "Turning off push notifications",
+        success: "Push notifications are off for this device",
+        error: "Push notifications couldn't be turned off",
+      })
     }
   }
 
   const handleRefresh = () => {
     refreshPermission()
-    toast.success("Permission status refreshed")
+    toast.success("Permission status updated")
   }
 
   const handleReset = async () => {
-    // Reset: unsubscribe from all and clear local state
-    // Useful for fixing expired subscriptions
+    // Clears every subscription for this account; useful when one has expired
+    setIsResetting(true)
     try {
-      await api.unsubscribePush() // This clears all subscriptions
-      toast.success("Reset complete. Please enable push notifications again.")
-      // Invalidate queries to refresh status
+      await api.unsubscribePush()
+      toast.success("Subscriptions cleared", { description: "Turn push back on to subscribe this device again." })
       queryClient.invalidateQueries({ queryKey: pushKeys.status })
     } catch {
-      toast.error("Failed to reset push subscriptions")
+      toast.error("Subscriptions couldn't be cleared")
+    } finally {
+      setIsResetting(false)
     }
   }
 
@@ -194,171 +106,107 @@ export function PushSettings() {
       if (result.success) {
         const data = result.data
         if (data.success) {
-          toast.success(`Test notification sent! (sent to ${data.sent}/${data.total} devices)`)
+          toast.success("Test notification sent", { description: `Delivered to ${data.sent} of ${data.total} devices.` })
         } else if (data.error === "no_subscription") {
-          toast.error("No subscription found. Please enable push notifications first.")
+          toast.error("This device isn't subscribed yet", { description: "Turn push notifications on first." })
         } else if (data.error === "rate_limit_exceeded") {
-          toast.error("Rate limit exceeded. Maximum 3 push notifications per hour.")
+          toast.error("Too many tests", { description: "You can send 3 push notifications an hour." })
         } else if (data.error === "config_error") {
-          toast.error("Push notifications not configured. Please contact support.")
-        } else if (data.error === "send_failed") {
-          toast.error(data.error || "Failed to send push notification")
+          toast.error("Push isn't set up on the server yet")
         } else {
-          toast.error(`Failed to send: ${data.error || "Unknown error"}`)
+          toast.error("The test notification wasn't sent", { description: data.error || undefined })
         }
       } else {
-        toast.error(result.error.message || "Failed to send test notification")
+        toast.error(result.error.message || "The test notification wasn't sent")
       }
     } catch (err) {
       console.error("Push test error:", err)
-      toast.error("Failed to send test notification")
+      toast.error("The test notification wasn't sent")
     } finally {
       setIsTestLoading(false)
     }
   }
 
+  const badge = permissionBadge[permissionStatus] ?? permissionBadge.default
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Browser Support Warning */}
-      <BrowserSupportWarning isSupported={isSupported} />
+    <div className="grid gap-4">
+      {!isSupported && (
+        <Callout tone="warning" title="This browser can't receive push notifications">
+          Try a current version of Chrome, Edge, Firefox or Safari. On iPhone, add Chronos to your Home Screen first.
+        </Callout>
+      )}
 
-      {/* Main Settings Card */}
-      <Card className="border-border/50 shadow-lg overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-border/50">
-          <div className="flex items-start sm:items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-semibold text-foreground text-base sm:text-lg">Push Notifications</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Receive notifications even when your browser is closed
-              </p>
-            </div>
-            <PermissionStatusBadge status={permissionStatus} />
+      <SettingsSection
+        title="Push notifications"
+        description="Reminders that reach you even when Chronos is closed."
+        aside={<Badge variant={badge.variant}>{badge.label}</Badge>}
+      >
+        <SettingsRow
+          icon={<Smartphone />}
+          label="This device"
+          hint={isSubscribed ? "Receiving notifications for your tasks" : "Not receiving notifications"}
+        >
+          {isLoading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />}
+          <Switch
+            checked={isSubscribed}
+            onCheckedChange={handleToggle}
+            disabled={!isSupported || permissionStatus === "denied" || isLoading}
+            aria-label="Push notifications on this device"
+          />
+        </SettingsRow>
+
+        {permissionStatus === "denied" && (
+          <div className="border-t border-border px-4 py-4 sm:px-5">
+            <Callout tone="danger" title="Notifications are blocked for this site">
+              <ol className="mt-1 list-decimal space-y-1 pl-4">
+                <li>Click the lock or settings icon in the address bar.</li>
+                <li>Set Notifications to Allow.</li>
+                <li>Reload this page and turn push on.</li>
+              </ol>
+            </Callout>
           </div>
-        </div>
+        )}
 
-        <div className="p-3 sm:p-4">
-          {/* Toggle */}
-          <div className="flex items-start sm:items-center justify-between py-3 sm:py-4 border-b border-border/50 gap-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                {isSubscribed ? (
-                  <Bell className="h-5 w-5 text-primary" />
-                ) : (
-                  <BellOff className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-foreground text-sm sm:text-base">
-                  {isSubscribed ? "Push Notifications Enabled" : "Push Notifications Disabled"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {isSubscribed
-                    ? "You'll receive notifications for task updates"
-                    : "Enable to receive notifications on this device"}
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={isSubscribed}
-              onCheckedChange={handleToggle}
-              disabled={!isSupported || permissionStatus === "denied" || isLoading}
-              className="shrink-0"
-            />
-          </div>
-
-          {/* Permission Blocked Message */}
-          {permissionStatus === "denied" && (
-            <div className="mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/50">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-rose-400">Notifications Blocked</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    You&apos;ve blocked push notifications in your browser. To enable them:
-                  </p>
-                  <ol className="text-sm text-muted-foreground mt-2 space-y-1 list-decimal list-inside">
-                    <li>Click the lock/info icon in your browser&apos;s address bar</li>
-                    <li>Find &quot;Notifications&quot; and set it to &quot;Allow&quot;</li>
-                    <li>Refresh this page and try again</li>
-                  </ol>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Device Info */}
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-5">
+          <Button variant="ghost" size="sm" onClick={handleRefresh} className="rounded-full text-muted-foreground">
+            <RefreshCw aria-hidden />
+            Check permission
+          </Button>
           {isSubscribed && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Monitor className="h-4 w-4" />
-                <span>This device is subscribed to push notifications</span>
-              </div>
-            </div>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={isResetting}
+                aria-busy={isResetting}
+                className="rounded-full"
+              >
+                {isResetting ? <Loader2 className="animate-spin" /> : <RotateCcw aria-hidden />}
+                Reset subscriptions
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleTest}
+                disabled={isTestLoading || isLoading}
+                aria-busy={isTestLoading}
+                className="rounded-full"
+              >
+                {isTestLoading ? <Loader2 className="animate-spin" /> : <Send aria-hidden />}
+                Send a test
+              </Button>
+            </>
           )}
-
-          {/* Refresh Button */}
-          <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefresh}
-              className="text-muted-foreground hover:text-foreground w-full sm:w-auto"
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh Status
-            </Button>
-            {isSubscribed && (
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleReset}
-                  className="text-muted-foreground w-full sm:w-auto"
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleTest}
-                  disabled={isTestLoading || isLoading}
-                  className="w-full sm:w-auto"
-                >
-                  {isTestLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4 mr-2" />
-                  )}
-                  Send Test
-                </Button>
-              </div>
-            )}
-          </div>
         </div>
-      </Card>
+      </SettingsSection>
 
-      {/* Info Card */}
-      <Card className="mt-4 p-3 sm:p-4 border-border/50 bg-muted/20">
-        <div className="flex items-start gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-            <Bell className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">About Push Notifications</p>
-            <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-              <li>• Works even when the browser is minimized or closed</li>
-              <li>• Requires permission from your browser</li>
-              <li>• Subject to rate limiting (3 per hour for non-urgent notifications)</li>
-              <li>• Only available on this device - each device needs separate setup</li>
-            </ul>
-          </div>
-        </div>
-      </Card>
-    </motion.div>
+      <Callout tone="info" title="Good to know">
+        <ul className="mt-0.5 space-y-1">
+          <li>Each device and browser is set up on its own.</li>
+          <li>Non-urgent pushes are limited to 3 an hour.</li>
+        </ul>
+      </Callout>
+    </div>
   )
 }

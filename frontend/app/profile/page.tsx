@@ -1,41 +1,43 @@
-/** Profile Page - Edit User Information.
+/** Profile page: edit your name. Same frame as the dashboard: floating nav, left-aligned heading. */
 
-Allows users to update their first name and last name.
-Useful for existing users who signed up before name fields were added.
-Per spec.md: User profile personalization.
-*/
-
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 import { Header } from "@/components/layout/header"
 import { ProfileForm } from "@/components/auth/profile-form"
 import { requireAuth } from "@/app/actions/auth"
+import { getDisplayName } from "@/types/user"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = { title: "Profile" }
 
 export default async function ProfilePage() {
-  // Get session (user data) from server-side cookie
+  // requireAuth redirects to /login when there is no session
   const session = await requireAuth()
-
-  // requireAuth guarantees session exists and redirects if not
-  const isAuthenticated = true
+  const memberSince = new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(
+    new Date(session.user.created_at)
+  )
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        isAuthenticated={isAuthenticated}
-        user={session.user}
-      />
+    <div className="min-h-screen">
+      <Header isAuthenticated user={session.user} />
 
-      <main className="container px-6 pt-24 pb-6 md:pt-28 md:pb-10">
-        <div className="max-w-2xl mx-auto">
-          {/* Page Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-4xl font-bold mb-2 bg-linear-to-r from-primary via-secondary to-primary bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-              Your Profile
-            </h1>
-            <p className="text-muted-foreground">
-              Manage your personal information
+      <main className="px-4 pt-24 pb-16 sm:px-6 sm:pt-28">
+        <div className="mx-auto max-w-2xl">
+          <Link
+            href="/dashboard"
+            className="mb-4 inline-flex h-10 items-center gap-1.5 rounded-full pr-3 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            My tasks
+          </Link>
+
+          <div className="mb-6">
+            <h1 className="text-[length:var(--step-h1)] leading-tight font-semibold">Profile</h1>
+            <p className="mt-1 text-muted-foreground">
+              {getDisplayName(session.user)} · member since {memberSince}
             </p>
           </div>
 
-          {/* Profile Form */}
           <ProfileForm user={session.user} />
         </div>
       </main>

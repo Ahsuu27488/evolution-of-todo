@@ -1,74 +1,49 @@
 /**
- * Notification Bell component with unread badge.
+ * Notification bell: the header button with the unread count.
  *
- * [Task]: T021
- * [From]: spec.md FR-001, FR-003, FR-011
- * [From]: Context7 /radix-ui/website for DropdownMenu patterns
- *
- * Features:
- * - Bell icon with Badge showing unread count
- * - DropdownMenu for notification list
- * - Framer Motion animations
- * - Deep Space glassmorphism styling
+ * A plain button (ref-forwarding) so it can sit inside any trigger, e.g.
+ * `<DropdownMenu.Trigger asChild><NotificationBell /></DropdownMenu.Trigger>`.
  */
 
 "use client"
 
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu"
 import { Bell } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
 import { forwardRef } from "react"
 
-import { Badge } from "@/components/ui/badge"
 import { useUnreadCount } from "@/hooks/use-notifications"
+import { cn } from "@/lib/utils"
 
-// =============================================================================
-// Notification Bell Component
-// =============================================================================
-
-export interface NotificationBellProps {
-  /** Callback when bell is clicked (before dropdown opens) */
-  onBellClick?: () => void
-}
+export type NotificationBellProps = React.ComponentPropsWithoutRef<"button">
 
 export const NotificationBell = forwardRef<HTMLButtonElement, NotificationBellProps>(
-  ({ onBellClick }, ref) => {
+  ({ className, ...props }, ref) => {
     const { data: unreadCount } = useUnreadCount()
+    const count = typeof unreadCount === "number" ? unreadCount : 0
+    const label = count > 0 ? `Notifications, ${count} unread` : "Notifications"
 
     return (
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <motion.button
-            ref={ref}
-            type="button"
-            className="relative p-2 sm:p-2.5 rounded-md hover:bg-muted/50 transition-colors touch-manipulation"
-            onClick={onBellClick}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            aria-label="Notifications"
+      <button
+        ref={ref}
+        type="button"
+        aria-label={label}
+        className={cn(
+          "relative grid size-10 place-items-center rounded-full text-foreground/80 outline-none transition-colors duration-150",
+          "hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95",
+          "data-[state=open]:bg-accent data-[state=open]:text-foreground",
+          className
+        )}
+        {...props}
+      >
+        <Bell className="size-[18px]" aria-hidden />
+        {count > 0 && (
+          <span
+            aria-hidden
+            className="absolute top-1 right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-none font-semibold text-primary-foreground tabular-nums ring-2 ring-[var(--custom-popover)]"
           >
-            <Bell className="h-5 w-5 sm:h-5 sm:w-5 text-foreground/80" />
-
-            <AnimatePresence>
-              {unreadCount && unreadCount > 0 && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                >
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 h-5 w-5 flex items-center justify-center text-xs p-0 bg-rose-500 hover:bg-rose-600"
-                  >
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        </DropdownMenu.Trigger>
-      </DropdownMenu.Root>
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </button>
     )
   }
 )

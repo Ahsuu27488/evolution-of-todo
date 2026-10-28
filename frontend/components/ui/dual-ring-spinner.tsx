@@ -7,8 +7,8 @@
  * Uses pure CSS animations for optimal performance.
  *
  * Features:
- * - Outer ring: Neon cyan (clockwise rotation)
- * - Inner ring: Neon purple (counter-clockwise rotation)
+ * - Outer ring: sun gold (clockwise rotation)
+ * - Inner ring: orbit blue (counter-clockwise rotation)
  * - Minimum display duration to prevent flash
  * - Smooth fade-out transition
  *
@@ -87,7 +87,7 @@ export function DualRingSpinner({
     >
       <div className="outer-ring" aria-hidden="true" />
       <div className="inner-ring" aria-hidden="true" />
-      <span className="sr-only">Loading...</span>
+      <span className="sr-only">Loading</span>
     </div>
   )
 }

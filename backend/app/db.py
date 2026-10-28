@@ -27,21 +27,35 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-# Convert postgresql:// to postgresql+asyncpg:// for async driver
-if DATABASE_URL.startswith("postgresql://"):
-    ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-elif DATABASE_URL.startswith("postgres://"):
-    ASYNC_DATABASE_URL = DATABASE_URL.replace("postgres://", "postgres+asyncpg://", 1)
-else:
-    ASYNC_DATABASE_URL = DATABASE_URL
+def to_async_url(url: str) -> str:
+    """Convert a libpq-style URL into one SQLAlchemy's asyncpg dialect accepts.
 
-# STRIP SSL parameters from URL to prevent SQLAlchemy from passing channel_binding
-# We'll configure SSL via code instead (connect_args)
-ASYNC_DATABASE_URL = ASYNC_DATABASE_URL.split("?")[0]
+    Both postgresql:// and the legacy postgres:// scheme map to
+    postgresql+asyncpg:// (SQLAlchemy has no "postgres" dialect). Query
+    parameters are stripped so sslmode/channel_binding never reach asyncpg;
+    SSL is configured through connect_args instead.
+    """
+    for scheme in ("postgresql://", "postgres://"):
+        if url.startswith(scheme):
+            url = "postgresql+asyncpg://" + url[len(scheme):]
+            break
+    return url.split("?")[0]
+
+
+def ssl_mode(url: str) -> str | bool:
+    """SSL setting for asyncpg: "require" (Neon) unless the URL says sslmode=disable."""
+    from urllib.parse import parse_qs, urlsplit
+
+    mode = parse_qs(urlsplit(url).query).get("sslmode", ["require"])[0]
+    return False if mode == "disable" else "require"
+
+
+ASYNC_DATABASE_URL = to_async_url(DATABASE_URL)
 
 # Create async engine with connection pooling for serverless Neon
 # Settings per research.md for optimal serverless performance
-# SSL is configured via connect_args using "require" to avoid start_tls issues
+# SSL is configured via connect_args ("require" unless sslmode=disable, e.g. a
+# local Postgres) to avoid start_tls issues
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=os.getenv("DEBUG", "false").lower() == "true",  # SQL logging in dev
@@ -50,7 +64,7 @@ engine = create_async_engine(
     pool_recycle=300,  # Recycle connections after 5 min (serverless friendly)
     pool_size=5,  # Min pool size per quickstart.md
     max_overflow=15,  # Max pool size: 5 + 15 = 20 per quickstart.md
-    connect_args={"ssl": "require"},  # Direct SSL requirement, avoids start_tls error
+    connect_args={"ssl": ssl_mode(DATABASE_URL)},  # Direct SSL setting, avoids start_tls error
 )
 
 # Create async session factory
@@ -65,7 +79,7 @@ async def create_db_and_tables() -> None:
     """Create all SQLModel tables asynchronously.
 
     Called on application startup via lifespan handler.
-    This creates all tables defined in models.py if they don't exist.
+    This creates all tables defined in app/models/ if they don't exist.
     """
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)

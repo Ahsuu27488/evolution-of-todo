@@ -116,7 +116,7 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
   // Real value will be set in useEffect after mount
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>("default")
   const [isMounted, setIsMounted] = useState(false)
-  const [pushSubscription, setPushSubscription] = useState<PushSubscription | null>(null)
+  const [, setPushSubscription] = useState<PushSubscription | null>(null)
 
   // Set mounted state and get real permission status after client-side mount
   useEffect(() => {
@@ -246,25 +246,6 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
   // Internal Functions
   // =============================================================================
 
-  // Request permission
-  const requestPermission = useCallback(async (): Promise<boolean> => {
-    if (!isPushSupported()) {
-      console.warn("Push notifications not supported")
-      return false
-    }
-
-    const status = await Notification.requestPermission()
-    refreshPermission()
-
-    if (status === "granted") {
-      // After permission granted, subscribe
-      const subscription = await subscribeInternal()
-      return !!subscription
-    }
-
-    return false
-  }, [refreshPermission])
-
   // Internal subscribe function
   const subscribeInternal = useCallback(async (): Promise<PushSubscription | null> => {
     if (!isPushSupported()) {
@@ -317,6 +298,25 @@ export function usePushSubscription(options: UsePushSubscriptionOptions = {}) {
       return null
     }
   }, [autoSync, subscribeMutation])
+
+  // Request permission
+  const requestPermission = useCallback(async (): Promise<boolean> => {
+    if (!isPushSupported()) {
+      console.warn("Push notifications not supported")
+      return false
+    }
+
+    const status = await Notification.requestPermission()
+    refreshPermission()
+
+    if (status === "granted") {
+      // After permission granted, subscribe
+      const subscription = await subscribeInternal()
+      return !!subscription
+    }
+
+    return false
+  }, [refreshPermission, subscribeInternal])
 
   // =============================================================================
   // Public API

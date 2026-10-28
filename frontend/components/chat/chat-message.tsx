@@ -10,18 +10,19 @@
  * - Task card rendering for AI-created tasks (T116)
  *
  * Per spec.md FR-001 through FR-010, FR-048.
- * Phase 10 (T046-T050): Glassmorphism styling matching dashboard theme.
+ * Phase 10 (T046-T050): bubbles on solid surfaces inside the glass chat panel.
  */
 
 import { motion } from "framer-motion";
-import { User, Bot, Wrench, Mic } from "lucide-react";
+import { Check, Copy, Wrench, Mic } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Task } from "@/types/task";
 import type { Message } from "@/types/chat";
 import { getTextDirection } from "@/lib/utils/text-direction";
 import { InlineTaskCard } from "./task-card";
+import { KairosAvatar } from "./kairos-avatar";
 
 // =============================================================================
 // Mixed Language Text Renderer
@@ -230,9 +231,9 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
         <div
           className="px-3 py-1.5 rounded-full text-xs text-center"
           style={{
-            background: "rgba(168, 85, 247, 0.2)",
-            border: "1px solid rgba(168, 85, 247, 0.3)",
-            color: "rgba(255,255,255,0.8)",
+            background: "var(--custom-border)",
+            border: "1px solid color-mix(in oklch, var(--custom-secondary) 30%, transparent)",
+            color: "color-mix(in oklch, var(--custom-foreground) 80%, transparent)",
           }}
         >
           {message.content}
@@ -246,52 +247,29 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
       variants={messageVariants}
       initial="hidden"
       animate="visible"
-      whileHover={{ scale: 1.002 }}
-      whileTap={{ scale: 0.998 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      className={`group/message flex gap-2.5 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
-      {/* Avatar */}
-      <div
-        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-          isUser ? "bg-gradient-to-br from-cyan-400 to-blue-500" : ""
-        }`}
-        style={
-          !isUser
-            ? {
-                background: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
-              }
-            : undefined
-        }
-      >
-        {isUser ? (
-          <User className="w-4 h-4 text-white" />
-        ) : (
-          <Bot className="w-4 h-4 text-white" />
-        )}
-      </div>
+      {/* Avatar: Kairos only; your own messages need none */}
+      {!isUser && <KairosAvatar className="mt-0.5 size-8" thinking={isStreaming} />}
 
       {/* Message Content */}
-      <div className={`flex flex-col ${isUser ? "items-end" : "items-start"} max-w-[80%]`}>
+      <div className={`flex min-w-0 flex-col ${isUser ? "items-end" : "items-start"} max-w-[85%]`}>
         {isVoice && isUser ? (
-          // T047: Voice Message Indicator - Glassmorphism styling
+          // T047: Voice Message Indicator
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="px-4 py-3 rounded-2xl rounded-tr-sm flex items-center gap-2"
             style={{
-              background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
-              border: "1px solid rgba(0, 245, 255, 0.3)",
-              color: "#00f5ff",
-              backdropFilter: "blur(12px)",
-              boxShadow: "0 0 20px rgba(0, 245, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+              background: "var(--custom-primary)",
+              color: "var(--custom-primary-foreground)",
             }}
           >
             <Mic className="w-4 h-4" />
             <span className="font-medium">Voice message</span>
           </motion.div>
         ) : (
-          // T046: Regular Text Message - Glassmorphism styling
+          // T046: Regular Text Message
           <motion.div
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
@@ -301,20 +279,14 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
             style={
               isUser
                 ? {
-                    // T050: User message - Cyan gradient matching dashboard
-                    background: "linear-gradient(135deg, rgba(0, 245, 255, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%)",
-                    border: "1px solid rgba(0, 245, 255, 0.3)",
-                    color: "#00f5ff",
-                    backdropFilter: "blur(12px)",
-                    boxShadow: "0 0 15px rgba(0, 245, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+                    // User message: solid primary
+                    background: "var(--custom-primary)",
+                    color: "var(--custom-primary-foreground)",
                   }
                 : {
-                    // T046: Assistant message - Glassmorphism with white/gray tint
-                    background: "rgba(255, 255, 255, 0.05)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255, 255, 255, 0.08)",
-                    color: "rgba(255, 255, 255, 0.9)",
-                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+                    // Assistant message: solid muted surface (no blur inside the glass panel)
+                    background: "var(--custom-muted)",
+                    color: "var(--custom-foreground)",
                   }
             }
           >
@@ -333,7 +305,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     </li>
                   ),
                   strong: ({ children }) => (
-                    <strong style={{ fontWeight: 700, color: isUser ? "inherit" : "#00f5ff" }}>
+                    <strong style={{ fontWeight: 650 }}>
                       {renderMixedLanguageText(children)}
                     </strong>
                   ),
@@ -342,7 +314,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     <a
                       {...props}
                       style={{
-                        color: isUser ? "#0ea5e9" : "#00f5ff",
+                        color: isUser ? "inherit" : "var(--custom-primary)",
                         textDecoration: "underline",
                       }}
                       target="_blank"
@@ -385,7 +357,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                     <code
                       {...props}
                       style={{
-                        background: isUser ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.15)",
+                        background: isUser ? "color-mix(in oklch, var(--custom-primary-foreground) 12%, transparent)" : "color-mix(in oklch, var(--custom-foreground) 15%, transparent)",
                         padding: inline ? "2px 6px" : "0.5rem",
                         borderRadius: inline ? "4px" : "8px",
                         fontSize: "0.9em",
@@ -405,7 +377,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
                   transition={{ repeat: Infinity, duration: 1 }}
                   className="inline-block w-2 h-4 ml-1 align-middle"
                   style={{
-                    background: "rgba(255,255,255,0.7)",
+                    background: "color-mix(in oklch, var(--custom-foreground) 70%, transparent)",
                   }}
                 />
               )}
@@ -434,7 +406,7 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
 
         {/* Tool Calls Indicator */}
         {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="flex items-center gap-2 mt-1 px-2 py-1 rounded-lg text-xs text-white/50">
+          <div className="mt-1 flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-muted-foreground">
             <Wrench className="w-3 h-3" />
             <span>
               Used {message.toolCalls.length} tool{message.toolCalls.length > 1 ? "s" : ""}
@@ -442,11 +414,36 @@ export function ChatMessage({ message, isStreaming, onTaskAction }: ChatMessageP
           </div>
         )}
 
-        {/* Timestamp */}
-        <span className="text-xs text-white/40 mt-1 px-1">
-          {safeFormatDistanceToNow(message.createdAt)}
-        </span>
+        {/* Timestamp, and copy for Kairos's replies */}
+        <div className="mt-1 flex items-center gap-1 px-1 text-xs text-muted-foreground">
+          <span>{safeFormatDistanceToNow(message.createdAt)}</span>
+          {!isUser && !isStreaming && message.content && <CopyButton text={message.content} />}
+        </div>
       </div>
     </motion.div>
+  );
+}
+
+/** Copies a reply to the clipboard; visible on hover, focus, and always on touch screens. */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          // Clipboard blocked (permissions/insecure context): nothing useful to show
+        }
+      }}
+      className="grid size-7 place-items-center rounded-full transition-[opacity,background-color] hover:bg-accent hover:text-foreground focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/message:opacity-100"
+      aria-label={copied ? "Copied" : "Copy reply"}
+      title={copied ? "Copied" : "Copy"}
+    >
+      {copied ? <Check className="size-3.5 text-chart-3" /> : <Copy className="size-3.5" />}
+    </button>
   );
 }
