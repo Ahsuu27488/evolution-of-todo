@@ -45,6 +45,17 @@
   --custom-sidebar-border: oklch(1 0 0 / 0.09);
   --custom-sidebar-ring: oklch(0.82 0.14 78);
 
+  /* Status: success (done), warning (due soon); danger is --custom-destructive, info is orbit blue */
+  --custom-success: oklch(0.78 0.12 158);
+  --custom-success-foreground: oklch(0.2 0.04 265);
+  --custom-warning: oklch(0.8 0.14 60);
+  --custom-warning-foreground: oklch(0.2 0.04 265);
+
+  /* Floating solid layer (menus, selects, popovers, toasts) and the scrim behind dialogs */
+  --shadow-pop: inset 0 1px 0 oklch(1 0 0 / 0.05), 0 2px 6px oklch(0.06 0.03 265 / 0.35), 0 16px 40px -12px oklch(0.06 0.03 265 / 0.7);
+  --scrim: oklch(0.1 0.03 265 / 0.62);
+  --switch-thumb: oklch(0.97 0.008 265);
+
   /* Glass (floating layer only: nav, dock, composer, modals) */
   --glass-tint: oklch(0.26 0.045 265 / 0.62);
   --glass-rim: oklch(1 0 0 / 0.14);
@@ -90,6 +101,15 @@
   --custom-sidebar-accent-foreground: oklch(0.22 0.04 265);
   --custom-sidebar-border: oklch(0.22 0.04 265 / 0.12);
   --custom-sidebar-ring: oklch(0.64 0.145 66);
+
+  --custom-success: oklch(0.52 0.12 158);
+  --custom-success-foreground: oklch(0.98 0.005 255);
+  --custom-warning: oklch(0.58 0.15 55);
+  --custom-warning-foreground: oklch(0.98 0.005 255);
+
+  --shadow-pop: 0 2px 6px oklch(0.3 0.05 265 / 0.08), 0 16px 40px -12px oklch(0.3 0.05 265 / 0.28);
+  --scrim: oklch(0.22 0.04 265 / 0.34);
+  --switch-thumb: oklch(1 0 0);
 
   --glass-tint: oklch(1 0 0 / 0.66);
   --glass-rim: oklch(0.22 0.04 265 / 0.1);
@@ -147,6 +167,10 @@
   --color-accent-foreground: var(--custom-accent-foreground);
   --color-destructive: var(--custom-destructive);
   --color-destructive-foreground: var(--custom-destructive-foreground);
+  --color-success: var(--custom-success);
+  --color-success-foreground: var(--custom-success-foreground);
+  --color-warning: var(--custom-warning);
+  --color-warning-foreground: var(--custom-warning-foreground);
   --color-border: var(--custom-border);
   --color-input: var(--custom-input);
   --color-ring: var(--custom-ring);
@@ -286,34 +310,22 @@
     box-shadow: inset 0 1px 0 oklch(1 0 0), 0 1px 3px oklch(0.3 0.05 265 / 0.08);
   }
 
-  /* Legacy helpers kept for existing components, now on the new palette */
-  .glow-cyan {
-    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-primary) 28%, transparent);
+  /* Solid floating layer: menus, selects, popovers and toasts. Solid on purpose: they often open
+     on top of glass (a dialog, the nav pill) and glass on glass turns to mud. */
+  .surface-pop {
+    background: var(--custom-popover);
+    color: var(--custom-popover-foreground);
+    border: 1px solid var(--custom-border);
+    box-shadow: var(--shadow-pop);
   }
 
-  .glow-purple {
-    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-secondary) 28%, transparent);
+  .light .surface-pop {
+    border-color: oklch(0.22 0.04 265 / 0.1);
   }
 
-  .glow-green {
-    box-shadow: 0 0 24px color-mix(in oklch, var(--custom-chart-3) 28%, transparent);
-  }
-
-  .border-priority-high {
-    border-color: var(--custom-destructive);
-  }
-
-  .border-priority-medium {
-    border-color: var(--custom-primary);
-  }
-
-  .border-priority-low {
-    border-color: var(--custom-muted-foreground);
-  }
-
-  .text-glow,
-  .text-glow-cyan {
-    text-shadow: none;
+  /* Dims the page behind dialogs */
+  .scrim {
+    background: var(--scrim);
   }
 
   .font-display {
@@ -326,10 +338,6 @@
     line-height: 0.98;
     letter-spacing: -0.04em;
     font-weight: 600;
-  }
-
-  .transition-smooth {
-    transition: all var(--dur-ui) var(--ease-out);
   }
 
   .will-animate {
@@ -424,10 +432,8 @@
    Dual-Ring Spinner Loading Animation
    [T018] Pure CSS dual-ring spinner for loading states
 
-   Per research.md §Research Area 1: Loading Animation Implementation
-   - Outer ring: primary (sun gold), clockwise, 1.5s
-   - Inner ring: secondary (orbit blue), counter-clockwise, 1s
-   - Performance: Runs on compositor thread, no JS overhead
+   Two orbits: sun gold clockwise (1.5s), orbit blue counter-clockwise (1s).
+   Compositor-only (transform); slowed down for reduced motion.
    =========================================================================== */
 
 .dual-ring-spinner {
@@ -467,7 +473,6 @@
   border-top-color: transparent; /* Creates gap effect */
   border-left-color: transparent;
   animation: rotate-cw 1.5s linear infinite;
-  filter: drop-shadow(0 0 3px var(--outer-color)); /* soft glow */
 }
 
 /* Inner ring - counter-clockwise rotation */
@@ -479,7 +484,13 @@
   border-bottom-color: transparent; /* Creates gap effect */
   border-right-color: transparent;
   animation: rotate-ccw 1s linear infinite;
-  filter: drop-shadow(0 0 3px var(--inner-color)); /* soft glow */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dual-ring-spinner .outer-ring,
+  .dual-ring-spinner .inner-ring {
+    animation-duration: 4s;
+  }
 }
 
 /* Clockwise rotation keyframe */
@@ -615,11 +626,12 @@
    =========================================================================== */
 
 @layer utilities {
-  /* iOS-specific: Prevent auto-zoom on input focus */
-  input[type="text"],
-  input[type="textarea"],
-  textarea {
-    font-size: 16px !important; /* Prevents iOS auto-zoom on focus */
+  /* iOS zooms into inputs under 16px; phones only, so desktop fields keep the 14px UI size */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea {
+      font-size: 16px !important;
+    }
   }
 
   /* Safe area inset for iPhone home indicator */

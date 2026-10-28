@@ -1,7 +1,7 @@
 /** Framer Motion Animation Configurations.
  *
  * This module provides reusable animation variants and utilities
- * for the Deep Space Glassmorphism UI.
+ * for the Chronos UI (motion tokens live in app/globals.css).
  *
  * Per spec.md FR-039: micro-animations for state transitions (slide-in, glow, fade)
  * Per research.md: framer-motion for complex UI animations
@@ -116,20 +116,14 @@ export const taskCard: Variants = {
   },
 };
 
-/** Task completion glow animation */
+/** Task completion: a small settle (no glow) */
 export const taskComplete: Variants = {
   normal: {
-    boxShadow: '0 0 0 rgba(242, 184, 75, 0)',
     scale: 1,
   },
-  glow: {
-    boxShadow: [
-      '0 0 0 rgba(242, 184, 75, 0)',
-      '0 0 20px rgba(242, 184, 75, 0.25)',
-      '0 0 0 rgba(242, 184, 75, 0)',
-    ],
-    scale: [1, 1.02, 1],
-    transition: { duration: 0.6 },
+  settle: {
+    scale: [1, 1.015, 1],
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
   },
 };
 
@@ -191,23 +185,6 @@ export const disintegrate: Variants = {
   },
 };
 
-/** Floating action button pulse */
-export const fabPulse: Variants = {
-  idle: {
-    scale: 1,
-    boxShadow: '0 4px 20px rgba(242, 184, 75, 0.3)',
-  },
-  hover: {
-    scale: 1.1,
-    boxShadow: '0 6px 30px rgba(242, 184, 75, 0.5)',
-    transition: { type: 'spring', stiffness: 400, damping: 15 },
-  },
-  tap: {
-    scale: 0.95,
-    transition: { type: 'spring', stiffness: 600, damping: 20 },
-  },
-};
-
 /** Command Center slide down */
 export const commandSlide: Variants = {
   hidden: {
@@ -224,22 +201,6 @@ export const commandSlide: Variants = {
       stiffness: 400,
       damping: 25,
     },
-  },
-};
-
-/** Priority indicator glow */
-export const priorityGlow = {
-  high: {
-    boxShadow: '0 0 20px rgba(239, 68, 68, 0.4)',
-    borderColor: 'rgb(239 68 68)',
-  },
-  medium: {
-    boxShadow: '0 0 15px rgba(127, 168, 232, 0.3)',
-    borderColor: 'rgb(168 85 247)',
-  },
-  low: {
-    boxShadow: '0 0 10px rgba(150, 150, 170, 0.2)',
-    borderColor: 'rgb(150 150 170)',
   },
 };
 

@@ -3,6 +3,25 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat(frontend): every UI primitive on the night-observatory tokens
+
+- New tokens: `--custom-success`, `--custom-warning` (Tailwind `success`, `warning`), `--shadow-pop`,
+  `--scrim`, `--switch-thumb`; utilities `.surface-pop` (solid floating layer) and `.scrim` (D-009).
+  Removed the legacy `.glow-*`, `.text-glow`, `.border-priority-*`, `.transition-smooth` helpers and the
+  spinner's drop-shadow glow. The iOS 16 px input rule now applies on phones only, so desktop fields keep 14 px.
+- Dialog / alert dialog: glass panel, 3xl radius, display-font titles, 40 px close button, themed scrim
+  (was `bg-black/50`); alert dialog gets an icon slot and a `variant` on its action (the red neon glow is gone).
+- Dropdown menu, select, popover: solid `.surface-pop`, 40 px rows, gold check marks, select opens under its
+  trigger (popper) and its chevron turns when open; `SelectItem` takes a `description` shown only in the list.
+- Button (`text-white` removed, `aria-busy`), input/textarea (hover border), checkbox (20 px box, 40 px hit
+  area), switch (26 × 44 px, theme-aware thumb), badge (soft `muted/accent/info/success/warning/danger`),
+  card (`.surface`), tabs (segmented pill like the dashboard filter), skeleton, form messages, calendar
+  (40 px days, gold today ring, no glow, no fixed height), new `Callout` for inline status messages.
+- Toasts: dropped sonner's `richColors` (stock green/red fills); toasts use the solid surface with the status
+  in the icon colour. The toast `--normal-bg` vars pointed at undefined `--popover`; now `--color-popover`.
+  Kairos action toasts (`lib/utils/toast.tsx`) used a separate neon-bordered component; they now use the same
+  toaster.
+
 ## 2026-10-28 · feat: Kairos assistant, new brand assets; fix: chat broken on current openai
 
 - **Chat was broken on a fresh install**: openai 2.45+ made `InputTokensDetails.cache_write_tokens`

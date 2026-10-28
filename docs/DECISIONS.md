@@ -61,6 +61,18 @@ search hand-offs are internal modes of the same persona. Prompts live in `backen
 persona avoids confusing "let me transfer you" messages. *Where:* `prompts.py`, `todo_agent.py`,
 `frontend/components/chat/`.
 
+**D-009 Dialogs are glass; menus, selects, popovers and toasts are solid; status colours are tokens.** (2026-10-28)
+Refines D-007 for every component. `.glass-modal` only on dialogs, alert dialogs and the chat panel; every
+menu, select list, popover and toast uses `.surface-pop` (solid popover colour, hairline border, `--shadow-pop`);
+page content uses `.surface`. Status colours come from `--custom-success` / `--custom-warning` /
+`--custom-destructive` / orbit blue (Tailwind `success`, `warning`, `destructive`, `secondary`), as soft
+`Badge` and `Callout` tints. Emails and the unsubscribe page use hex equivalents of the same palette.
+*Why:* menus and selects open on top of glass (the nav pill, dialogs); glass on glass turned to mud and hurt
+contrast. Hard-coded `red-400` / `emerald-500` / `rgba(...)` drifted from the theme and broke light mode.
+Email clients ignore CSS variables, so emails need hex. *Where:* `frontend/app/globals.css`,
+`frontend/components/ui/` (`callout.tsx`, `badge.tsx`, `dropdown-menu.tsx`, `select.tsx`, `popover.tsx`,
+`sonner.tsx`), `backend/app/services/email_service.py` (`EmailTemplates`), `docs/design/README.md`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

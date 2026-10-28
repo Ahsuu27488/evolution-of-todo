@@ -48,13 +48,7 @@ export function Providers({ children }: ProvidersProps) {
       >
         {children}
         {/* T044: Responsive positioning for toasts - top-center on mobile, bottom-right on desktop */}
-        <Toaster position="bottom-right" richColors closeButton gap={8} expand={false} toastOptions={{
-          duration: 3000,
-          classNames: {
-            // Mobile-responsive positioning
-            toast: "mobile:max-w-[calc(100vw-2rem)]",
-          },
-        }} />
+        <Toaster position="bottom-right" closeButton gap={8} expand={false} duration={3000} />
         <AdBlockWarning />
         {/* Phase III: AI Chatbot */}
         <ChatProvider>
