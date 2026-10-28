@@ -43,6 +43,8 @@ observatory" design with a 3D orrery (D-007, D-009).
 
 ## Live state
 
+- 2026-10-28: PR 7 merged; the HF Space did not start because of the port mismatch (fixed by `app_port: 8000`
+  in `backend/README.md`). Whether the Space runs after that fix: see the next entry once checked.
 - Frontend live at https://chronos.ahsandev.site (README). Host not recorded in the repo (likely Vercel).
 - Backend: `.github/workflows/deploy-hf.yml` pushes `backend/` to the Hugging Face Space
   `Ahsuu27488/evolution-of-todo-api` on **every push to main that touches `backend/`**. Merging this branch

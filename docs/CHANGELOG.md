@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · fix: HF Space never started (port mismatch since February)
+
+- The Space waits for port 7860 unless its README frontmatter sets `app_port`; the Phase IV commit
+  `4090309` (2026-02-14) moved the Dockerfile to port 8000, so the Space sat in APP_STARTING and the API
+  has been down since. Added `app_port: 8000` to `backend/README.md` (Kubernetes keeps 8000).
+
 ## 2026-10-28 · fix(tests): missing Task import broke CI on Python 3.13
 
 - `tests/test_mcp/test_tools.py` used `Task` in annotations without importing it. Python 3.14 (local) no
